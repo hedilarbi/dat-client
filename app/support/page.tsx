@@ -10,6 +10,7 @@ import Spinner from '../components/Spinner';
 import SkeletonRows from '../components/SkeletonRows';
 import { Badge, getTicketStatusBadge } from '../components/StatusBadge';
 import { getCategoryLabel } from '../lib/categoryLabels';
+import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
 interface Message {
   _id: string;
@@ -58,6 +59,7 @@ export default function SupportPage() {
   // Conversation thread
   const [replyContent, setReplyContent] = useState('');
   const [replyFile, setReplyFile] = useState('');
+  const [replyFileName, setReplyFileName] = useState('');
   const [uploading, setUploading] = useState(false);
 
   // UI States
@@ -146,6 +148,7 @@ export default function SupportPage() {
 
       setReplyContent('');
       setReplyFile('');
+      setReplyFileName('');
       setSelectedTicket(res.ticket);
       fetchTickets();
     } catch (err: any) {
@@ -153,16 +156,57 @@ export default function SupportPage() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+
+    setError('');
+
+    const file = await compressImageIfNeeded(rawFile);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(t('shared.fileTooLarge', {
+        size: (file.size / (1024 * 1024)).toFixed(1),
+        maxSize: String(MAX_UPLOAD_BYTES / (1024 * 1024)),
+      }));
+      e.target.value = '';
+      return;
+    }
 
     setUploading(true);
-    setTimeout(() => {
-      const fakeUrl = `https://firebasestorage.googleapis.com/v0/b/dealsautopro.firebasestorage.app/o/support_${Date.now()}_${encodeURIComponent(file.name)}?alt=media`;
-      setReplyFile(fakeUrl);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const responseText = await res.text();
+      let data: any = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(t('support.attachmentUploadError'));
+        }
+      }
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.message || t('support.attachmentUploadError'));
+      }
+
+      setReplyFile(data.url);
+      setReplyFileName(file.name);
+    } catch (err: any) {
+      setError(err.message || t('support.attachmentUploadError'));
+      setReplyFile('');
+      setReplyFileName('');
+    } finally {
       setUploading(false);
-    }, 1000);
+      e.target.value = '';
+    }
   };
 
   // Filtered tickets
@@ -418,9 +462,10 @@ export default function SupportPage() {
                 />
 
                 {/* File Upload Trigger */}
-                <label className="h-[52px] border border-[#dcd7cb] rounded-[9px] px-4 flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition cursor-pointer text-sm shrink-0">
-                  📎
-                  <input type="file" onChange={handleFileUpload} className="hidden" />
+                <label className={`h-[52px] border rounded-[9px] px-4 flex items-center gap-2 max-w-[160px] transition cursor-pointer text-sm shrink-0 ${replyFile ? 'border-[#bcd8c8] bg-[#f2f8f4] text-[#2f6f4f]' : 'border-[#dcd7cb] bg-gray-50 hover:bg-gray-100'}`}>
+                  {uploading ? <Spinner /> : (replyFile ? '✓' : '📎')}
+                  {replyFile && !uploading && <span className="truncate text-[12px] font-semibold">{replyFileName}</span>}
+                  <input type="file" onChange={handleFileUpload} className="hidden" disabled={uploading} />
                 </label>
 
                 <button
