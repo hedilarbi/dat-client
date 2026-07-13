@@ -11,6 +11,7 @@ import StatCard from '../components/StatCard';
 import { Badge } from '../components/StatusBadge';
 import IdentityFieldsSection from '../components/IdentityFieldsSection';
 import DocumentUploadRow from '../components/DocumentUploadRow';
+import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, type Rejection } from '../components/RegistrationStatusNotices';
 
 export default function ProfilPage() {
@@ -100,15 +101,26 @@ export default function ProfilPage() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: 'kbis' | 'cinRecto' | 'cinVerso') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+
+    setError('');
+
+    const file = await compressImageIfNeeded(rawFile);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(t('shared.fileTooLarge', {
+        size: (file.size / (1024 * 1024)).toFixed(1),
+        maxSize: String(MAX_UPLOAD_BYTES / (1024 * 1024)),
+      }));
+      e.target.value = '';
+      return;
+    }
 
     if (docType === 'kbis') setKbisFile(file);
     if (docType === 'cinRecto') setCinRectoFile(file);
     if (docType === 'cinVerso') setCinVersoFile(file);
 
     setUploading(docType);
-    setError('');
     try {
       const url = await uploadFile(file);
       if (docType === 'kbis') setKbisUrl(url);

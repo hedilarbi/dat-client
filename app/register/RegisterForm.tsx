@@ -13,6 +13,7 @@ import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
 import DocumentUploadRow from '../components/DocumentUploadRow';
 import { countries } from '../lib/countries';
+import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
 type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib';
 
@@ -218,11 +219,21 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     }
   };
 
-  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>, docType: DocumentType) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>, docType: DocumentType) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
     setError('');
+
+    const file = await compressImageIfNeeded(rawFile);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(t('shared.fileTooLarge', {
+        size: (file.size / (1024 * 1024)).toFixed(1),
+        maxSize: String(MAX_UPLOAD_BYTES / (1024 * 1024)),
+      }));
+      e.target.value = '';
+      return;
+    }
 
     if (docType === 'kbis') {
       setKbisFile(file);
