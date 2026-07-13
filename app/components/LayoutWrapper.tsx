@@ -423,9 +423,12 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   }
 
   // SELLER LAYOUT (Top Blue Bar + Left Sidebar Layout) — the only space with a distinct header.
-  // Excluded on /register: a vendeur resuming an unfinished registration (e.g. brouillon status,
-  // reached via ?step=documents) is still onboarding, not yet "in" the seller space.
-  if (user && user.role === 'vendeur' && currentPath !== '/register') {
+  // Excluded on every /register route: a vendeur resuming an unfinished registration (e.g.
+  // brouillon status, reached via ?step=documents) is still onboarding, not yet "in" the seller
+  // space. Must check isRegisterPage (covers /register/vendeur) rather than the canonical
+  // '/register' path alone, otherwise this layout takes over mid-registration (right after OTP
+  // verification sets user.role) and unmounts RegisterForm, resetting its step state to 1.
+  if (user && user.role === 'vendeur' && !isRegisterPage) {
     return (
       <div className="h-screen bg-white flex flex-col font-sans overflow-hidden">
         {/* Top Blue Bar */}
