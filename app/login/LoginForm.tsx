@@ -103,12 +103,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
           <h2 className="text-[32px] font-bold font-heading uppercase text-[#13243c] mb-[6px]">
             {t('login.title')}
           </h2>
-          <Link
-            href={localizedPath(getRoleLoginPath(otherRole), language)}
-            className="mb-6 inline-flex h-10 items-center justify-center rounded-[9px] border border-[#dcd7cb] px-4 text-[12px] font-bold uppercase tracking-[0.03em] text-[#13243c] hover:border-[#13243c] hover:bg-[#f8f7f2] transition"
-          >
-            {t('login.switchSpace', { role: t(`role.${otherRole}`) })}
-          </Link>
+
 
           {error && <Alert variant="error" className="mb-4">{error}</Alert>}
           {message && <Alert variant="success" className="mb-4">{message}</Alert>}

@@ -484,12 +484,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             <div>
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="block text-[12px] font-semibold text-[#4c5058]">{t('register.activityType')}</label>
-                <Link
-                  href={localizedPath(getRoleRegisterPath(otherRole), language)}
-                  className="text-[12px] font-bold text-[#d9704f] hover:underline"
-                >
-                  {t('register.switchSpace', { role: t(`role.${otherRole}`) })}
-                </Link>
+
               </div>
               <select
                 value={activityType}
