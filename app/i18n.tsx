@@ -11,6 +11,8 @@ import {
   localizedPath,
   canonicalPathFromPathname,
   getRoleHomePath,
+  getRoleLoginPath,
+  getRoleRegisterPath,
 } from './routing';
 
 export type { Language };
@@ -21,6 +23,8 @@ export {
   localizedPath,
   canonicalPathFromPathname,
   getRoleHomePath,
+  getRoleLoginPath,
+  getRoleRegisterPath,
 };
 
 const labels: Record<Language, string> = {
@@ -100,6 +104,7 @@ const translations: Record<Language, Record<string, string>> = {
     'login.roleMismatch': "Ce compte n'existe pas dans cet espace de connexion.",
     'login.noAccount': 'Pas encore de compte ?',
     'login.createAccountWithRole': 'Créer un compte {role}',
+    'login.switchSpace': "Basculer vers l'espace {role}",
     'role.acheteur': 'acheteur',
     'role.vendeur': 'vendeur',
     'register.managerLastName': 'Nom du responsable',
@@ -114,6 +119,7 @@ const translations: Record<Language, Record<string, string>> = {
     'register.passwordLabel': 'Mot de passe',
     'register.confirmPassword': 'Confirmer le mot de passe',
     'register.switchTo': "Basculer vers l'inscription",
+    'register.switchSpace': "S'inscrire comme {role}",
     'register.validating': 'Validation...',
     'register.continue': 'Continuer',
     'register.stepInfo': 'Informations',
@@ -182,6 +188,8 @@ const translations: Record<Language, Record<string, string>> = {
     'forgotPassword.verificationCodeLabel': 'Code de vérification',
     'forgotPassword.resetButton': 'Réinitialiser le mot de passe',
     'forgotPassword.resendCode': '← Renvoyer un code',
+    'forgotPassword.changeEmail': "Modifier l'adresse e-mail",
+    'forgotPassword.missingEmail': "Adresse e-mail manquante. Demandez un nouveau code de réinitialisation.",
     'forgotPassword.genericError': 'Une erreur est survenue.',
     'forgotPassword.codeSentSuccess': 'Un code de vérification a été envoyé à votre adresse e-mail.',
     'forgotPassword.resetSuccess': 'Mot de passe réinitialisé. Redirection...',
@@ -374,6 +382,7 @@ const translations: Record<Language, Record<string, string>> = {
     'login.roleMismatch': "This account doesn't exist in this login area.",
     'login.noAccount': "Don't have an account yet?",
     'login.createAccountWithRole': 'Create a {role} account',
+    'login.switchSpace': 'Switch to {role} space',
     'role.acheteur': 'buyer',
     'role.vendeur': 'seller',
     'register.managerLastName': 'Manager last name',
@@ -388,6 +397,7 @@ const translations: Record<Language, Record<string, string>> = {
     'register.passwordLabel': 'Password',
     'register.confirmPassword': 'Confirm password',
     'register.switchTo': 'Switch to',
+    'register.switchSpace': 'Register as {role}',
     'register.validating': 'Validating...',
     'register.continue': 'Continue',
     'register.stepInfo': 'Information',
@@ -456,6 +466,8 @@ const translations: Record<Language, Record<string, string>> = {
     'forgotPassword.verificationCodeLabel': 'Verification code',
     'forgotPassword.resetButton': 'Reset password',
     'forgotPassword.resendCode': '← Resend a code',
+    'forgotPassword.changeEmail': 'Change email address',
+    'forgotPassword.missingEmail': 'Email address is missing. Request a new reset code.',
     'forgotPassword.genericError': 'An error occurred.',
     'forgotPassword.codeSentSuccess': 'A verification code has been sent to your email address.',
     'forgotPassword.resetSuccess': 'Password reset. Redirecting...',

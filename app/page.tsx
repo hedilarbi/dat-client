@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { localizedPath, useLanguage } from "./i18n";
+import { getRoleLoginPath, getRoleRegisterPath, localizedPath, useLanguage } from "./i18n";
 import FilterPills from "./components/FilterPills";
 
 export default function Home() {
@@ -43,13 +43,13 @@ export default function Home() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            href={localizedPath(`/login?role=${role}`, language)}
+            href={localizedPath(getRoleLoginPath(role), language)}
             className="w-full py-2.5 bg-[#13243C] text-white font-bold rounded uppercase text-sm hover:bg-slate-800 transition"
           >
             {t('home.login')}
           </Link>
           <Link
-            href={localizedPath(`/register?role=${role}`, language)}
+            href={localizedPath(getRoleRegisterPath(role), language)}
             className="w-full py-2.5 bg-[#D9704F] text-white font-bold rounded uppercase text-sm hover:bg-[#c26040] transition"
           >
             {t('home.register')}

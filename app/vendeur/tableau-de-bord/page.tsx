@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../api';
 import { useUser } from '../../components/LayoutWrapper';
-import { getRoleHomePath, localizedPath, useLanguage } from '../../i18n';
+import { getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../../i18n';
 import Alert from '../../components/Alert';
+import Spinner from '../../components/Spinner';
 import StatCard from '../../components/StatCard';
 import { Badge } from '../../components/StatusBadge';
 import IdentityFieldsSection from '../../components/IdentityFieldsSection';
-import SimpleFileField from '../../components/SimpleFileField';
 import DocumentUploadRow from '../../components/DocumentUploadRow';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, type Rejection } from '../../components/RegistrationStatusNotices';
 
@@ -39,6 +39,9 @@ export default function VendeurTableauDeBordPage() {
   const [kbisUrl, setKbisUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
+  const [kbisFile, setKbisFile] = useState<File | null>(null);
+  const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
+  const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
   const [bankName, setBankName] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
   const [iban, setIban] = useState('');
@@ -93,18 +96,43 @@ export default function VendeurTableauDeBordPage() {
     }
   }, [user, router, language]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, docType: 'kbis' | 'cinRecto' | 'cinVerso') => {
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) {
+      throw new Error(data.message || t('profil.resubmitError'));
+    }
+    return data.url as string;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: 'kbis' | 'cinRecto' | 'cinVerso') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (docType === 'kbis') setKbisFile(file);
+    if (docType === 'cinRecto') setCinRectoFile(file);
+    if (docType === 'cinVerso') setCinVersoFile(file);
+
     setUploading(docType);
-    setTimeout(() => {
-      const fakeUrl = `https://firebasestorage.googleapis.com/v0/b/dealsautopro.firebasestorage.app/o/${encodeURIComponent('corrected_' + docType + '_' + file.name)}?alt=media`;
-      if (docType === 'kbis') setKbisUrl(fakeUrl);
-      if (docType === 'cinRecto') setCinRectoUrl(fakeUrl);
-      if (docType === 'cinVerso') setCinVersoUrl(fakeUrl);
+    setError('');
+    try {
+      const url = await uploadFile(file);
+      if (docType === 'kbis') setKbisUrl(url);
+      if (docType === 'cinRecto') setCinRectoUrl(url);
+      if (docType === 'cinVerso') setCinVersoUrl(url);
+    } catch (err: any) {
+      setError(err.message || t('profil.resubmitError'));
+    } finally {
       setUploading(null);
-    }, 1000);
+    }
   };
 
   const handleRibSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,8 +152,7 @@ export default function VendeurTableauDeBordPage() {
       let finalRibUrl = ribUrl;
       if (ribFile) {
         setUploading('rib');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        finalRibUrl = `https://firebasestorage.googleapis.com/v0/b/dealsautopro.firebasestorage.app/o/${encodeURIComponent('corrected_rib_' + ribFile.name)}?alt=media`;
+        finalRibUrl = await uploadFile(ribFile);
         setRibUrl(finalRibUrl);
         setUploading(null);
       }
@@ -169,7 +196,7 @@ export default function VendeurTableauDeBordPage() {
   if (user.status === 'brouillon' && user.emailVerified) {
     return (
       <DraftPendingNotice
-        onResume={() => router.push(localizedPath(`/register?step=documents&role=${user.role}`, language))}
+        onResume={() => router.push(localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language))}
       />
     );
   }
@@ -241,21 +268,20 @@ export default function VendeurTableauDeBordPage() {
             />
           </div>
 
-          <div className="space-y-4 border-t border-[#efece3] pt-4">
-            <h5 className="font-bold text-xs text-gray-400 uppercase tracking-wider">{t('profil.replaceDocuments')}</h5>
+          <div className="space-y-4">
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <SimpleFileField label={t('profil.kbisPdf')} accept=".pdf" uploading={uploading === 'kbis'} hasValue={Boolean(kbisUrl)} onChange={e => handleFileUpload(e, 'kbis')} />
-              <SimpleFileField label={t('profil.cinRecto')} accept="image/*" uploading={uploading === 'cinRecto'} hasValue={Boolean(cinRectoUrl)} onChange={e => handleFileUpload(e, 'cinRecto')} />
-              <SimpleFileField label={t('profil.cinVerso')} accept="image/*" uploading={uploading === 'cinVerso'} hasValue={Boolean(cinVersoUrl)} onChange={e => handleFileUpload(e, 'cinVerso')} />
-            </div>
+
+            <DocumentUploadRow label={t('profil.kbisPdf')} accept=".pdf" file={kbisFile} existingUrl={kbisUrl} onChange={e => handleFileUpload(e, 'kbis')} />
+            <DocumentUploadRow label={t('profil.cinRecto')} accept="image/*" file={cinRectoFile} existingUrl={cinRectoUrl} onChange={e => handleFileUpload(e, 'cinRecto')} selectedLabel={t('register.selected')} />
+            <DocumentUploadRow label={t('profil.cinVerso')} accept="image/*" file={cinVersoFile} existingUrl={cinVersoUrl} onChange={e => handleFileUpload(e, 'cinVerso')} selectedLabel={t('register.selected')} />
           </div>
 
           <button
             type="submit"
             disabled={loading || uploading !== null || !kbisUrl || !cinRectoUrl || !cinVersoUrl || !bankName || !accountHolder || !iban || !bic || !(ribUrl || ribFile)}
-            className="w-full h-12 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer"
+            className="w-full h-12 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
           >
+            {loading && <Spinner />}
             {loading ? t('profil.resubmitting') : t('profil.resubmit')}
           </button>
         </form>

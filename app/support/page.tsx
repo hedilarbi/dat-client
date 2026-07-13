@@ -6,6 +6,7 @@ import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
 import { useLanguage } from '../i18n';
 import Alert from '../components/Alert';
+import Spinner from '../components/Spinner';
 import SkeletonRows from '../components/SkeletonRows';
 import { Badge, getTicketStatusBadge } from '../components/StatusBadge';
 import { getCategoryLabel } from '../lib/categoryLabels';
@@ -333,8 +334,9 @@ export default function SupportPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[52px] rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[15px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer"
+              className="w-full h-[52px] rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[15px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
             >
+              {loading && <Spinner />}
               {loading ? t('support.creating') : t('support.sendRequest')}
             </button>
           </form>
@@ -424,8 +426,9 @@ export default function SupportPage() {
                 <button
                   type="submit"
                   disabled={!replyContent || uploading}
-                  className="w-auto px-4 sm:w-[130px] h-[52px] rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[13px] uppercase tracking-[0.03em] select-none cursor-pointer flex items-center justify-center disabled:opacity-50 shrink-0"
+                  className="w-auto px-4 sm:w-[130px] h-[52px] rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[13px] uppercase tracking-[0.03em] select-none cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shrink-0"
                 >
+                  {uploading && <Spinner />}
                   {uploading ? t('shared.uploading') : t('support.send')}
                 </button>
               </form>

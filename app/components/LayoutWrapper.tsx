@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiRequest } from '../api';
 import Link from 'next/link';
-import { Language, LanguageSelector, getRoleHomePath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
+import { Language, LanguageSelector, getRoleLoginPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
 import DropdownMenu from './DropdownMenu';
 
 interface UserProfile {
@@ -88,7 +88,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('userRole');
-      router.push(localizedPath('/login', getLocaleFromPath(pathname) || 'fr'));
+      router.push(localizedPath(getRoleLoginPath(user?.role || 'acheteur'), getLocaleFromPath(pathname) || 'fr'));
     }
   };
 
@@ -349,14 +349,14 @@ function MobileMenu({
               ) : (
                 <>
                   <Link
-                    href={localizedPath('/login', language)}
+                    href={localizedPath('/login/acheteur', language)}
                     onClick={close}
                     className="h-12 flex items-center justify-center rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[13px] font-bold uppercase tracking-[0.03em] transition"
                   >
                     {t('nav.login')}
                   </Link>
                   <Link
-                    href={localizedPath('/register', language)}
+                    href={localizedPath('/register/acheteur', language)}
                     onClick={close}
                     className="h-12 flex items-center justify-center rounded-[8px] border border-[#2c4266] text-white text-[13px] font-semibold uppercase tracking-[0.03em] hover:bg-slate-800 transition"
                   >
@@ -379,7 +379,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const { language, setLanguage, t } = useLanguage();
   const currentPath = canonicalPathFromPathname(pathname);
 
-  const isAuthPage = currentPath === '/login' || currentPath === '/register' || currentPath === '/forgot-password' || currentPath === '/';
+  const isLoginPage = currentPath === '/login' || currentPath === '/login/acheteur' || currentPath === '/login/vendeur';
+  const isRegisterPage = currentPath === '/register' || currentPath === '/register/acheteur' || currentPath === '/register/vendeur';
+  const isForgotPasswordPage = currentPath === '/forgot-password' || currentPath === '/forgot-password/reset';
+  const isAuthPage = isLoginPage || isRegisterPage || isForgotPasswordPage || currentPath === '/';
 
   useEffect(() => {
     if (user?.language) {
@@ -493,7 +496,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
           <div className="hidden md:flex items-center gap-[22px] text-[13px] font-bold text-white shrink-0">
             <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.auctionCalendar')}</span>
-            <Link href={localizedPath('/register?role=vendeur', language)} className="cursor-pointer hover:text-[#d9704f] transition">
+            <Link href={localizedPath('/register/vendeur', language)} className="cursor-pointer hover:text-[#d9704f] transition">
               {t('nav.sellWithUs')}
             </Link>
             <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.help')}</span>
@@ -509,10 +512,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden md:flex" />
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                <Link href={localizedPath('/login', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[12px] font-bold uppercase tracking-[0.03em] transition whitespace-nowrap">
+                <Link href={localizedPath('/login/acheteur', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[12px] font-bold uppercase tracking-[0.03em] transition whitespace-nowrap">
                   {t('nav.login')}
                 </Link>
-                <Link href={localizedPath('/register', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] border border-[#2c4266] text-white text-[12px] font-semibold uppercase tracking-[0.03em] hover:bg-slate-800 transition whitespace-nowrap">
+                <Link href={localizedPath('/register/acheteur', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] border border-[#2c4266] text-white text-[12px] font-semibold uppercase tracking-[0.03em] hover:bg-slate-800 transition whitespace-nowrap">
                   {t('nav.register')}
                 </Link>
               </div>
@@ -521,7 +524,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               onLanguageChange={persistLanguage}
               navLinks={[
                 { label: t('nav.auctionCalendar') },
-                { href: localizedPath('/register?role=vendeur', language), label: t('nav.sellWithUs') },
+                { href: localizedPath('/register/vendeur', language), label: t('nav.sellWithUs') },
                 { label: t('nav.help') },
                 { label: t('nav.findUs') },
                 { label: t('nav.contactUs') },
@@ -531,7 +534,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         </header>
 
         {/* Main Content */}
-        <main className={isAuthPage ? (currentPath === '/login' ? "flex-1 flex bg-white" : "flex-1 flex items-center justify-center p-6 sm:p-14 bg-white") : "flex-1 min-w-0 bg-white"}>
+        <main className={isAuthPage ? (isLoginPage ? "flex-1 flex bg-white" : "flex-1 flex items-center justify-center p-6 sm:p-14 bg-white") : "flex-1 min-w-0 bg-white"}>
           {children}
         </main>
       </div>

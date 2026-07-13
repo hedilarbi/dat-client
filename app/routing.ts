@@ -8,8 +8,13 @@ export const supportedLanguages: Language[] = ['fr', 'en'];
 // Chemin canonique (route interne Next.js réelle) -> slug public affiché par langue.
 const ROUTE_SLUGS: Record<string, Record<Language, string>> = {
   '/login': { fr: 'connexion', en: 'login' },
+  '/login/acheteur': { fr: 'connexion/acheteur', en: 'login/buyer' },
+  '/login/vendeur': { fr: 'connexion/vendeur', en: 'login/seller' },
   '/register': { fr: 'inscription', en: 'register' },
+  '/register/acheteur': { fr: 'inscription/acheteur', en: 'register/buyer' },
+  '/register/vendeur': { fr: 'inscription/vendeur', en: 'register/seller' },
   '/forgot-password': { fr: 'mot-de-passe-oublie', en: 'forgot-password' },
+  '/forgot-password/reset': { fr: 'mot-de-passe-oublie/reinitialisation', en: 'forgot-password/reset' },
   '/profil': { fr: 'profil', en: 'profile' },
   '/support': { fr: 'support', en: 'support' },
   '/vendeur/tableau-de-bord': { fr: 'vendeur/tableau-de-bord', en: 'seller/dashboard' },
@@ -88,4 +93,16 @@ export function resolveInternalPath(localizedRemainder: string, language: Langua
  */
 export function getRoleHomePath(role: 'acheteur' | 'vendeur' | string): string {
   return role === 'vendeur' ? '/vendeur/tableau-de-bord' : '/profil';
+}
+
+/**
+ * Connexion et inscription ont chacune une route dédiée par rôle (plus de ?role= en query) :
+ * /login/acheteur, /login/vendeur, /register/acheteur, /register/vendeur.
+ */
+export function getRoleLoginPath(role: 'acheteur' | 'vendeur' | string): string {
+  return role === 'vendeur' ? '/login/vendeur' : '/login/acheteur';
+}
+
+export function getRoleRegisterPath(role: 'acheteur' | 'vendeur' | string): string {
+  return role === 'vendeur' ? '/register/vendeur' : '/register/acheteur';
 }
