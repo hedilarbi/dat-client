@@ -8,7 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-barlow), sans-serif;
+  --font-heading: var(--font-saira-condensed), sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -23,4 +24,32 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.phone-input {
+  height: 48px;
+  border: 1px solid #dcd7cb;
+  border-radius: 9px;
+  padding: 0 16px;
+  color: #1a2230;
+  font-size: 14px;
+}
+
+.phone-input:focus-within {
+  outline: 1px solid #d9704f;
+}
+
+.phone-input .PhoneInputCountry {
+  margin-right: 12px;
+}
+
+.phone-input .PhoneInputInput {
+  height: 100%;
+  border: 0;
+  outline: 0;
+  color: #1a2230;
+}
+
+.phone-input .PhoneInputCountrySelect {
+  cursor: pointer;
 }
