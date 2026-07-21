@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
-import { useLanguage } from '../i18n';
+import { localizedPath, useLanguage } from '../i18n';
 import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
 import SkeletonRows from '../components/SkeletonRows';
@@ -40,8 +40,8 @@ interface Ticket {
 
 export default function SupportPage() {
   const router = useRouter();
-  const { user } = useUser();
-  const { t } = useLanguage();
+  const { user, loading: userLoading } = useUser();
+  const { language, t } = useLanguage();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -94,9 +94,17 @@ export default function SupportPage() {
     }
   };
 
+  // Session invalide/expirée (ex: après rafraîchissement de la page) : renvoi vers la connexion
+  // plutôt que de rester sur une page support sans utilisateur identifié.
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    if (!userLoading && !user) {
+      router.replace(localizedPath('/login', language));
+    }
+  }, [userLoading, user, router, language]);
+
+  useEffect(() => {
+    if (user) fetchTickets();
+  }, [user]);
 
   const handleOpenTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

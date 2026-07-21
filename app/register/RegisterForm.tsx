@@ -46,6 +46,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('France');
   const [postalCode, setPostalCode] = useState('');
+  const [kbisNumber, setKbisNumber] = useState('');
   const [kbisUrl, setKbisUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
@@ -94,6 +95,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setCity(user.address?.city || '');
     setCountry(user.address?.country || 'France');
     setPostalCode(user.address?.postalCode || '');
+    setKbisNumber(user.kbisNumber || '');
     setKbisUrl(user.kbisUrl || '');
     setCinRectoUrl(user.cinRectoUrl || '');
     setCinVersoUrl(user.cinVersoUrl || '');
@@ -338,6 +340,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
         method: 'POST',
         body: JSON.stringify({
           address: { street, city, country, postalCode },
+          kbisNumber,
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
@@ -370,6 +373,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
         method: 'POST',
         body: JSON.stringify({
           address: { street, city, country, postalCode },
+          kbisNumber,
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
@@ -685,6 +689,18 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             </div>
           </div>
 
+          <div>
+            <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.kbisNumber')}</label>
+            <input
+              required
+              type="text"
+              value={kbisNumber}
+              onChange={e => setKbisNumber(e.target.value)}
+              className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
+              placeholder={t('register.kbisNumberPlaceholder')}
+            />
+          </div>
+
           {role === 'vendeur' && (
             <div>
               <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.vhuNumber')}</label>
@@ -743,7 +759,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
             <button
               type="submit"
-              disabled={loading || uploading !== null || !hasKbisDocument || !hasCinRectoDocument || !hasCinVersoDocument || !street || !city || !postalCode}
+              disabled={loading || uploading !== null || !kbisNumber || !hasKbisDocument || !hasCinRectoDocument || !hasCinVersoDocument || !street || !city || !postalCode}
               className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
             >
               {(uploading || loading) && role !== 'vendeur' && <Spinner />}

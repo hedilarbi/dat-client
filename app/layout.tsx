@@ -19,7 +19,7 @@ const sairaCondensed = Saira_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "DealsAutoPro",
+  title: "DealAutoPro",
   description: "Plateforme B2B dédiée aux professionnels de l'automobile",
 };
 

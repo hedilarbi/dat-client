@@ -25,6 +25,7 @@ interface UserProfile {
     country: string;
     postalCode: string;
   };
+  kbisNumber?: string;
   kbisUrl?: string;
   cinRectoUrl?: string;
   cinVersoUrl?: string;
@@ -92,9 +93,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Revalider la session à chaque changement de page, pas seulement au chargement initial :
+  // une navigation interne (SPA) ne remonte pas ce provider, donc `user` restait périmé si la
+  // session expirait pendant la navigation — la détection n'arrivait alors qu'au prochain appel
+  // API qui échoue (ex: /tickets sur /support), voire seulement après un rechargement complet.
   useEffect(() => {
     fetchProfile();
-  }, []);
+  }, [pathname]);
 
   return (
     <UserContext.Provider value={{ user, loading, logout, refreshProfile: fetchProfile }}>
