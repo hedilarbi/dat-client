@@ -60,6 +60,10 @@ export default function VendeurTableauDeBordPage() {
   const [message, setMessage] = useState('');
   const alertRef = useRef<HTMLDivElement>(null);
 
+  // Photo de l'état initial du dossier, pour bloquer la resoumission tant qu'aucun
+  // champ n'a réellement été modifié par rapport à ce qui a été refusé/à corriger.
+  const initialValuesRef = useRef<Record<string, string>>({});
+
   // Le formulaire de correction est long : sans ce scroll, une erreur affichée en haut
   // du formulaire passe inaperçue si l'utilisateur est descendu vers les champs du bas.
   useEffect(() => {
@@ -93,6 +97,28 @@ export default function VendeurTableauDeBordPage() {
         setBic(user.bankInfo.bic || '');
         setRibUrl(user.bankInfo.ribUrl || '');
       }
+
+      initialValuesRef.current = {
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        companyName: user.companyName || '',
+        activityType: user.activityType || '',
+        phone: user.phone || '',
+        street: user.address?.street || '',
+        city: user.address?.city || '',
+        country: user.address?.country || 'France',
+        postalCode: user.address?.postalCode || '',
+        vhuNumber: user.vhuNumber || '',
+        kbisNumber: user.kbisNumber || '',
+        kbisUrl: user.kbisUrl || '',
+        cinRectoUrl: user.cinRectoUrl || '',
+        cinVersoUrl: user.cinVersoUrl || '',
+        bankName: user.bankInfo?.bankName || '',
+        accountHolder: user.bankInfo?.accountHolder || '',
+        iban: user.bankInfo?.iban || '',
+        bic: user.bankInfo?.bic || '',
+        ribUrl: user.bankInfo?.ribUrl || '',
+      };
     }
   }, [user]);
 
@@ -156,10 +182,41 @@ export default function VendeurTableauDeBordPage() {
     setRibUrl('');
   };
 
+  const hasChanges = (() => {
+    const initial = initialValuesRef.current;
+    return (
+      firstName !== initial.firstName ||
+      lastName !== initial.lastName ||
+      companyName !== initial.companyName ||
+      activityType !== initial.activityType ||
+      phone !== initial.phone ||
+      street !== initial.street ||
+      city !== initial.city ||
+      country !== initial.country ||
+      postalCode !== initial.postalCode ||
+      vhuNumber !== initial.vhuNumber ||
+      kbisNumber !== initial.kbisNumber ||
+      kbisUrl !== initial.kbisUrl ||
+      cinRectoUrl !== initial.cinRectoUrl ||
+      cinVersoUrl !== initial.cinVersoUrl ||
+      bankName !== initial.bankName ||
+      accountHolder !== initial.accountHolder ||
+      iban !== initial.iban ||
+      bic !== initial.bic ||
+      ribUrl !== initial.ribUrl ||
+      Boolean(ribFile)
+    );
+  })();
+
   const handleResubmitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    if (!hasChanges) {
+      setError(t('profil.noChanges'));
+      return;
+    }
 
     if (!isValidPhoneNumber(phone || '')) {
       setError(t('register.phoneInvalid'));
@@ -310,12 +367,13 @@ export default function VendeurTableauDeBordPage() {
 
           <button
             type="submit"
-            disabled={loading || uploading !== null || !kbisNumber || !kbisUrl || !cinRectoUrl || !cinVersoUrl || !bankName || !accountHolder || !iban || !bic || !(ribUrl || ribFile)}
+            disabled={loading || uploading !== null || !kbisNumber || !kbisUrl || !cinRectoUrl || !cinVersoUrl || !bankName || !accountHolder || !iban || !bic || !(ribUrl || ribFile) || !hasChanges}
             className="w-full h-12 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
           >
             {loading && <Spinner />}
             {loading ? t('profil.resubmitting') : t('profil.resubmit')}
           </button>
+          {!hasChanges && <p className="text-xs text-gray-400 text-center -mt-2">{t('profil.noChanges')}</p>}
         </form>
       </div>
     );
