@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PhoneInput from 'react-phone-number-input';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
 import { getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
@@ -16,6 +16,9 @@ import { countries } from '../lib/countries';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
 type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib';
+
+const SIREN_REGEX = /^\d{9}$/;
+const isValidSiren = (value: string) => SIREN_REGEX.test(value.replace(/\s/g, ''));
 
 export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const router = useRouter();
@@ -68,6 +71,22 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const alertRef = useRef<HTMLDivElement>(null);
+
+  // L'alerte d'erreur/succès est affichée en haut du formulaire : sur les étapes longues
+  // (documents), l'utilisateur scrollé en bas ne la voit pas et croit le bouton inactif.
+  useEffect(() => {
+    if (error || message) {
+      alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [error, message]);
+
+  // Évite qu'un message de succès d'une étape précédente (ex: "Code OTP validé")
+  // reste affiché en même temps qu'une nouvelle erreur de validation sur l'étape suivante.
+  useEffect(() => {
+    setError('');
+    setMessage('');
+  }, [step]);
 
   useEffect(() => {
     const s = searchParams.get('step');
@@ -137,6 +156,12 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
     if (!phone) {
       setError(t('register.phoneRequired'));
+      setLoading(false);
+      return;
+    }
+
+    if (!isValidPhoneNumber(phone)) {
+      setError(t('register.phoneInvalid'));
       setLoading(false);
       return;
     }
@@ -322,6 +347,13 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setError('');
+    setMessage('');
+    if (!isValidSiren(kbisNumber)) {
+      setError(t('register.sirenInvalid'));
+      return;
+    }
+
     if (role === 'vendeur') {
       // Vendeur continues to step 4 (Bank Info)
       setStep(4);
@@ -452,8 +484,10 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
         </div>
       </div>
 
-      {error && <Alert variant="error" className="mx-12 mt-4">{error}</Alert>}
-      {message && <Alert variant="success" className="mx-12 mt-4">{message}</Alert>}
+      <div ref={alertRef}>
+        {error && <Alert variant="error" className="mx-12 mt-4">{error}</Alert>}
+        {message && <Alert variant="success" className="mx-12 mt-4">{message}</Alert>}
+      </div>
 
       {/* STEP 1: Basic Info Form */}
       {step === 1 && (
@@ -730,7 +764,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             {/* CIN RECTO */}
             <DocumentUploadRow
               label={t('register.cinRectoLabel')}
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf"
               file={cinRectoFile}
               existingUrl={cinRectoUrl}
               onChange={e => handleFileSelection(e, 'cinRecto')}
@@ -740,7 +774,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             {/* CIN VERSO */}
             <DocumentUploadRow
               label={t('register.cinVersoLabel')}
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf"
               file={cinVersoFile}
               existingUrl={cinVersoUrl}
               onChange={e => handleFileSelection(e, 'cinVerso')}

@@ -69,6 +69,8 @@ export interface VehicleDossier {
   engine?: string;
   fuelType?: FuelType;
   vin?: string;
+  registrationNumber?: string;
+  dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
   vehicleCondition?: string;
   photos: DossierPhoto[];
@@ -76,6 +78,7 @@ export interface VehicleDossier {
   additionalDocuments: DossierDocument[];
   reservePrice?: number;
   conditionDetails?: string;
+  session?: string;
   listingCount: number;
   status: DossierStatus;
   submittedAt?: string;
@@ -93,6 +96,8 @@ export interface VehicleDossierPayload {
   engine?: string;
   fuelType?: FuelType;
   vin?: string;
+  registrationNumber?: string;
+  dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
   vehicleCondition?: string;
   photos?: DossierPhoto[];
@@ -100,6 +105,7 @@ export interface VehicleDossierPayload {
   additionalDocuments?: DossierDocument[];
   reservePrice?: number;
   conditionDetails?: string;
+  session?: string;
   submit?: boolean;
 }
 
@@ -111,11 +117,14 @@ export const emptyDossierPayload = (): VehicleDossierPayload => ({
   engine: '',
   fuelType: undefined,
   vin: '',
+  registrationNumber: '',
+  dossierType: 'Sinistré',
   description: '',
-  vehicleCondition: '',
+  vehicleCondition: 'Roulant',
   photos: [],
   expertReport: undefined,
   additionalDocuments: [],
   reservePrice: undefined,
-  conditionDetails: ''
+  conditionDetails: '',
+  session: undefined,
 });

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../api';
 import { localizedPath, useLanguage } from '../../i18n';
 import Alert from '../Alert';
+import Spinner from '../Spinner';
 import StepVehicleInfo from './StepVehicleInfo';
 import StepMedia from './StepMedia';
 import StepPricing from './StepPricing';
@@ -36,6 +38,8 @@ interface VehicleDossierWizardProps {
   initialDossier?: VehicleDossier;
 }
 
+const STEP_LABELS = ['Informations', 'Photos & documents', 'Mise en vente', 'Récapitulatif'];
+
 export default function VehicleDossierWizard({ initialDossier }: VehicleDossierWizardProps) {
   const router = useRouter();
   const { language, t } = useLanguage();
@@ -47,14 +51,18 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     model: initialDossier?.model || '',
     year: initialDossier?.year,
     mileage: initialDossier?.mileage,
-    engine: initialDossier?.engine || '',
-    fuelType: initialDossier?.fuelType,
+    engine: initialDossier?.engine || '2.0 dCi 125',
+    fuelType: initialDossier?.fuelType || 'diesel',
     vin: initialDossier?.vin || '',
+    registrationNumber: initialDossier?.registrationNumber || '',
+    dossierType: initialDossier?.dossierType || 'Sinistré',
     description: initialDossier?.description || '',
-    vehicleCondition: initialDossier?.vehicleCondition || '',
+    vehicleCondition: initialDossier?.vehicleCondition || 'Roulant',
     reservePrice: initialDossier?.reservePrice,
     conditionDetails: initialDossier?.conditionDetails || '',
+    session: initialDossier?.session,
   });
+
   const [photos, setPhotos] = useState<WizardPhoto[]>((initialDossier?.photos || []).map(toWizardPhoto));
   const [expertReport, setExpertReport] = useState<WizardDocument | null>(
     initialDossier?.expertReport ? toWizardDocument(initialDossier.expertReport) : null
@@ -105,7 +113,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     try {
       const dossier = await persist(false);
       setDossierId(dossier._id);
-      setMessage(t('vehicleDossier.draftSaved'));
+      setMessage(t('vehicleDossier.draftSaved') || 'Brouillon enregistré avec succès.');
     } catch (err: any) {
       setError(err.message || t('vehicleDossier.genericError'));
     } finally {
@@ -119,7 +127,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     setMessage('');
     try {
       await persist(true);
-      setMessage(t('vehicleDossier.submitSuccess'));
+      setMessage(t('vehicleDossier.submitSuccess') || 'Dossier soumis pour validation avec succès.');
       setTimeout(() => {
         router.push(localizedPath('/vendeur/dossiers', language));
       }, 1200);
@@ -130,21 +138,64 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     }
   };
 
-  const stepsList = [t('vehicleDossier.stepInfo'), t('vehicleDossier.stepMedia'), t('vehicleDossier.stepPricing'), t('vehicleDossier.stepSummary')];
   const currentStepIndex = step - 1;
 
-  return (
-    <div className="max-w-[1000px] w-full mx-auto bg-white rounded-[10px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.08)] font-sans text-black flex flex-col border border-[#efece3]">
-      <div className="px-6 sm:px-12 pt-6 sm:pt-[36px] pb-6 border-b border-[#efece3]">
-        <h2 className="text-[26px] font-bold font-heading uppercase text-[#13243c] mb-6">
-          {initialDossier ? t('vehicleDossier.pageTitleEdit') : t('vehicleDossier.pageTitleNew')}
-        </h2>
+  // Compute category / vehicle subtitle
+  const subtitle = step === 1 && !initialDossier
+    ? 'MES DOSSIERS'
+    : [values.brand, values.model].filter(Boolean).join(' ') + (values.registrationNumber ? ` · ${values.registrationNumber}` : values.vin ? ` · ${values.vin}` : '');
 
-        <div className="flex items-center gap-0 overflow-x-auto">
-          {stepsList.map((label, i) => {
+  // Compute H1 title
+  const pageTitle = (() => {
+    if (step === 1) return initialDossier ? 'Modifier le dossier véhicule' : 'Nouveau dossier véhicule';
+    if (step === 2) return 'Photos & documents';
+    if (step === 3) return 'Mise en vente';
+    return 'Récapitulatif du dossier';
+  })();
+
+  const handleNextClick = () => {
+    if (step === 1) {
+      const form = document.getElementById('step-vehicle-info-form') as HTMLFormElement | null;
+      if (form) {
+        if (form.reportValidity()) {
+          setStep(2);
+        }
+      } else {
+        setStep(2);
+      }
+    } else if (step === 2) {
+      setStep(3);
+    } else if (step === 3) {
+      setStep(4);
+    } else if (step === 4) {
+      handleSubmitFinal();
+    }
+  };
+
+  return (
+    <div className="w-full min-h-full flex flex-col font-sans text-black bg-white relative">
+      {/* Main Content Area */}
+      <div className="flex-1 p-6 sm:p-[32px_44px_100px]">
+        {/* Header Title Section with Back Link */}
+        <div className="mb-[22px]">
+          <Link
+            href={localizedPath('/vendeur/dossiers', language)}
+            className="inline-flex items-center gap-1.5 font-semibold text-[12px] leading-none tracking-[0.05em] text-[#8a8270] hover:text-[#13243c] mb-2.5 transition-colors"
+          >
+            <span className="text-[14px]">←</span>
+            <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? 'Mes dossiers' : `Mes dossiers · ${subtitle}`}</span>
+          </Link>
+          <h1 className="m-0 font-bold text-[34px] leading-none uppercase text-[#13243c] font-['Saira_Condensed',sans-serif]">
+            {pageTitle}
+          </h1>
+        </div>
+
+        {/* Stepper Bar */}
+        <div className="flex items-center gap-0 mb-[30px] overflow-x-auto pb-2 sm:pb-0">
+          {STEP_LABELS.map((label, i) => {
             const done = i < currentStepIndex;
             const active = i === currentStepIndex;
-            const isLast = i === stepsList.length - 1;
+            const isLast = i === STEP_LABELS.length - 1;
 
             const circleBg = done ? '#2f6f4f' : active ? '#d9704f' : '#fff';
             const circleColor = (done || active) ? '#fff' : '#9a917d';
@@ -154,76 +205,160 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
             return (
               <div key={i} className="flex items-center" style={{ flex: isLast ? 0 : 1 }}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center text-[13px] font-bold transition-all duration-300"
+                    className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-bold text-[13px] leading-none shrink-0 transition-colors"
                     style={{ background: circleBg, color: circleColor, border: `2px solid ${circleBorder}` }}
                   >
                     {done ? '✓' : i + 1}
                   </div>
-                  <span className="hidden sm:inline text-[13px] font-semibold whitespace-nowrap transition-colors duration-300" style={{ color: textColor }}>
+                  <div
+                    className="font-semibold text-[13px] leading-none whitespace-nowrap transition-colors"
+                    style={{ color: textColor }}
+                  >
                     {label}
-                  </span>
+                  </div>
                 </div>
-                {!isLast && <div className="h-[2px] flex-1 mx-4 min-w-[30px] transition-colors duration-300" style={{ background: connectorColor }} />}
+                {!isLast && (
+                  <div
+                    className="h-[2px] flex-1 mx-2 sm:mx-3 min-w-[16px] sm:min-w-[24px] transition-colors"
+                    style={{ background: connectorColor }}
+                  />
+                )}
               </div>
             );
           })}
         </div>
+
+        {/* Alerts */}
+        {error && <Alert variant="error" className="mb-6">{error}</Alert>}
+        {message && <Alert variant="success" className="mb-6">{message}</Alert>}
+
+        {/* Correction Request Banner */}
+        {initialDossier?.status === 'correction_demandee' && (
+          <div className="mb-7 border border-[#f0c9bd] bg-[#fdece4] rounded-[12px] p-5">
+            <div className="font-bold text-[13px] uppercase tracking-wide text-[#d9704f] mb-2 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-[#d9704f] text-white flex items-center justify-center text-[10px] font-bold">!</span>
+              Correction demandée par l'administrateur
+            </div>
+            {initialDossier.refusals && initialDossier.refusals.length > 0 && (
+              <>
+                <ul className="list-disc pl-5 text-[13px] text-[#1a2230] space-y-1 mb-2 font-medium">
+                  {initialDossier.refusals[initialDossier.refusals.length - 1].motifsLabels.map((motif, i) => (
+                    <li key={i}>{motif}</li>
+                  ))}
+                </ul>
+                {initialDossier.refusals[initialDossier.refusals.length - 1].comment && (
+                  <p className="text-[12px] italic text-[#5a5e66] mt-1">
+                    &quot;{initialDossier.refusals[initialDossier.refusals.length - 1].comment}&quot;
+                  </p>
+                )}
+              </>
+            )}
+            <p className="text-[12px] text-[#d9704f] mt-3 font-semibold">
+              Veuillez corriger les éléments indiqués ci-dessus puis cliquez sur « Soumettre pour validation ».
+            </p>
+          </div>
+        )}
+
+        {/* Step Views */}
+        {step === 1 && (
+          <StepVehicleInfo
+            values={values}
+            onChange={patchValues}
+            onNext={() => setStep(2)}
+            onSaveDraft={handleSaveDraft}
+            savingDraft={savingDraft}
+          />
+        )}
+
+        {step === 2 && (
+          <StepMedia
+            photos={photos}
+            onPhotosChange={setPhotos}
+            expertReport={expertReport}
+            onExpertReportChange={setExpertReport}
+            additionalDocuments={additionalDocuments}
+            onAdditionalDocumentsChange={setAdditionalDocuments}
+            onNext={() => setStep(3)}
+            onBack={() => setStep(1)}
+            onSaveDraft={handleSaveDraft}
+            savingDraft={savingDraft}
+          />
+        )}
+
+        {step === 3 && (
+          <StepPricing
+            values={values}
+            onChange={patchValues}
+            onNext={() => setStep(4)}
+            onBack={() => setStep(2)}
+            onSaveDraft={handleSaveDraft}
+            savingDraft={savingDraft}
+          />
+        )}
+
+        {step === 4 && (
+          <StepSummary
+            values={values}
+            photos={photos}
+            additionalDocuments={additionalDocuments}
+            expertReport={expertReport}
+            onBack={() => setStep(3)}
+            onSaveDraft={handleSaveDraft}
+            onSubmit={handleSubmitFinal}
+            savingDraft={savingDraft}
+            submitting={submitting}
+          />
+        )}
       </div>
 
-      {error && <Alert variant="error" className="mx-6 sm:mx-12 mt-4">{error}</Alert>}
-      {message && <Alert variant="success" className="mx-6 sm:mx-12 mt-4">{message}</Alert>}
+      {/* Fixed Sticky Action Bar at Bottom */}
+      <div className="sticky bottom-0 left-0 right-0 z-40 bg-white border-t border-[#efece3] px-6 sm:px-[44px] py-5 flex justify-between items-center shadow-[0_-6px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex gap-3 items-center">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep((step - 1) as any)}
+              className="h-[48px] px-[26px] rounded-[9px] border border-[#dcd7cb] text-[#13243c] font-semibold text-[14px] leading-[48px] hover:bg-gray-50 transition"
+            >
+              Retour
+            </button>
+          ) : null}
 
-      {step === 1 && (
-        <StepVehicleInfo
-          values={values}
-          onChange={patchValues}
-          onNext={() => setStep(2)}
-          onSaveDraft={handleSaveDraft}
-          savingDraft={savingDraft}
-        />
-      )}
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={savingDraft || submitting}
+            className="h-[48px] px-[26px] rounded-[9px] border border-[#dcd7cb] text-[#13243c] font-semibold text-[14px] leading-[48px] hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
+          >
+            {savingDraft && <Spinner />}
+            Enregistrer le brouillon
+          </button>
+        </div>
 
-      {step === 2 && (
-        <StepMedia
-          photos={photos}
-          onPhotosChange={setPhotos}
-          expertReport={expertReport}
-          onExpertReportChange={setExpertReport}
-          additionalDocuments={additionalDocuments}
-          onAdditionalDocumentsChange={setAdditionalDocuments}
-          onNext={() => setStep(3)}
-          onBack={() => setStep(1)}
-          onSaveDraft={handleSaveDraft}
-          savingDraft={savingDraft}
-        />
-      )}
-
-      {step === 3 && (
-        <StepPricing
-          values={values}
-          onChange={patchValues}
-          onNext={() => setStep(4)}
-          onBack={() => setStep(2)}
-          onSaveDraft={handleSaveDraft}
-          savingDraft={savingDraft}
-        />
-      )}
-
-      {step === 4 && (
-        <StepSummary
-          values={values}
-          photos={photos}
-          additionalDocuments={additionalDocuments}
-          expertReport={expertReport}
-          onBack={() => setStep(3)}
-          onSaveDraft={handleSaveDraft}
-          onSubmit={handleSubmitFinal}
-          savingDraft={savingDraft}
-          submitting={submitting}
-        />
-      )}
+        <div>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={handleNextClick}
+              className="h-[48px] px-[30px] rounded-[9px] bg-[#13243c] hover:bg-[#1a3050] text-white font-bold text-[14px] leading-[48px] uppercase tracking-[0.03em] transition shadow-sm"
+            >
+              Continuer
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmitFinal}
+              disabled={submitting || savingDraft}
+              className="h-[48px] px-[32px] rounded-[9px] bg-[#13243c] hover:bg-[#1a3050] text-white font-bold text-[14px] leading-[48px] uppercase tracking-[0.03em] transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+            >
+              {submitting && <Spinner />}
+              Soumettre pour validation
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

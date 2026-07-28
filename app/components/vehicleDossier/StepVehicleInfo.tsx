@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useLanguage } from '../../i18n';
-import Spinner from '../Spinner';
-import type { FuelType, VehicleDossierPayload } from '../../lib/vehicleDossier';
+import type { VehicleDossierPayload } from '../../lib/vehicleDossier';
 
 interface StepVehicleInfoProps {
   values: VehicleDossierPayload;
@@ -13,13 +11,16 @@ interface StepVehicleInfoProps {
   savingDraft: boolean;
 }
 
-export default function StepVehicleInfo({ values, onChange, onNext, onSaveDraft, savingDraft }: StepVehicleInfoProps) {
-  const { t } = useLanguage();
+export default function StepVehicleInfo({
+  values,
+  onChange,
+  onNext,
+}: StepVehicleInfoProps) {
+  const dossierTypes = ['Sinistré', 'VHU', 'Flotte', 'Occasion'] as const;
+  const dossierStates = ['Roulant', 'Non roulant', 'Pour pièces'] as const;
 
-  const isValid = Boolean(
-    values.brand && values.model && values.year && values.mileage &&
-    values.engine && values.fuelType && values.vin && values.description && values.vehicleCondition
-  );
+  const currentType = values.dossierType || 'Sinistré';
+  const currentState = values.vehicleCondition || 'Roulant';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,140 +28,140 @@ export default function StepVehicleInfo({ values, onChange, onNext, onSaveDraft,
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 sm:p-9 lg:p-[36px_48px_40px] space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    <form id="step-vehicle-info-form" onSubmit={handleSubmit} className="max-w-[800px] w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.brand')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            Marque
+          </label>
           <input
             required
             type="text"
             value={values.brand || ''}
             onChange={(e) => onChange({ brand: e.target.value })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.brandPlaceholder')}
+            placeholder="ex. Renault"
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-medium text-[14px] text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
+
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.model')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            Modèle
+          </label>
           <input
             required
             type="text"
             value={values.model || ''}
             onChange={(e) => onChange({ model: e.target.value })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.modelPlaceholder')}
+            placeholder="ex. Trafic III"
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-medium text-[14px] text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.year')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            Année
+          </label>
           <input
             required
             type="number"
             value={values.year ?? ''}
             onChange={(e) => onChange({ year: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.yearPlaceholder')}
+            placeholder="ex. 2016"
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-medium text-[14px] text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
+
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.mileage')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            Kilométrage
+          </label>
           <input
             required
             type="number"
             value={values.mileage ?? ''}
             onChange={(e) => onChange({ mileage: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.mileagePlaceholder')}
+            placeholder="ex. 142000"
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-medium text-[14px] text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
-        <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.fuelType')}</label>
-          <select
-            required
-            value={values.fuelType || ''}
-            onChange={(e) => onChange({ fuelType: e.target.value as FuelType })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none bg-white"
-          >
-            <option value="" disabled>—</option>
-            <option value="essence">{t('vehicleDossier.fuel.essence')}</option>
-            <option value="diesel">{t('vehicleDossier.fuel.diesel')}</option>
-            <option value="hybride">{t('vehicleDossier.fuel.hybride')}</option>
-            <option value="electrique">{t('vehicleDossier.fuel.electrique')}</option>
-            <option value="gpl">{t('vehicleDossier.fuel.gpl')}</option>
-            <option value="autre">{t('vehicleDossier.fuel.autre')}</option>
-          </select>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.engine')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            Immatriculation
+          </label>
           <input
-            required
             type="text"
-            value={values.engine || ''}
-            onChange={(e) => onChange({ engine: e.target.value })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.enginePlaceholder')}
+            value={values.registrationNumber || ''}
+            onChange={(e) => onChange({ registrationNumber: e.target.value.toUpperCase() })}
+            placeholder="ex. EX-482-TR"
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-mono font-medium text-[14px] text-[#1a2230] uppercase focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
+
         <div>
-          <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.vin')}</label>
+          <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+            N° de série (VIN)
+          </label>
           <input
             required
             type="text"
             value={values.vin || ''}
-            onChange={(e) => onChange({ vin: e.target.value })}
-            className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono text-sm text-[#1a2230] focus:outline-none"
-            placeholder={t('vehicleDossier.vinPlaceholder')}
+            onChange={(e) => onChange({ vin: e.target.value.toUpperCase() })}
+            placeholder="ex. VF1FL000H58..."
+            className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-4 font-mono font-medium text-[14px] text-[#1a2230] uppercase focus:outline-none focus:border-[#13243c] bg-white transition"
           />
         </div>
       </div>
 
-      <div>
-        <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.condition')}</label>
-        <input
-          required
-          type="text"
-          value={values.vehicleCondition || ''}
-          onChange={(e) => onChange({ vehicleCondition: e.target.value })}
-          className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-          placeholder={t('vehicleDossier.conditionPlaceholder')}
-        />
+      <div className="mb-6">
+        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[10px]">
+          Type de dossier
+        </label>
+        <div className="flex gap-2.5 flex-wrap">
+          {dossierTypes.map((t) => {
+            const isActive = currentType === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onChange({ dossierType: t })}
+                className={`px-[18px] py-[10px] rounded-full border-[1.5px] text-[13px] transition-all ${
+                  isActive
+                    ? 'bg-[#fdece4] border-[#d9704f] text-[#d9704f] font-bold'
+                    : 'bg-white border-[#dcd7cb] text-[#5a5e66] font-semibold hover:border-[#8a8270]'
+                }`}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div>
-        <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.description')}</label>
-        <textarea
-          required
-          rows={5}
-          value={values.description || ''}
-          onChange={(e) => onChange({ description: e.target.value })}
-          className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm text-[#1a2230] focus:outline-none"
-          placeholder={t('vehicleDossier.descriptionPlaceholder')}
-        />
-      </div>
-
-      <div className="pt-4 border-t border-[#efece3] flex justify-between items-center gap-3 flex-wrap">
-        <button
-          type="button"
-          onClick={onSaveDraft}
-          disabled={savingDraft}
-          className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
-        >
-          {savingDraft && <Spinner />}
-          {t('vehicleDossier.saveDraft')}
-        </button>
-        <button
-          type="submit"
-          disabled={!isValid}
-          className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50"
-        >
-          {t('vehicleDossier.continue')}
-        </button>
+      <div className="mb-2">
+        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[10px]">
+          État général
+        </label>
+        <div className="flex gap-2.5 flex-wrap">
+          {dossierStates.map((s) => {
+            const isActive = currentState === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onChange({ vehicleCondition: s })}
+                className={`px-[18px] py-[10px] rounded-full border-[1.5px] text-[13px] transition-all ${
+                  isActive
+                    ? 'bg-[#eef1f5] border-[#13243c] text-[#13243c] font-bold'
+                    : 'bg-white border-[#dcd7cb] text-[#5a5e66] font-semibold hover:border-[#8a8270]'
+                }`}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </form>
   );

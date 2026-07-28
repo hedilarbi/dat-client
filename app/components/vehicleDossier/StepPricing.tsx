@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useLanguage } from '../../i18n';
-import Spinner from '../Spinner';
 import type { VehicleDossierPayload } from '../../lib/vehicleDossier';
 
 interface StepPricingProps {
@@ -14,68 +12,54 @@ interface StepPricingProps {
   savingDraft: boolean;
 }
 
-export default function StepPricing({ values, onChange, onNext, onBack, onSaveDraft, savingDraft }: StepPricingProps) {
-  const { t } = useLanguage();
-  const isValid = Boolean(values.reservePrice);
-
+export default function StepPricing({
+  values,
+  onChange,
+  onNext,
+}: StepPricingProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onNext();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 sm:p-9 lg:p-[36px_48px_40px] space-y-8">
-      <div className="max-w-[420px]">
-        <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.reservePrice')}</label>
-        <input
-          required
-          type="number"
-          min={0}
-          value={values.reservePrice ?? ''}
-          onChange={(e) => onChange({ reservePrice: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-          placeholder={t('vehicleDossier.reservePricePlaceholder')}
-        />
-        <p className="text-[12px] text-[#9a917d] mt-2">{t('vehicleDossier.reservePriceHint')}</p>
-      </div>
-
-      <div>
-        <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('vehicleDossier.conditionDetails')}</label>
-        <textarea
-          rows={5}
-          value={values.conditionDetails || ''}
-          onChange={(e) => onChange({ conditionDetails: e.target.value })}
-          className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm text-[#1a2230] focus:outline-none"
-          placeholder={t('vehicleDossier.conditionDetailsPlaceholder')}
-        />
-      </div>
-
-      <div className="pt-4 border-t border-[#efece3] flex justify-between items-center gap-3 flex-wrap">
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"
-          >
-            {t('vehicleDossier.back')}
-          </button>
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={savingDraft}
-            className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
-          >
-            {savingDraft && <Spinner />}
-            {t('vehicleDossier.saveDraft')}
-          </button>
+    <form id="step-pricing-form" onSubmit={handleSubmit} className="max-w-[760px] w-full">
+      {/* Prix de réserve */}
+      <div className="mb-6.5">
+        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+          Prix de réserve
+        </label>
+        <div className="relative max-w-[280px]">
+          <input
+            required
+            type="number"
+            min={0}
+            value={values.reservePrice ?? ''}
+            onChange={(e) => onChange({ reservePrice: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="ex. 7 500"
+            className="w-full h-[52px] border border-[#dcd7cb] rounded-[9px] px-4 font-mono font-semibold text-[16px] text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition pr-10"
+          />
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 font-mono font-semibold text-[16px] text-[#8a8270]">
+            €
+          </span>
         </div>
-        <button
-          type="submit"
-          disabled={!isValid}
-          className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50"
-        >
-          {t('vehicleDossier.continue')}
-        </button>
+        <div className="font-normal text-[12px] leading-relaxed text-[#9a917d] mt-1.5">
+          Le véhicule ne sera pas adjugé en dessous de ce montant
+        </div>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-[7px]">
+          Description
+        </label>
+        <textarea
+          rows={4}
+          value={values.description || ''}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Fourgon accidenté à l'avant droit, moteur non testé, intérieur complet. Vendu pour pièces ou remise en état."
+          className="w-full min-h-[120px] border border-[#dcd7cb] rounded-[9px] p-4 font-normal text-[13px] leading-relaxed text-[#1a2230] focus:outline-none focus:border-[#13243c] bg-white transition resize-y"
+        />
       </div>
     </form>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
 import { getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
@@ -13,6 +14,8 @@ import IdentityFieldsSection from '../components/IdentityFieldsSection';
 import DocumentUploadRow from '../components/DocumentUploadRow';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, type Rejection } from '../components/RegistrationStatusNotices';
+
+const SIREN_REGEX = /^\d{9}$/;
 
 export default function ProfilPage() {
   const router = useRouter();
@@ -37,6 +40,7 @@ export default function ProfilPage() {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('France');
   const [postalCode, setPostalCode] = useState('');
+  const [kbisNumber, setKbisNumber] = useState('');
   const [kbisUrl, setKbisUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
@@ -49,6 +53,15 @@ export default function ProfilPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const alertRef = useRef<HTMLDivElement>(null);
+
+  // Le formulaire de correction est long : sans ce scroll, une erreur affichée en haut
+  // du formulaire passe inaperçue si l'utilisateur est descendu vers les champs du bas.
+  useEffect(() => {
+    if (error || message) {
+      alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [error, message]);
 
   useEffect(() => {
     if (user) {
@@ -63,6 +76,7 @@ export default function ProfilPage() {
         setCountry(user.address.country || 'France');
         setPostalCode(user.address.postalCode || '');
       }
+      setKbisNumber(user.kbisNumber || '');
       setKbisUrl(user.kbisUrl || '');
       setCinRectoUrl(user.cinRectoUrl || '');
       setCinVersoUrl(user.cinVersoUrl || '');
@@ -137,6 +151,17 @@ export default function ProfilPage() {
     e.preventDefault();
     setError('');
     setMessage('');
+
+    if (!isValidPhoneNumber(phone || '')) {
+      setError(t('register.phoneInvalid'));
+      return;
+    }
+
+    if (!SIREN_REGEX.test((kbisNumber || '').replace(/\s/g, ''))) {
+      setError(t('register.sirenInvalid'));
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -149,6 +174,7 @@ export default function ProfilPage() {
           activityType,
           phone,
           address: { street, city, country, postalCode },
+          kbisNumber,
           kbisUrl,
           cinRectoUrl,
           cinVersoUrl
@@ -198,11 +224,13 @@ export default function ProfilPage() {
       <div className="flex-1 w-full p-6 sm:p-8 space-y-6 text-black font-sans bg-white">
         <RejectionReasonsBox title={t('profil.correctionTitle')} rejection={latestRejection} />
 
-        <form onSubmit={handleResubmitSubmit} className="border-t border-[#eceadf] p-6 space-y-6">
+        <form id="correction-form" onSubmit={handleResubmitSubmit} className="border-t border-[#eceadf] p-6 space-y-6 scroll-mt-6">
           <h4 className="font-bold text-lg text-[#13243c] uppercase font-heading">{t('profil.correctionSpace')}</h4>
 
-          {error && <Alert variant="error">{error}</Alert>}
-          {message && <Alert variant="success">{message}</Alert>}
+          <div ref={alertRef}>
+            {error && <Alert variant="error">{error}</Alert>}
+            {message && <Alert variant="success">{message}</Alert>}
+          </div>
 
           <IdentityFieldsSection
             firstName={firstName} onFirstNameChange={setFirstName}
@@ -222,16 +250,21 @@ export default function ProfilPage() {
             </div>
           </div>
 
+          <div className="space-y-4 border-t border-[#efece3] pt-4">
+            <h5 className="font-bold text-xs text-gray-400 uppercase tracking-wider">{t('register.kbisNumber')}</h5>
+            <input required type="text" placeholder={t('register.kbisNumberPlaceholder')} value={kbisNumber} onChange={e => setKbisNumber(e.target.value)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+          </div>
+
           <div className="space-y-4">
 
             <DocumentUploadRow label={t('profil.kbisPdf')} accept=".pdf" file={kbisFile} existingUrl={kbisUrl} onChange={e => handleFileUpload(e, 'kbis')} />
-            <DocumentUploadRow label={t('profil.cinRecto')} accept="image/*" file={cinRectoFile} existingUrl={cinRectoUrl} onChange={e => handleFileUpload(e, 'cinRecto')} selectedLabel={t('register.selected')} />
-            <DocumentUploadRow label={t('profil.cinVerso')} accept="image/*" file={cinVersoFile} existingUrl={cinVersoUrl} onChange={e => handleFileUpload(e, 'cinVerso')} selectedLabel={t('register.selected')} />
+            <DocumentUploadRow label={t('profil.cinRecto')} accept="image/*,.pdf,application/pdf" file={cinRectoFile} existingUrl={cinRectoUrl} onChange={e => handleFileUpload(e, 'cinRecto')} selectedLabel={t('register.selected')} />
+            <DocumentUploadRow label={t('profil.cinVerso')} accept="image/*,.pdf,application/pdf" file={cinVersoFile} existingUrl={cinVersoUrl} onChange={e => handleFileUpload(e, 'cinVerso')} selectedLabel={t('register.selected')} />
           </div>
 
           <button
             type="submit"
-            disabled={loading || uploading !== null || !kbisUrl || !cinRectoUrl || !cinVersoUrl}
+            disabled={loading || uploading !== null || !kbisNumber || !kbisUrl || !cinRectoUrl || !cinVersoUrl}
             className="w-full h-12 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
           >
             {loading && <Spinner />}

@@ -6,6 +6,7 @@ import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
 import { localizedPath, useLanguage } from '../i18n';
 import Alert from '../components/Alert';
+import ConfirmModal from '../components/ConfirmModal';
 import Spinner from '../components/Spinner';
 import SkeletonRows from '../components/SkeletonRows';
 import { Badge, getTicketStatusBadge } from '../components/StatusBadge';
@@ -45,7 +46,8 @@ export default function SupportPage() {
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  
+  const [ticketPendingDelete, setTicketPendingDelete] = useState<string | null>(null);
+
   // Search and new ticket
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpeningForm, setIsOpeningForm] = useState(false);
@@ -136,6 +138,27 @@ export default function SupportPage() {
       setError(err.message || t('support.createError'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestDeleteTicket = (e: React.MouseEvent, ticketId: string) => {
+    e.stopPropagation();
+    setTicketPendingDelete(ticketId);
+  };
+
+  const handleConfirmDeleteTicket = async () => {
+    const ticketId = ticketPendingDelete;
+    if (!ticketId) return;
+    setTicketPendingDelete(null);
+
+    setError('');
+    try {
+      await apiRequest(`/tickets/${ticketId}`, { method: 'DELETE' });
+      setTickets(prev => prev.filter(ticket => ticket._id !== ticketId));
+      if (selectedTicket?._id === ticketId) setSelectedTicket(null);
+      setMessage(t('support.deleteSuccess'));
+    } catch (err: any) {
+      setError(err.message || t('support.deleteError'));
     }
   };
 
@@ -300,7 +323,23 @@ export default function SupportPage() {
                   <div className="text-[14px] font-semibold text-[#13243c] leading-[1.3] mb-2 truncate">
                     {ticket.title}
                   </div>
-                  <Badge style={meta} className="px-[10px] py-[5px]" />
+                  <div className="flex justify-between items-center">
+                    <Badge style={meta} className="px-[10px] py-[5px]" />
+                    <button
+                      type="button"
+                      onClick={e => handleRequestDeleteTicket(e, ticket._id)}
+                      title={t('support.deleteTicket')}
+                      className="text-red-600 hover:text-red-700 transition select-none cursor-pointer p-1 -m-1"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -499,6 +538,17 @@ export default function SupportPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={ticketPendingDelete !== null}
+        title={t('support.deleteTicket')}
+        message={t('support.deleteConfirm')}
+        confirmLabel={t('support.deleteTicket')}
+        cancelLabel={t('support.cancel')}
+        danger
+        onConfirm={handleConfirmDeleteTicket}
+        onCancel={() => setTicketPendingDelete(null)}
+      />
     </div>
   );
 }

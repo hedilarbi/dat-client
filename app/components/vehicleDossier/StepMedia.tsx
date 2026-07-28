@@ -6,8 +6,8 @@ import { apiRequest } from '../../api';
 import { uploadFile } from '../../lib/uploadFile';
 import Alert from '../Alert';
 import Spinner from '../Spinner';
-import PhotoTile from './PhotoTile';
 import BlurZoneEditor from './BlurZoneEditor';
+import ImageCropEditor from './ImageCropEditor';
 import type { WizardDocument, WizardPhoto } from './types';
 import type { BlurZone } from '../../lib/vehicleDossier';
 
@@ -28,89 +28,232 @@ type EditingTarget = { kind: 'photo'; localId: string } | { kind: 'expertReport'
 
 const makeLocalId = () => `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+const STANDARD_SLOTS = [
+  { id: 'front', label: 'Face avant', icon: '/face-avant.png' },
+  { id: 'rear', label: 'Face arrière', icon: '/face-arriere.png' },
+  { id: 'left_profile', label: 'Profil gauche', icon: '/profil-gauche.png' },
+  { id: 'right_profile', label: 'Profil droit', icon: '/profil-droit.png' },
+  { id: 'interior', label: 'Intérieur / habitacle', icon: '/interieur.png' },
+  { id: 'odometer', label: 'Compteur kilométrique', icon: '/compteur.png' },
+  { id: 'damage', label: 'Dommages / sinistre', icon: '/dommage.png' },
+] as const;
+
 export default function StepMedia({
   photos, onPhotosChange, expertReport, onExpertReportChange, additionalDocuments, onAdditionalDocumentsChange,
-  onNext, onBack, onSaveDraft, savingDraft
 }: StepMediaProps) {
   const { t } = useLanguage();
   const [error, setError] = useState('');
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null);
+  const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
   const [applyingBlur, setApplyingBlur] = useState(false);
-  const [uploadingDocument, setUploadingDocument] = useState(false);
 
-  const handlePhotosSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Document upload state flags
+  const [uploadingRecto, setUploadingRecto] = useState(false);
+  const [uploadingVerso, setUploadingVerso] = useState(false);
+  const [uploadingExpert, setUploadingExpert] = useState(false);
+
+  // Cover photo
+  const coverPhoto = photos.find((p) => p.isCover);
+  // Standard vehicle photos
+  const nonCoverPhotos = photos.filter((p) => !p.isCover);
+
+  const handleCoverFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+
+    const objectUrl = URL.createObjectURL(file);
+    setCroppingImageSrc(objectUrl);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob, previewUrl: string) => {
+    setCroppingImageSrc(null);
+
+    const tempLocalId = coverPhoto?.localId || makeLocalId();
+    const file = new File([croppedBlob], 'cover.jpg', { type: 'image/jpeg' });
+
+    const placeholder: WizardPhoto = {
+      localId: tempLocalId,
+      originalUrl: previewUrl,
+      blurZones: coverPhoto?.blurZones || [],
+      isCover: true,
+      uploading: true,
+    };
+
+    onPhotosChange((prev) => {
+      const rest = prev.map((p) => ({ ...p, isCover: false }));
+      const existingIdx = rest.findIndex((p) => p.localId === tempLocalId);
+      if (existingIdx >= 0) {
+        rest[existingIdx] = placeholder;
+        return rest;
+      }
+      return [placeholder, ...rest];
+    });
+
+    try {
+      const url = await uploadFile(file, 'vehicules/photos');
+      onPhotosChange((prev) =>
+        prev.map((p) => (p.localId === tempLocalId ? { ...p, originalUrl: url, uploading: false } : p))
+      );
+      setEditingTarget({ kind: 'photo', localId: tempLocalId });
+    } catch (err: any) {
+      setError(err.message || t('vehicleDossier.uploadError'));
+      onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
+    }
+  };
+
+  const removeCoverPhoto = () => {
+    if (!coverPhoto) return;
+    onPhotosChange((prev) => prev.filter((p) => p.localId !== coverPhoto.localId));
+  };
+
+  const handleSlotUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+
+    const tempLocalId = nonCoverPhotos[index]?.localId || makeLocalId();
+
+    const placeholder: WizardPhoto = {
+      localId: tempLocalId,
+      originalUrl: URL.createObjectURL(file),
+      blurZones: [],
+      isCover: false,
+      uploading: true,
+    };
+
+    const newNonCover = [...nonCoverPhotos];
+    newNonCover[index] = placeholder;
+
+    onPhotosChange(coverPhoto ? [coverPhoto, ...newNonCover] : newNonCover);
+
+    try {
+      const url = await uploadFile(file, 'vehicules/photos');
+      onPhotosChange((prev) =>
+        prev.map((p) => (p.localId === tempLocalId ? { ...p, originalUrl: url, uploading: false } : p))
+      );
+      setEditingTarget({ kind: 'photo', localId: tempLocalId });
+    } catch (err: any) {
+      setError(err.message || t('vehicleDossier.uploadError'));
+      onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
+    }
+  };
+
+  const handleCustomPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (files.length === 0) return;
     setError('');
 
-    const placeholders: WizardPhoto[] = files.map((file, i) => ({
-      localId: makeLocalId(),
-      originalUrl: URL.createObjectURL(file),
-      blurZones: [],
-      isCover: photos.length === 0 && i === 0,
-      uploading: true,
-    }));
-    onPhotosChange([...photos, ...placeholders]);
+    for (const file of files) {
+      const tempLocalId = makeLocalId();
+      const placeholder: WizardPhoto = {
+        localId: tempLocalId,
+        originalUrl: URL.createObjectURL(file),
+        blurZones: [],
+        isCover: false,
+        uploading: true,
+      };
+      onPhotosChange((prev) => [...prev, placeholder]);
 
-    for (let i = 0; i < files.length; i++) {
       try {
-        const url = await uploadFile(files[i], 'vehicules/photos');
-        onPhotosChange((prev: WizardPhoto[]) =>
-          prev.map((p) => (p.localId === placeholders[i].localId ? { ...p, originalUrl: url, uploading: false } : p))
+        const url = await uploadFile(file, 'vehicules/photos');
+        onPhotosChange((prev) =>
+          prev.map((p) => (p.localId === tempLocalId ? { ...p, originalUrl: url, uploading: false } : p))
         );
+        setEditingTarget({ kind: 'photo', localId: tempLocalId });
       } catch (err: any) {
         setError(err.message || t('vehicleDossier.uploadError'));
-        onPhotosChange((prev: WizardPhoto[]) => prev.filter((p) => p.localId !== placeholders[i].localId));
+        onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
       }
     }
   };
 
-  const setCover = (localId: string) => {
-    onPhotosChange(photos.map((p) => ({ ...p, isCover: p.localId === localId })));
+  const removeSlotPhoto = (localId: string) => {
+    onPhotosChange((prev) => prev.filter((p) => p.localId !== localId));
   };
 
-  const moveTo = (localId: string, direction: -1 | 1) => {
-    const index = photos.findIndex((p) => p.localId === localId);
-    const swapWith = index + direction;
-    if (swapWith < 0 || swapWith >= photos.length) return;
-    const next = [...photos];
-    [next[index], next[swapWith]] = [next[swapWith], next[index]];
-    onPhotosChange(next);
-  };
+  // Carte grise documents
+  const carteGriseRecto = additionalDocuments.find((d) => d.label === 'Carte grise (recto)');
+  const carteGriseVerso = additionalDocuments.find((d) => d.label === 'Carte grise (verso)');
 
-  const removePhoto = (localId: string) => {
-    onPhotosChange(photos.filter((p) => p.localId !== localId));
-  };
-
-  const handleDocumentSelected = async (e: React.ChangeEvent<HTMLInputElement>, kind: 'expertReport' | 'additional') => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  const processCarteGriseFile = async (file: File, side: 'recto' | 'verso') => {
     if (!file) return;
     setError('');
-    setUploadingDocument(true);
+    if (side === 'recto') setUploadingRecto(true);
+    else setUploadingVerso(true);
+
+    try {
+      const url = await uploadFile(file, 'vehicules/documents');
+      const docLabel = side === 'recto' ? 'Carte grise (recto)' : 'Carte grise (verso)';
+      const doc: WizardDocument = {
+        localId: makeLocalId(),
+        type: 'complementaire',
+        originalUrl: url,
+        mimeType: file.type,
+        blurZones: [],
+        label: docLabel,
+        uploading: false,
+      };
+
+      onAdditionalDocumentsChange((prev) => [
+        ...prev.filter((d) => d.label !== docLabel),
+        doc,
+      ]);
+    } catch (err: any) {
+      setError(err.message || t('vehicleDossier.uploadError'));
+    } finally {
+      if (side === 'recto') setUploadingRecto(false);
+      else setUploadingVerso(false);
+    }
+  };
+
+  const handleCarteGriseInputChange = (e: React.ChangeEvent<HTMLInputElement>, side: 'recto' | 'verso') => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) processCarteGriseFile(file, side);
+  };
+
+  const removeCarteGriseSide = (side: 'recto' | 'verso') => {
+    const docLabel = side === 'recto' ? 'Carte grise (recto)' : 'Carte grise (verso)';
+    onAdditionalDocumentsChange((prev) => prev.filter((d) => d.label !== docLabel));
+  };
+
+  // Expert report document
+  const processExpertReportFile = async (file: File) => {
+    if (!file) return;
+    setError('');
+    setUploadingExpert(true);
 
     try {
       const url = await uploadFile(file, 'vehicules/documents');
       const doc: WizardDocument = {
         localId: makeLocalId(),
-        type: kind === 'expertReport' ? 'rapport_expert' : 'complementaire',
+        type: 'rapport_expert',
         originalUrl: url,
         mimeType: file.type,
         blurZones: [],
         label: file.name,
         uploading: false,
       };
-      if (kind === 'expertReport') {
-        onExpertReportChange(doc);
-      } else {
-        onAdditionalDocumentsChange([...additionalDocuments, doc]);
-      }
+      onExpertReportChange(doc);
     } catch (err: any) {
       setError(err.message || t('vehicleDossier.uploadError'));
     } finally {
-      setUploadingDocument(false);
+      setUploadingExpert(false);
     }
+  };
+
+  const handleExpertReportInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) processExpertReportFile(file);
+  };
+
+  const removeExpertReport = () => {
+    onExpertReportChange(null);
   };
 
   const editingItem: { originalUrl: string; blurZones: BlurZone[]; mimeType?: string } | null = (() => {
@@ -172,134 +315,519 @@ export default function StepMedia({
     }
   };
 
-  return (
-    <div className="p-6 sm:p-9 lg:p-[36px_48px_40px] space-y-10">
-      {error && <Alert variant="error">{error}</Alert>}
+  const carteGriseComplete = Boolean(carteGriseRecto && carteGriseVerso);
 
-      {/* Photos */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[14px] font-bold text-[#13243c] uppercase tracking-wider">{t('vehicleDossier.photosTitle')}</h3>
-          <label className="h-10 px-5 flex items-center bg-[#13243c] hover:bg-slate-800 text-white text-[12px] font-bold uppercase tracking-[0.03em] rounded-[9px] cursor-pointer transition">
-            {t('vehicleDossier.addPhoto')}
-            <input type="file" accept="image/*" multiple onChange={handlePhotosSelected} className="hidden" />
-          </label>
+  return (
+    <div className="max-w-[900px] w-full">
+      {error && <Alert variant="error" className="mb-6">{error}</Alert>}
+
+      {/* 1. Section Photo de Couverture */}
+      <div className="mb-8">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-1.5">
+          Photo de couverture
+        </div>
+        <p className="font-normal text-[12px] text-[#9a917d] mb-3">
+          Photo principale affichée sur la carte du véhicule lors des ventes et enchères.
+        </p>
+
+        <div className="w-full max-w-[500px]">
+          <div
+            className={`relative aspect-[16/9] border-[1.5px] border-dashed rounded-[12px] flex flex-col items-center justify-center p-3 text-center transition-all overflow-hidden ${
+              coverPhoto
+                ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
+            }`}
+          >
+            {coverPhoto ? (
+              <div className="relative w-full h-full rounded-[8px] overflow-hidden group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverPhoto.processedUrl || coverPhoto.originalUrl}
+                  alt="Photo de couverture"
+                  className="w-full h-full object-cover"
+                />
+                {coverPhoto.uploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[12px] font-semibold">
+                    <Spinner />
+                  </div>
+                )}
+                <div className="absolute top-2 left-2 bg-[#2f6f4f] text-white font-bold text-[10px] uppercase tracking-wide px-2.5 py-1 rounded-full shadow">
+                  COUVERTURE
+                </div>
+                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2f6f4f] text-white font-bold text-[11px] leading-5 text-center shadow">
+                  ✓
+                </div>
+
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity p-2 text-white">
+                  <button
+                    type="button"
+                    onClick={() => setCroppingImageSrc(coverPhoto.originalUrl)}
+                    className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-md text-[12px] font-semibold"
+                  >
+                    Recadrer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTarget({ kind: 'photo', localId: coverPhoto.localId })}
+                    className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-md text-[12px] font-semibold"
+                  >
+                    Flouter
+                  </button>
+                  <label className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-md text-[12px] font-semibold cursor-pointer">
+                    Remplacer
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverFileSelected}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={removeCoverPhoto}
+                    className="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 rounded-md text-[12px] font-semibold"
+                  >
+                    Suppr.
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="w-full h-full flex flex-col items-center justify-center gap-2.5 cursor-pointer p-4 group">
+                <div className="w-12 h-12 rounded-full bg-white border border-[#e2ddd1] flex items-center justify-center text-[#13243c] shadow-sm group-hover:scale-105 transition-transform">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 16L8.58579 11.4142C9.36683 10.6332 10.6332 10.6332 11.4142 11.4142L16 16M14 14L15.5858 12.4142C16.3668 11.6332 17.6332 11.6332 18.4142 12.4142L20 14M14 8H14.01M6 20H18C19.1046 20 20 19.1046 20 18V6C20 4.89543 19.1046 4 18 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20Z" stroke="#13243c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <div className="font-bold text-[13px] text-[#13243c]">
+                  Ajouter la photo de couverture
+                </div>
+                <div className="font-normal text-[11px] text-[#9a917d]">
+                  Glissez un fichier ou cliquez pour parcourir et cadrer en 16:9
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverFileSelected}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Section Photos du Véhicule */}
+      <div className="mb-8">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+          Photos du véhicule
         </div>
 
-        {photos.length === 0 ? (
-          <div className="bg-[#fbfaf7] border border-dashed border-[#dcd7cb] rounded-[10px] p-8 text-center text-[13px] text-[#9a917d]">
-            {t('vehicleDossier.noPhotos')}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((photo, index) => (
-              <PhotoTile
-                key={photo.localId}
-                photo={photo}
-                index={index}
-                total={photos.length}
-                onSetCover={() => setCover(photo.localId)}
-                onMoveUp={() => moveTo(photo.localId, -1)}
-                onMoveDown={() => moveTo(photo.localId, 1)}
-                onRemove={() => removePhoto(photo.localId)}
-                onEditBlur={() => setEditingTarget({ kind: 'photo', localId: photo.localId })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
+          {STANDARD_SLOTS.map((slot, index) => {
+            const photo = nonCoverPhotos[index];
+            const hasPhoto = Boolean(photo && (photo.originalUrl || photo.processedUrl));
+
+            return (
+              <div
+                key={slot.id}
+                className={`relative aspect-[4/3] border-[1.5px] border-dashed rounded-[10px] flex flex-col items-center justify-center p-3 text-center transition-all ${
+                  hasPhoto
+                    ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                    : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
+                }`}
+              >
+                {hasPhoto && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2f6f4f] text-white font-bold text-[11px] leading-5 text-center shadow z-10">
+                    ✓
+                  </div>
+                )}
+
+                {hasPhoto ? (
+                  <div className="relative w-full h-full rounded-[6px] overflow-hidden group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.processedUrl || photo.originalUrl}
+                      alt={slot.label}
+                      className="w-full h-full object-cover"
+                    />
+                    {photo.uploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-[12px] font-semibold">
+                        <Spinner />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 transition-opacity p-2 text-white">
+                      <div className="font-semibold text-[12px] truncate w-full text-center">{slot.label}</div>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingTarget({ kind: 'photo', localId: photo.localId })}
+                          className="px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-[11px] font-semibold"
+                        >
+                          Flouter
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeSlotPhoto(photo.localId)}
+                          className="px-2 py-1 bg-red-600/80 hover:bg-red-700 rounded text-[11px] font-semibold"
+                        >
+                          Suppr.
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="w-full h-full flex flex-col items-center justify-center gap-1.5 cursor-pointer p-1.5 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slot.icon}
+                      alt={slot.label}
+                      className="w-20 h-20 sm:w-24 sm:h-24 max-h-[72px] sm:max-h-[84px] object-contain transition-transform group-hover:scale-105"
+                    />
+                    <span className="font-semibold text-[12px] leading-tight text-[#9a917d] text-center">
+                      {slot.label}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleSlotUpload(e, index)}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Upload custom photos if needed */}
+        {nonCoverPhotos.length >= 7 && (
+          <div className="flex justify-end mb-4">
+            <label className="px-4 py-2 bg-white border border-[#dcd7cb] hover:bg-gray-50 rounded-[9px] text-[12px] font-semibold text-[#13243c] cursor-pointer inline-flex items-center gap-2 transition">
+              + Ajouter une photo supplémentaire
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleCustomPhotoUpload}
+                className="hidden"
               />
-            ))}
+            </label>
           </div>
         )}
       </div>
 
-      {/* Documents */}
+      {/* 3. Section Documents */}
       <div>
-        <h3 className="text-[14px] font-bold text-[#13243c] uppercase tracking-wider mb-4">{t('vehicleDossier.documentsTitle')}</h3>
-
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[13px] font-semibold text-[#13243c]">{t('vehicleDossier.expertReport')}</span>
-            {expertReport && (
-              <span className="text-[11px] font-semibold bg-[#e9f4ee] text-[#2f6f4f] px-[11px] py-1 rounded-full">✓</span>
-            )}
-          </div>
-          <div className={`h-[54px] rounded-[9px] border-2 border-dashed flex items-center justify-between px-4 transition ${expertReport ? 'border-[#bcd8c8] bg-[#f2f8f4]' : 'border-[#d3ccbd] bg-[#fbfaf7]'}`}>
-            <span className={`text-[13px] font-semibold truncate max-w-[60%] ${expertReport ? 'text-[#2f6f4f]' : 'text-[#9a917d]'}`}>
-              {expertReport?.label || t('vehicleDossier.expertReportHint')}
-            </span>
-            <div className="flex items-center gap-2 shrink-0">
-              {(expertReport?.mimeType?.startsWith('image/') || expertReport?.mimeType === 'application/pdf') && (
-                <button
-                  type="button"
-                  onClick={() => setEditingTarget({ kind: 'expertReport' })}
-                  className="text-[12px] font-semibold text-[#13243c] border border-[#dcd7cb] rounded-[7px] p-[8px_12px] bg-white hover:bg-gray-50"
-                >
-                  {t('vehicleDossier.blurEdit')}
-                </button>
-              )}
-              <label className="text-[12px] font-semibold text-[#13243c] border border-[#dcd7cb] rounded-[7px] p-[8px_14px] bg-white cursor-pointer hover:bg-gray-50">
-                {expertReport ? t('documentUpload.replace') : t('documentUpload.browse')}
-                <input type="file" accept="application/pdf,image/*" onChange={(e) => handleDocumentSelected(e, 'expertReport')} className="hidden" disabled={uploadingDocument} />
-              </label>
-            </div>
-          </div>
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+          Documents du véhicule
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[13px] font-semibold text-[#13243c]">{t('vehicleDossier.additionalDocuments')}</span>
-            <label className="text-[12px] font-semibold text-[#13243c] border border-[#dcd7cb] rounded-[7px] p-[8px_14px] bg-white cursor-pointer hover:bg-gray-50">
-              {uploadingDocument ? <Spinner /> : t('vehicleDossier.addDocument')}
-              <input type="file" accept="application/pdf,image/*" onChange={(e) => handleDocumentSelected(e, 'additional')} className="hidden" disabled={uploadingDocument} />
-            </label>
+        <div className="flex flex-col gap-3.5">
+          {/* Carte grise */}
+          <div className="border border-[#eceadf] rounded-[12px] p-4 sm:p-4.5 bg-white">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="font-semibold text-[14px] leading-snug text-[#13243c]">
+                Carte grise
+              </div>
+              <div
+                className={`font-semibold text-[11px] px-2.5 py-1 rounded-full ${
+                  carteGriseComplete
+                    ? 'bg-[#e9f4ee] text-[#2f6f4f]'
+                    : 'bg-[#fdece4] text-[#d9704f]'
+                }`}
+              >
+                {carteGriseComplete ? 'Ajouté' : 'Requis'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Recto */}
+              <div>
+                <div className="font-semibold text-[11px] text-[#8a8270] uppercase tracking-[0.04em] mb-1.5">
+                  Recto
+                </div>
+
+                <label
+                  className={`h-[54px] border-[1.5px] border-dashed rounded-[9px] flex items-center gap-2.5 px-3.5 cursor-pointer transition select-none ${
+                    carteGriseRecto
+                      ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                      : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
+                  }`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) processCarteGriseFile(file, 'recto');
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={(e) => handleCarteGriseInputChange(e, 'recto')}
+                    className="hidden"
+                    disabled={uploadingRecto}
+                  />
+
+                  {uploadingRecto ? (
+                    <div className="flex items-center gap-2 text-[#2f6f4f] text-[12px] font-semibold">
+                      <Spinner />
+                      <span>Téléversement...</span>
+                    </div>
+                  ) : carteGriseRecto ? (
+                    <>
+                      <div className="w-7 h-7 rounded-[7px] bg-[#2f6f4f] text-white flex items-center justify-center font-bold text-[13px] shrink-0">
+                        ✓
+                      </div>
+                      <div className="flex-1 font-semibold text-[12px] leading-snug text-[#2f6f4f] truncate">
+                        Carte grise (recto)
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={carteGriseRecto.processedUrl || carteGriseRecto.originalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-[11px] text-[#13243c] underline hover:opacity-80 px-1.5 py-1"
+                        >
+                          Consulter
+                        </a>
+                        <label className="font-semibold text-[11px] text-[#13243c] border border-[#dcd7cb] rounded-[6px] px-2 py-1 bg-white cursor-pointer hover:bg-gray-50 transition">
+                          Remplacer
+                          <input
+                            type="file"
+                            accept="application/pdf,image/*"
+                            onChange={(e) => handleCarteGriseInputChange(e, 'recto')}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeCarteGriseSide('recto')}
+                          className="font-semibold text-[11px] text-red-600 hover:text-red-800 px-1 py-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#9a917d] shrink-0">
+                        ↑
+                      </div>
+                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#9a917d] truncate">
+                        Glissez un fichier ou cliquez pour parcourir
+                      </div>
+                      <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
+                        Parcourir
+                      </span>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Verso */}
+              <div>
+                <div className="font-semibold text-[11px] text-[#8a8270] uppercase tracking-[0.04em] mb-1.5">
+                  Verso
+                </div>
+
+                <label
+                  className={`h-[54px] border-[1.5px] border-dashed rounded-[9px] flex items-center gap-2.5 px-3.5 cursor-pointer transition select-none ${
+                    carteGriseVerso
+                      ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                      : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
+                  }`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) processCarteGriseFile(file, 'verso');
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={(e) => handleCarteGriseInputChange(e, 'verso')}
+                    className="hidden"
+                    disabled={uploadingVerso}
+                  />
+
+                  {uploadingVerso ? (
+                    <div className="flex items-center gap-2 text-[#2f6f4f] text-[12px] font-semibold">
+                      <Spinner />
+                      <span>Téléversement...</span>
+                    </div>
+                  ) : carteGriseVerso ? (
+                    <>
+                      <div className="w-7 h-7 rounded-[7px] bg-[#2f6f4f] text-white flex items-center justify-center font-bold text-[13px] shrink-0">
+                        ✓
+                      </div>
+                      <div className="flex-1 font-semibold text-[12px] leading-snug text-[#2f6f4f] truncate">
+                        Carte grise (verso)
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={carteGriseVerso.processedUrl || carteGriseVerso.originalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-[11px] text-[#13243c] underline hover:opacity-80 px-1.5 py-1"
+                        >
+                          Consulter
+                        </a>
+                        <label className="font-semibold text-[11px] text-[#13243c] border border-[#dcd7cb] rounded-[6px] px-2 py-1 bg-white cursor-pointer hover:bg-gray-50 transition">
+                          Remplacer
+                          <input
+                            type="file"
+                            accept="application/pdf,image/*"
+                            onChange={(e) => handleCarteGriseInputChange(e, 'verso')}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeCarteGriseSide('verso')}
+                          className="font-semibold text-[11px] text-red-600 hover:text-red-800 px-1 py-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#9a917d] shrink-0">
+                        ↑
+                      </div>
+                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#9a917d] truncate">
+                        Glissez un fichier ou cliquez pour parcourir
+                      </div>
+                      <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
+                        Parcourir
+                      </span>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="font-normal text-[12px] leading-relaxed text-[#9a917d] mt-2">
+              Recto et verso · original ou certificat de cession
+            </div>
           </div>
-          {additionalDocuments.length > 0 && (
-            <div className="space-y-2">
-              {additionalDocuments.map((doc) => (
-                <div key={doc.localId} className="h-[54px] rounded-[9px] border-2 border-dashed border-[#bcd8c8] bg-[#f2f8f4] flex items-center justify-between px-4">
-                  <span className="text-[13px] font-semibold text-[#2f6f4f] truncate max-w-[50%]">{doc.label}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {(doc.mimeType.startsWith('image/') || doc.mimeType === 'application/pdf') && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingTarget({ kind: 'document', localId: doc.localId })}
-                        className="text-[12px] font-semibold text-[#13243c] border border-[#dcd7cb] rounded-[7px] p-[8px_12px] bg-white hover:bg-gray-50"
-                      >
-                        {t('vehicleDossier.blurEdit')}
-                      </button>
-                    )}
+
+          {/* Rapport d'expertise sinistre */}
+          <div className="border border-[#eceadf] rounded-[12px] p-4 sm:p-4.5 bg-white">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="font-semibold text-[14px] leading-snug text-[#13243c]">
+                Rapport d'expertise sinistre
+              </div>
+              <div
+                className={`font-semibold text-[11px] px-2.5 py-1 rounded-full ${
+                  expertReport ? 'bg-[#e9f4ee] text-[#2f6f4f]' : 'bg-[#fdece4] text-[#d9704f]'
+                }`}
+              >
+                {expertReport ? 'Ajouté' : 'Requis'}
+              </div>
+            </div>
+
+            <label
+              className={`h-[54px] border-[1.5px] border-dashed rounded-[9px] flex items-center gap-3 px-3.5 cursor-pointer transition select-none ${
+                expertReport
+                  ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                  : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
+              }`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file) processExpertReportFile(file);
+              }}
+            >
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={handleExpertReportInputChange}
+                className="hidden"
+                disabled={uploadingExpert}
+              />
+
+              {uploadingExpert ? (
+                <div className="flex items-center gap-2 text-[#2f6f4f] text-[13px] font-semibold">
+                  <Spinner />
+                  <span>Téléversement du rapport d'expertise...</span>
+                </div>
+              ) : expertReport ? (
+                <>
+                  <div className="w-7.5 h-7.5 rounded-[7px] bg-[#2f6f4f] text-white flex items-center justify-center font-bold text-[14px] shrink-0">
+                    ✓
+                  </div>
+                  <div className="flex-1 font-semibold text-[13px] leading-snug text-[#2f6f4f] truncate">
+                    {expertReport.label || "Rapport d'expertise"}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={expertReport.processedUrl || expertReport.originalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-[12px] text-[#13243c] underline hover:opacity-80 px-1 py-1"
+                    >
+                      Consulter
+                    </a>
                     <button
                       type="button"
-                      onClick={() => onAdditionalDocumentsChange(additionalDocuments.filter((d) => d.localId !== doc.localId))}
-                      className="text-[12px] font-semibold text-[#b3261e] border border-[#dcd7cb] rounded-[7px] p-[8px_12px] bg-white hover:bg-red-50"
+                      onClick={() => setEditingTarget({ kind: 'expertReport' })}
+                      className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition"
                     >
-                      {t('vehicleDossier.removeDocument')}
+                      Flouter
+                    </button>
+                    <label className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white cursor-pointer hover:bg-gray-50 transition">
+                      Remplacer
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        onChange={handleExpertReportInputChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={removeExpertReport}
+                      className="font-semibold text-[12px] text-red-600 hover:text-red-800 px-1.5 py-1"
+                    >
+                      Suppr.
                     </button>
                   </div>
-                </div>
-              ))}
+                </>
+              ) : (
+                <>
+                  <div className="w-7.5 h-7.5 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[14px] text-[#9a917d] shrink-0">
+                    ↑
+                  </div>
+                  <div className="flex-1 font-medium text-[13px] leading-snug text-[#9a917d] truncate">
+                    Glissez un fichier PDF ou cliquez pour parcourir
+                  </div>
+                  <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3.5 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
+                    Parcourir
+                  </span>
+                </>
+              )}
+            </label>
+
+            <div className="font-normal text-[12px] leading-relaxed text-[#9a917d] mt-2">
+              Requis pour un dossier de type Sinistré · PDF
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-[#efece3] flex justify-between items-center gap-3 flex-wrap">
-        <div className="flex gap-3">
-          <button type="button" onClick={onBack} className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition">
-            {t('vehicleDossier.back')}
-          </button>
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={savingDraft}
-            className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
-          >
-            {savingDraft && <Spinner />}
-            {t('vehicleDossier.saveDraft')}
-          </button>
-        </div>
-        <button type="button" onClick={onNext} className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition">
-          {t('vehicleDossier.continue')}
-        </button>
-      </div>
+      {/* Interactive 16:9 Image Cropper Modal */}
+      {croppingImageSrc && (
+        <ImageCropEditor
+          imageSrc={croppingImageSrc}
+          onCropComplete={handleCropComplete}
+          onClose={() => setCroppingImageSrc(null)}
+        />
+      )}
 
+      {/* Blur Zone Editor Modal */}
       {editingTarget && editingItem && (
         <BlurZoneEditor
           imageUrl={editingItem.originalUrl}
