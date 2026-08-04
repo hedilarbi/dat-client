@@ -409,13 +409,13 @@ export default function VendeurTableauDeBordPage() {
         <StatCard label={t('profil.salesFinalized')} value={14} bg="#2f6f4f" labelColor="#c9e8d6" valueColor="#fff" />
       </div>
 
-      <div className="text-[12px] font-bold text-[#8a8270] uppercase tracking-[0.06em] mb-3">
+      <div className="text-[12px] font-bold text-[#4c5058] uppercase tracking-[0.06em] mb-3">
         {t('vendeurDashboard.myVehicleFiles')}
       </div>
 
       <div className="border border-[#eceadf] rounded-[12px] overflow-hidden bg-white overflow-x-auto">
         <div className="min-w-[720px]">
-          <div className="grid grid-cols-[2fr_1.4fr_1.2fr_1fr_120px] p-[14px_20px] bg-[#f8f7f2] text-[11px] font-bold uppercase tracking-[0.05em] text-[#8a8270]">
+          <div className="grid grid-cols-[2fr_1.4fr_1.2fr_1fr_120px] p-[14px_20px] bg-[#f8f7f2] text-[11px] font-bold uppercase tracking-[0.05em] text-[#4c5058]">
             <div>{t('profil.vehicle')}</div>
             <div>{t('profil.status')}</div>
             <div>{t('profil.session')}</div>

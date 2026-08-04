@@ -14,7 +14,11 @@ function LoginRedirect() {
 
   useEffect(() => {
     const role = searchParams.get('role') === 'vendeur' ? 'vendeur' : 'acheteur';
-    router.replace(localizedPath(getRoleLoginPath(role), language));
+    const next = searchParams.get('next');
+    const loginPath = next
+      ? `${getRoleLoginPath(role)}?next=${encodeURIComponent(next)}`
+      : getRoleLoginPath(role);
+    router.replace(localizedPath(loginPath, language));
   }, [router, searchParams, language]);
 
   return null;

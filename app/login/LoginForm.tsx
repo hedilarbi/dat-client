@@ -4,17 +4,29 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
-import { getRoleHomePath, getRoleLoginPath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
+import { canonicalPathFromPathname, getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
 import PasswordInput from '../components/PasswordInput';
 import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
 import Link from 'next/link';
 
+function getBuyerReturnPath(role: 'acheteur' | 'vendeur') {
+  if (role !== 'acheteur' || typeof window === 'undefined') return null;
+
+  const candidate = new URLSearchParams(window.location.search).get('next');
+  if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) return null;
+
+  const candidatePathname = candidate.split(/[?#]/, 1)[0];
+  const canonicalCandidate = canonicalPathFromPathname(candidatePathname);
+  if (canonicalCandidate.startsWith('/login') || canonicalCandidate.startsWith('/register')) return null;
+
+  return candidate;
+}
+
 export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const router = useRouter();
   const { user, refreshProfile } = useUser();
   const { language, t } = useLanguage();
-  const otherRole = role === 'acheteur' ? 'vendeur' : 'acheteur';
   const forgotPasswordPath = localizedPath('/forgot-password', language);
 
   const [email, setEmail] = useState('');
@@ -28,9 +40,9 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
     if (!user) return;
     const nextPath = user.status === 'brouillon' && user.emailVerified
       ? localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language)
-      : localizedPath(getRoleHomePath(user.role), language);
+      : getBuyerReturnPath(role) || localizedPath(getRoleHomePath(user.role), language);
     router.replace(nextPath);
-  }, [user, router, language]);
+  }, [user, router, language, role]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +64,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
 
       const nextPath = res.user.status === 'brouillon' && res.user.emailVerified
         ? localizedPath(`${getRoleRegisterPath(res.user.role)}?step=documents`, language)
-        : localizedPath(getRoleHomePath(res.user.role), language);
+        : getBuyerReturnPath(role) || localizedPath(getRoleHomePath(res.user.role), language);
 
       setTimeout(() => {
         router.push(nextPath);
@@ -143,7 +155,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
                   e.preventDefault();
                   router.push(forgotPasswordPath);
                 }}
-                className="text-[#8a8270] hover:underline"
+                className="text-[#4c5058] hover:underline"
               >
                 {t('login.forgotPassword')}
               </a>

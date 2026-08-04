@@ -159,7 +159,7 @@ function ResetPasswordForm() {
             type="button"
             disabled={resendLoading || !email}
             onClick={handleResendCode}
-            className="text-[13px] font-semibold text-[#8a8270] hover:underline disabled:opacity-50"
+            className="text-[13px] font-semibold text-[#4c5058] hover:underline disabled:opacity-50"
           >
             {resendLoading ? t('forgotPassword.sending') : t('forgotPassword.resendCode')}
           </button>

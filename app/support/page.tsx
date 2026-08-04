@@ -100,7 +100,7 @@ export default function SupportPage() {
   // plutôt que de rester sur une page support sans utilisateur identifié.
   useEffect(() => {
     if (!userLoading && !user) {
-      router.replace(localizedPath('/login', language));
+      router.replace(localizedPath(`/login?next=${encodeURIComponent('/support')}`, language));
     }
   }, [userLoading, user, router, language]);
 
@@ -313,10 +313,10 @@ export default function SupportPage() {
                   className="p-[16px_20px] border-b border-[#efece3] cursor-pointer transition-colors duration-150"
                 >
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[11px] font-bold text-[#8a8270] uppercase tracking-[0.04em]">
+                    <span className="text-[11px] font-bold text-[#4c5058] uppercase tracking-[0.04em]">
                       {getCategoryLabel(ticket.category, t)}
                     </span>
-                    <span className="text-[11px] text-[#9a917d]">
+                    <span className="text-[11px] text-[#5a5e66]">
                       {new Date(ticket.updatedAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -359,7 +359,7 @@ export default function SupportPage() {
             <button
               type="button"
               onClick={() => setIsOpeningForm(false)}
-              className="lg:hidden text-[13px] font-semibold text-[#8a8270] hover:underline"
+              className="lg:hidden text-[13px] font-semibold text-[#4c5058] hover:underline"
             >
               {t('support.backToList')}
             </button>
@@ -442,11 +442,11 @@ export default function SupportPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedTicket(null)}
-                  className="lg:hidden text-[13px] font-semibold text-[#8a8270] hover:underline mb-1.5 block"
+                  className="lg:hidden text-[13px] font-semibold text-[#4c5058] hover:underline mb-1.5 block"
                 >
                   {t('support.backToList')}
                 </button>
-                <div className="text-[11px] font-semibold text-[#8a8270] uppercase tracking-[0.04em] mb-1.5">
+                <div className="text-[11px] font-semibold text-[#4c5058] uppercase tracking-[0.04em] mb-1.5">
                   {getCategoryLabel(selectedTicket.category, t)}
                 </div>
                 <h3 className="text-[22px] font-bold font-heading uppercase text-[#13243c] truncate">
@@ -474,7 +474,7 @@ export default function SupportPage() {
                     style={{ alignSelf: align, alignItems: align }}
                     className="flex flex-col max-w-[70%]"
                   >
-                    <div className="text-[11px] font-medium text-[#9a917d] mb-[6px] select-none">
+                    <div className="text-[11px] font-medium text-[#5a5e66] mb-[6px] select-none">
                       {isAdmin ? t('support.supportTeamName') : `${msg.sender?.firstName || t('support.me')} ${msg.sender?.lastName || ''}`} · {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div
@@ -525,7 +525,7 @@ export default function SupportPage() {
                 </button>
               </form>
             ) : (
-              <div className="p-6 border-t border-[#eceadf] text-center text-sm text-[#9a917d] select-none">
+              <div className="p-6 border-t border-[#eceadf] text-center text-sm text-[#5a5e66] select-none">
                 🔒 {t('support.ticketClosed')}
               </div>
             )}
@@ -533,7 +533,7 @@ export default function SupportPage() {
         )}
 
         {!selectedTicket && !isOpeningForm && (
-          <div className="flex-1 hidden lg:flex items-center justify-center text-[#9a917d] select-none font-medium text-sm text-center px-6">
+          <div className="flex-1 hidden lg:flex items-center justify-center text-[#5a5e66] select-none font-medium text-sm text-center px-6">
             {t('support.selectPrompt')}
           </div>
         )}

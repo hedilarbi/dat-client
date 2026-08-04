@@ -7,6 +7,7 @@ import { apiRequest } from '../api';
 import Link from 'next/link';
 import { Language, LanguageSelector, getRoleLoginPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
 import DropdownMenu from './DropdownMenu';
+import Footer from './Footer';
 
 interface UserProfile {
   _id: string;
@@ -172,7 +173,7 @@ function NotificationBell() {
       </div>
       <div className="max-h-[320px] overflow-y-auto">
         {notifications.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[13px] text-[#9a917d]">{t('notifications.empty')}</div>
+          <div className="px-4 py-8 text-center text-[13px] text-[#5a5e66]">{t('notifications.empty')}</div>
         ) : (
           notifications.map(n => (
             <div key={n.id} className={`px-4 py-3 border-b border-[#f3f1ea] last:border-b-0 ${n.read ? 'bg-white' : 'bg-[#fbfaf7]'}`}>
@@ -181,7 +182,7 @@ function NotificationBell() {
                 <div className={n.read ? 'ml-[14px]' : ''}>
                   <div className="text-[13px] font-semibold text-[#13243c]">{n.title}</div>
                   <div className="text-[12px] text-[#5a5e66] leading-[1.4] mt-[2px]">{n.message}</div>
-                  <div className="text-[11px] text-[#9a917d] mt-[4px]">{n.createdAt}</div>
+                  <div className="text-[11px] text-[#5a5e66] mt-[4px]">{n.createdAt}</div>
                 </div>
               </div>
             </div>
@@ -257,6 +258,11 @@ function MobileMenu({
 }) {
   const { user, logout } = useUser();
   const { language, t } = useLanguage();
+  const pathname = usePathname();
+  const buyerLoginPath = localizedPath(
+    `${getRoleLoginPath('acheteur')}?next=${encodeURIComponent(pathname || localizedPath('/', language))}`,
+    language,
+  );
   const [open, setOpen] = useState(false);
   // The drawer stays mounted (even closed) so its slide-out transition can play, but it must
   // never render during SSR/hydration — only after mount, so the server and the client's first
@@ -354,11 +360,18 @@ function MobileMenu({
               ) : (
                 <>
                   <Link
-                    href={localizedPath('/login/acheteur', language)}
+                    href={buyerLoginPath}
                     onClick={close}
                     className="h-12 flex items-center justify-center rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[13px] font-bold uppercase tracking-[0.03em] transition"
                   >
-                    {t('nav.login')}
+                    {t('login.buyerSpace')} — {t('nav.login')}
+                  </Link>
+                  <Link
+                    href={localizedPath(getRoleLoginPath('vendeur'), language)}
+                    onClick={close}
+                    className="h-12 flex items-center justify-center rounded-[8px] border border-[#d9704f] text-[#d9704f] text-[13px] font-bold uppercase tracking-[0.03em] hover:bg-[#1a2b44] transition"
+                  >
+                    {t('login.sellerSpace')} — {t('nav.login')}
                   </Link>
                   <Link
                     href={localizedPath('/register/acheteur', language)}
@@ -381,19 +394,38 @@ function MobileMenu({
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const { user, loading, refreshProfile } = useUser();
   const pathname = usePathname();
+  const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const currentPath = canonicalPathFromPathname(pathname);
+  const buyerLoginPath = localizedPath(
+    `${getRoleLoginPath('acheteur')}?next=${encodeURIComponent(pathname || localizedPath('/', language))}`,
+    language,
+  );
 
   const isLoginPage = currentPath === '/login' || currentPath === '/login/acheteur' || currentPath === '/login/vendeur';
   const isRegisterPage = currentPath === '/register' || currentPath === '/register/acheteur' || currentPath === '/register/vendeur';
   const isForgotPasswordPage = currentPath === '/forgot-password' || currentPath === '/forgot-password/reset';
-  const isAuthPage = isLoginPage || isRegisterPage || isForgotPasswordPage || currentPath === '/';
+  const isAuthPage = isLoginPage || isRegisterPage || isForgotPasswordPage;
+  // L'accueil est une page de contenu public (marketing) à part entière depuis le nouveau design,
+  // pas un formulaire d'auth : elle doit s'afficher en pleine largeur comme /profil ou /sessions,
+  // mais sans attendre la vérification de session (son contenu ne dépend pas de l'utilisateur).
+  const isHomePage = currentPath === '/';
+  const homePath = localizedPath('/', language);
+  const isValidatedSeller = user?.role === 'vendeur' && user.status === 'valide';
+  const isRestrictedSellerPage = currentPath === '/sessions' || currentPath.startsWith('/vendeur/dossiers');
+  const isSellerSpacePage = currentPath.startsWith('/vendeur/') || currentPath === '/sessions' || currentPath === '/support';
 
   useEffect(() => {
     if (user?.language) {
       setLanguage(user.language);
     }
   }, [setLanguage, user?.language]);
+
+  useEffect(() => {
+    if (user?.role === 'vendeur' && user.status !== 'valide' && isRestrictedSellerPage) {
+      router.replace(localizedPath('/vendeur/tableau-de-bord', language));
+    }
+  }, [isRestrictedSellerPage, language, router, user?.role, user?.status]);
 
   const persistLanguage = async (nextLanguage: Language) => {
     if (!user) return;
@@ -419,10 +451,18 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     return fullName || user.companyName || user.email;
   };
 
-  if (loading && !isAuthPage) {
+  if (loading && !isAuthPage && !isHomePage) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fbfaf7] font-sans">
         <div className="w-12 h-12 border-4 border-[#d9704f] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (user?.role === 'vendeur' && user.status !== 'valide' && isRestrictedSellerPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fbfaf7] font-sans">
+        <div className="w-12 h-12 border-4 border-[#d9704f] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -433,7 +473,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // space. Must check isRegisterPage (covers /register/vendeur) rather than the canonical
   // '/register' path alone, otherwise this layout takes over mid-registration (right after OTP
   // verification sets user.role) and unmounts RegisterForm, resetting its step state to 1.
-  if (user && user.role === 'vendeur' && !isRegisterPage) {
+  if (user && user.role === 'vendeur' && !isRegisterPage && isSellerSpacePage) {
     return (
       <div className="h-screen bg-white flex flex-col font-sans overflow-hidden">
         {/* Top Blue Bar */}
@@ -452,8 +492,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               onLanguageChange={persistLanguage}
               navLinks={[
                 { href: localizedPath('/vendeur/tableau-de-bord', language), label: t('nav.dashboard'), active: currentPath === '/vendeur/tableau-de-bord' },
-                { href: localizedPath('/sessions', language), label: t('nav.sessions'), active: currentPath === '/sessions' },
-                { href: localizedPath('/vendeur/dossiers', language), label: t('nav.files'), active: currentPath === '/vendeur/dossiers' },
+                ...(isValidatedSeller ? [
+                  { href: localizedPath('/sessions', language), label: t('nav.sessions'), active: currentPath === '/sessions' },
+                  { href: localizedPath('/vendeur/dossiers', language), label: t('nav.files'), active: currentPath === '/vendeur/dossiers' },
+                ] : []),
                 { href: localizedPath('/support', language), label: t('nav.support'), active: currentPath === '/support' },
               ]}
             />
@@ -470,12 +512,16 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               <Link href={localizedPath('/vendeur/tableau-de-bord', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/tableau-de-bord' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                 {t('nav.dashboard')}
               </Link>
-              <Link href={localizedPath('/sessions', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/sessions' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                {t('nav.sessions')}
-              </Link>
-              <Link href={localizedPath('/vendeur/dossiers', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/dossiers' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                {t('nav.files')}
-              </Link>
+              {isValidatedSeller && (
+                <>
+                  <Link href={localizedPath('/sessions', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/sessions' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
+                    {t('nav.sessions')}
+                  </Link>
+                  <Link href={localizedPath('/vendeur/dossiers', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/dossiers' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
+                    {t('nav.files')}
+                  </Link>
+                </>
+              )}
               <Link href={localizedPath('/support', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/support' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                 {t('nav.support')}
               </Link>
@@ -503,13 +549,11 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           </Link>
 
           <div className="hidden md:flex items-center gap-[22px] text-[13px] font-bold text-white shrink-0">
-            <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.auctionCalendar')}</span>
-            <Link href={localizedPath('/register/vendeur', language)} className="cursor-pointer hover:text-[#d9704f] transition">
-              {t('nav.sellWithUs')}
-            </Link>
-            <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.help')}</span>
-            <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.findUs')}</span>
-            <span className="cursor-pointer hover:text-[#d9704f] transition">{t('nav.contactUs')}</span>
+            <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
+            <Link href={localizedPath('/ventes-en-cours', language)} className="hover:text-[#d9704f] transition">{t('nav.currentSales')}</Link>
+            <Link href={`${homePath}#a-propos`} className="hover:text-[#d9704f] transition">{t('nav.about')}</Link>
+            <Link href={`${homePath}#contact`} className="hover:text-[#d9704f] transition">{t('nav.contact')}</Link>
+            <Link href={localizedPath('/vendre-avec-nous', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
@@ -520,7 +564,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden md:flex" />
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                <Link href={localizedPath('/login/acheteur', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[12px] font-bold uppercase tracking-[0.03em] transition whitespace-nowrap">
+                <Link href={buyerLoginPath} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] bg-[#d9704f] hover:bg-[#c26040] text-white text-[12px] font-bold uppercase tracking-[0.03em] transition whitespace-nowrap">
                   {t('nav.login')}
                 </Link>
                 <Link href={localizedPath('/register/acheteur', language)} className="px-3 sm:px-[18px] py-2 sm:py-[10px] rounded-[8px] border border-[#2c4266] text-white text-[12px] font-semibold uppercase tracking-[0.03em] hover:bg-slate-800 transition whitespace-nowrap">
@@ -531,20 +575,40 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <MobileMenu
               onLanguageChange={persistLanguage}
               navLinks={[
-                { label: t('nav.auctionCalendar') },
-                { href: localizedPath('/register/vendeur', language), label: t('nav.sellWithUs') },
-                { label: t('nav.help') },
-                { label: t('nav.findUs') },
-                { label: t('nav.contactUs') },
+                { href: homePath, label: t('nav.home'), active: currentPath === '/' },
+                { href: localizedPath('/ventes-en-cours', language), label: t('nav.currentSales'), active: currentPath === '/ventes-en-cours' },
+                { href: `${homePath}#a-propos`, label: t('nav.about') },
+                { href: `${homePath}#contact`, label: t('nav.contact') },
+                { href: localizedPath('/vendre-avec-nous', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre-avec-nous' },
               ]}
             />
           </div>
         </header>
 
         {/* Main Content */}
-        <main className={isAuthPage ? (isLoginPage ? "flex-1 flex bg-white" : "flex-1 flex items-center justify-center p-6 sm:p-14 bg-white") : "flex-1 min-w-0 bg-white"}>
-          {children}
+        <main
+          className={
+            isAuthPage
+              ? isLoginPage
+                ? "h-[calc(100vh-70px)] overflow-y-auto flex bg-white"
+                : "h-[calc(100vh-70px)] overflow-y-auto bg-white"
+              : "flex-1 min-w-0 bg-white"
+          }
+        >
+          {isAuthPage && !isLoginPage ? (
+            // Centrer directement un conteneur `overflow-y-auto` (via items-center/justify-center)
+            // rend le haut du contenu inaccessible au scroll dès qu'il dépasse la hauteur visible
+            // (ex: étape "Documents" de l'inscription) — ce wrapper `min-h-full` centre sans capper
+            // la hauteur, donc le scroll peut toujours atteindre le tout début du contenu.
+            <div className="min-h-full flex items-center justify-center p-6 sm:p-14">
+              {children}
+            </div>
+          ) : (
+            children
+          )}
         </main>
+
+        <Footer />
       </div>
     </div>
   );

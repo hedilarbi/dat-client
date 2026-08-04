@@ -68,7 +68,8 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
       const currentCanonicalPath = canonicalPathFromPathname(window.location.pathname);
       if (!AUTH_EXEMPT_PATHS.has(currentCanonicalPath)) {
         const language = getLocaleFromPath(window.location.pathname) || 'fr';
-        window.location.href = localizedPath('/login', language);
+        const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        window.location.href = localizedPath(`/login?next=${encodeURIComponent(returnPath)}`, language);
       }
     }
 

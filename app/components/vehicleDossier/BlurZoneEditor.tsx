@@ -23,6 +23,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
   const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<{ startX: number; startY: number; zone: BlurZone } | null>(null);
+  const [drawingEnabled, setDrawingEnabled] = useState(false);
 
   const isPdf = mimeType === 'application/pdf';
   const [pdfPages, setPdfPages] = useState<PdfPage[] | null>(null);
@@ -44,6 +45,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
   }, [isPdf, imageUrl]);
 
   const displaySrc = isPdf ? pdfPages?.[currentPageIndex]?.dataUrl : imageUrl;
+  const currentPdfPage = isPdf ? pdfPages?.[currentPageIndex] : null;
 
   const pageZoneEntries = zones
     .map((zone, index) => ({ zone, index }))
@@ -57,6 +59,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drawingEnabled) return;
     if (e.button !== undefined && e.button !== 0) return;
     if (isPdf && !displaySrc) return;
     (e.target as Element).setPointerCapture(e.pointerId);
@@ -83,6 +86,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
     setDraft(null);
     if (zone.width < MIN_ZONE_FRACTION || zone.height < MIN_ZONE_FRACTION) return;
     onZonesChange([...zones, zone]);
+    setDrawingEnabled(false);
   };
 
   const removeZone = (index: number) => {
@@ -105,14 +109,14 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
             <h3 className="text-[18px] font-bold font-heading uppercase text-[#13243c]">
               {t('vehicleDossier.blurEditorTitle')}
             </h3>
-            <p className="text-[12px] text-[#8a8270] mt-0.5">
+            <p className="text-[12px] text-[#4c5058] mt-0.5">
               {t('vehicleDossier.blurEditorHint')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#8a8270] hover:text-[#13243c] text-2xl leading-none px-2"
+            className="text-[#4c5058] hover:text-[#13243c] text-2xl leading-none px-2"
           >
             ×
           </button>
@@ -120,6 +124,13 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
 
         {/* Scrollable Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-[#fbfaf7]">
+          <button
+            type="button"
+            onClick={() => setDrawingEnabled((enabled) => !enabled)}
+            className={`mb-4 h-11 px-5 rounded-[9px] text-[13px] font-bold uppercase transition ${drawingEnabled ? 'bg-[#d9704f] text-white' : 'bg-[#13243c] text-white hover:bg-slate-800'}`}
+          >
+            {drawingEnabled ? 'Dessinez la zone sur le document…' : '+ Dessiner un floutage'}
+          </button>
           {isPdf && pdfPages && pdfPages.length > 1 && (
             <div className="flex items-center justify-center gap-3 mb-4">
               <button
@@ -153,8 +164,8 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
           ) : (
             <div
               ref={containerRef}
-              className="relative select-none touch-none w-full bg-[#13243c] rounded-[9px] overflow-hidden cursor-crosshair max-h-[60vh]"
-              style={{ aspectRatio: '4 / 3' }}
+              className={`relative select-none touch-none w-full bg-[#13243c] rounded-[9px] overflow-hidden max-h-[60vh] ${drawingEnabled ? 'cursor-crosshair ring-2 ring-[#d9704f]' : 'cursor-default'}`}
+              style={{ aspectRatio: currentPdfPage ? `${currentPdfPage.width} / ${currentPdfPage.height}` : '4 / 3' }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -183,7 +194,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
                     <button
                       type="button"
                       onClick={() => removeZone(index)}
-                      className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-[#d9704f] text-white text-[13px] font-bold flex items-center justify-center shadow"
+                      className="absolute -top-4 -right-4 w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 text-white text-lg font-bold flex items-center justify-center shadow-lg z-20"
                       aria-label={t('vehicleDossier.removeZone')}
                     >
                       ×
@@ -207,7 +218,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
 
         {/* Always-Visible Fixed Footer */}
         <div className="shrink-0 p-4 sm:p-5 border-t border-[#efece3] bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-10">
-          <div className="text-[12px] text-[#8a8270] font-medium hidden sm:block">
+          <div className="text-[12px] text-[#4c5058] font-medium hidden sm:block">
             {pageZoneEntries.length > 0
               ? `${pageZoneEntries.length} zone(s) de flou configurée(s)`
               : 'Tracé libre : cliquez et glissez sur l\'image pour créer une zone floue.'}

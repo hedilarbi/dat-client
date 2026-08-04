@@ -35,7 +35,6 @@ const STANDARD_SLOTS = [
   { id: 'right_profile', label: 'Profil droit', icon: '/profil-droit.png' },
   { id: 'interior', label: 'Intérieur / habitacle', icon: '/interieur.png' },
   { id: 'odometer', label: 'Compteur kilométrique', icon: '/compteur.png' },
-  { id: 'damage', label: 'Dommages / sinistre', icon: '/dommage.png' },
 ] as const;
 
 export default function StepMedia({
@@ -45,6 +44,7 @@ export default function StepMedia({
   const [error, setError] = useState('');
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null);
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
+  const [cropTargetIndex, setCropTargetIndex] = useState<number | null>(null);
   const [applyingBlur, setApplyingBlur] = useState(false);
 
   // Document upload state flags
@@ -54,41 +54,37 @@ export default function StepMedia({
 
   // Cover photo
   const coverPhoto = photos.find((p) => p.isCover);
-  // Standard vehicle photos
-  const nonCoverPhotos = photos.filter((p) => !p.isCover);
-
-  const handleCoverFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileSelected = (e: React.ChangeEvent<HTMLInputElement>, index = 0) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     setError('');
 
     const objectUrl = URL.createObjectURL(file);
+    setCropTargetIndex(index);
     setCroppingImageSrc(objectUrl);
   };
 
   const handleCropComplete = async (croppedBlob: Blob, previewUrl: string) => {
     setCroppingImageSrc(null);
 
-    const tempLocalId = coverPhoto?.localId || makeLocalId();
-    const file = new File([croppedBlob], 'cover.jpg', { type: 'image/jpeg' });
+    const targetIndex = cropTargetIndex ?? 0;
+    const currentPhoto = photos[targetIndex];
+    const tempLocalId = currentPhoto?.localId || makeLocalId();
+    const file = new File([croppedBlob], `photo-${targetIndex + 1}.jpg`, { type: 'image/jpeg' });
 
     const placeholder: WizardPhoto = {
       localId: tempLocalId,
       originalUrl: previewUrl,
-      blurZones: coverPhoto?.blurZones || [],
-      isCover: true,
+      blurZones: currentPhoto?.blurZones || [],
+      isCover: targetIndex === 0,
       uploading: true,
     };
 
     onPhotosChange((prev) => {
-      const rest = prev.map((p) => ({ ...p, isCover: false }));
-      const existingIdx = rest.findIndex((p) => p.localId === tempLocalId);
-      if (existingIdx >= 0) {
-        rest[existingIdx] = placeholder;
-        return rest;
-      }
-      return [placeholder, ...rest];
+      const next = prev.map((p, index) => ({ ...p, isCover: index === 0 }));
+      next[targetIndex] = placeholder;
+      return next;
     });
 
     try {
@@ -108,71 +104,12 @@ export default function StepMedia({
     onPhotosChange((prev) => prev.filter((p) => p.localId !== coverPhoto.localId));
   };
 
-  const handleSlotUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setError('');
+  const handleSlotUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => handleCoverFileSelected(e, index);
 
-    const tempLocalId = nonCoverPhotos[index]?.localId || makeLocalId();
-
-    const placeholder: WizardPhoto = {
-      localId: tempLocalId,
-      originalUrl: URL.createObjectURL(file),
-      blurZones: [],
-      isCover: false,
-      uploading: true,
-    };
-
-    const newNonCover = [...nonCoverPhotos];
-    newNonCover[index] = placeholder;
-
-    onPhotosChange(coverPhoto ? [coverPhoto, ...newNonCover] : newNonCover);
-
-    try {
-      const url = await uploadFile(file, 'vehicules/photos');
-      onPhotosChange((prev) =>
-        prev.map((p) => (p.localId === tempLocalId ? { ...p, originalUrl: url, uploading: false } : p))
-      );
-      setEditingTarget({ kind: 'photo', localId: tempLocalId });
-    } catch (err: any) {
-      setError(err.message || t('vehicleDossier.uploadError'));
-      onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
-    }
-  };
-
-  const handleCustomPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (files.length === 0) return;
-    setError('');
-
-    for (const file of files) {
-      const tempLocalId = makeLocalId();
-      const placeholder: WizardPhoto = {
-        localId: tempLocalId,
-        originalUrl: URL.createObjectURL(file),
-        blurZones: [],
-        isCover: false,
-        uploading: true,
-      };
-      onPhotosChange((prev) => [...prev, placeholder]);
-
-      try {
-        const url = await uploadFile(file, 'vehicules/photos');
-        onPhotosChange((prev) =>
-          prev.map((p) => (p.localId === tempLocalId ? { ...p, originalUrl: url, uploading: false } : p))
-        );
-        setEditingTarget({ kind: 'photo', localId: tempLocalId });
-      } catch (err: any) {
-        setError(err.message || t('vehicleDossier.uploadError'));
-        onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
-      }
-    }
-  };
+  const handleCustomPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => handleCoverFileSelected(e, photos.length);
 
   const removeSlotPhoto = (localId: string) => {
-    onPhotosChange((prev) => prev.filter((p) => p.localId !== localId));
+    onPhotosChange((prev) => prev.filter((p) => p.localId !== localId).map((p, index) => ({ ...p, isCover: index === 0 })));
   };
 
   // Carte grise documents
@@ -322,11 +259,11 @@ export default function StepMedia({
       {error && <Alert variant="error" className="mb-6">{error}</Alert>}
 
       {/* 1. Section Photo de Couverture */}
-      <div className="mb-8">
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-1.5">
+      <div className="hidden">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-1.5">
           Photo de couverture
         </div>
-        <p className="font-normal text-[12px] text-[#9a917d] mb-3">
+        <p className="font-normal text-[12px] text-[#5a5e66] mb-3">
           Photo principale affichée sur la carte du véhicule lors des ventes et enchères.
         </p>
 
@@ -401,7 +338,7 @@ export default function StepMedia({
                 <div className="font-bold text-[13px] text-[#13243c]">
                   Ajouter la photo de couverture
                 </div>
-                <div className="font-normal text-[11px] text-[#9a917d]">
+                <div className="font-normal text-[11px] text-[#5a5e66]">
                   Glissez un fichier ou cliquez pour parcourir et cadrer en 16:9
                 </div>
                 <input
@@ -418,13 +355,13 @@ export default function StepMedia({
 
       {/* 2. Section Photos du Véhicule */}
       <div className="mb-8">
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
           Photos du véhicule
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
           {STANDARD_SLOTS.map((slot, index) => {
-            const photo = nonCoverPhotos[index];
+            const photo = photos[index];
             const hasPhoto = Boolean(photo && (photo.originalUrl || photo.processedUrl));
 
             return (
@@ -440,6 +377,9 @@ export default function StepMedia({
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#2f6f4f] text-white font-bold text-[11px] leading-5 text-center shadow z-10">
                     ✓
                   </div>
+                )}
+                {hasPhoto && index === 0 && (
+                  <div className="absolute top-2 left-2 z-10 rounded-full bg-[#2f6f4f] px-2 py-1 text-[9px] font-bold uppercase text-white shadow">Couverture</div>
                 )}
 
                 {hasPhoto ? (
@@ -483,7 +423,7 @@ export default function StepMedia({
                       alt={slot.label}
                       className="w-20 h-20 sm:w-24 sm:h-24 max-h-[72px] sm:max-h-[84px] object-contain transition-transform group-hover:scale-105"
                     />
-                    <span className="font-semibold text-[12px] leading-tight text-[#9a917d] text-center">
+                    <span className="font-semibold text-[12px] leading-tight text-[#5a5e66] text-center">
                       {slot.label}
                     </span>
                     <input
@@ -499,15 +439,30 @@ export default function StepMedia({
           })}
         </div>
 
+        {photos.length > STANDARD_SLOTS.length && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
+            {photos.slice(STANDARD_SLOTS.length).map((photo, offset) => (
+              <div key={photo.localId} className="relative aspect-[4/3] overflow-hidden rounded-[10px] border border-[#eceadf] bg-[#f2f8f4] group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.processedUrl || photo.originalUrl} alt={`Photo supplémentaire ${offset + 1}`} className="h-full w-full object-cover" />
+                {photo.uploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white"><Spinner /></div>}
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition group-hover:opacity-100">
+                  <button type="button" onClick={() => setEditingTarget({ kind: 'photo', localId: photo.localId })} className="rounded bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">Flouter</button>
+                  <button type="button" onClick={() => removeSlotPhoto(photo.localId)} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Suppr.</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Upload custom photos if needed */}
-        {nonCoverPhotos.length >= 7 && (
+        {photos.length < 20 && (
           <div className="flex justify-end mb-4">
             <label className="px-4 py-2 bg-white border border-[#dcd7cb] hover:bg-gray-50 rounded-[9px] text-[12px] font-semibold text-[#13243c] cursor-pointer inline-flex items-center gap-2 transition">
-              + Ajouter une photo supplémentaire
+              + Ajouter une photo
               <input
                 type="file"
                 accept="image/*"
-                multiple
                 onChange={handleCustomPhotoUpload}
                 className="hidden"
               />
@@ -518,13 +473,13 @@ export default function StepMedia({
 
       {/* 3. Section Documents */}
       <div>
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
           Documents du véhicule
         </div>
 
         <div className="flex flex-col gap-3.5">
           {/* Carte grise */}
-          <div className="border border-[#eceadf] rounded-[12px] p-4 sm:p-4.5 bg-white">
+          <div className="hidden">
             <div className="flex items-center justify-between mb-2.5">
               <div className="font-semibold text-[14px] leading-snug text-[#13243c]">
                 Carte grise
@@ -543,7 +498,7 @@ export default function StepMedia({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Recto */}
               <div>
-                <div className="font-semibold text-[11px] text-[#8a8270] uppercase tracking-[0.04em] mb-1.5">
+                <div className="font-semibold text-[11px] text-[#4c5058] uppercase tracking-[0.04em] mb-1.5">
                   Recto
                 </div>
 
@@ -610,10 +565,10 @@ export default function StepMedia({
                     </>
                   ) : (
                     <>
-                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#9a917d] shrink-0">
+                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#5a5e66] shrink-0">
                         ↑
                       </div>
-                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#9a917d] truncate">
+                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#5a5e66] truncate">
                         Glissez un fichier ou cliquez pour parcourir
                       </div>
                       <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
@@ -626,7 +581,7 @@ export default function StepMedia({
 
               {/* Verso */}
               <div>
-                <div className="font-semibold text-[11px] text-[#8a8270] uppercase tracking-[0.04em] mb-1.5">
+                <div className="font-semibold text-[11px] text-[#4c5058] uppercase tracking-[0.04em] mb-1.5">
                   Verso
                 </div>
 
@@ -693,10 +648,10 @@ export default function StepMedia({
                     </>
                   ) : (
                     <>
-                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#9a917d] shrink-0">
+                      <div className="w-7 h-7 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[13px] text-[#5a5e66] shrink-0">
                         ↑
                       </div>
-                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#9a917d] truncate">
+                      <div className="flex-1 font-medium text-[12px] leading-snug text-[#5a5e66] truncate">
                         Glissez un fichier ou cliquez pour parcourir
                       </div>
                       <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
@@ -708,7 +663,7 @@ export default function StepMedia({
               </div>
             </div>
 
-            <div className="font-normal text-[12px] leading-relaxed text-[#9a917d] mt-2">
+            <div className="font-normal text-[12px] leading-relaxed text-[#5a5e66] mt-2">
               Recto et verso · original ou certificat de cession
             </div>
           </div>
@@ -724,7 +679,7 @@ export default function StepMedia({
                   expertReport ? 'bg-[#e9f4ee] text-[#2f6f4f]' : 'bg-[#fdece4] text-[#d9704f]'
                 }`}
               >
-                {expertReport ? 'Ajouté' : 'Requis'}
+                {expertReport ? 'Ajouté' : 'Optionnel'}
               </div>
             </div>
 
@@ -798,10 +753,10 @@ export default function StepMedia({
                 </>
               ) : (
                 <>
-                  <div className="w-7.5 h-7.5 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[14px] text-[#9a917d] shrink-0">
+                  <div className="w-7.5 h-7.5 rounded-[7px] bg-white border border-[#e2ddd1] flex items-center justify-center font-bold text-[14px] text-[#5a5e66] shrink-0">
                     ↑
                   </div>
-                  <div className="flex-1 font-medium text-[13px] leading-snug text-[#9a917d] truncate">
+                  <div className="flex-1 font-medium text-[13px] leading-snug text-[#5a5e66] truncate">
                     Glissez un fichier PDF ou cliquez pour parcourir
                   </div>
                   <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3.5 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
@@ -811,8 +766,8 @@ export default function StepMedia({
               )}
             </label>
 
-            <div className="font-normal text-[12px] leading-relaxed text-[#9a917d] mt-2">
-              Requis pour un dossier de type Sinistré · PDF
+            <div className="font-normal text-[12px] leading-relaxed text-[#5a5e66] mt-2">
+              Optionnel, mais fortement recommandé · PDF ou image
             </div>
           </div>
         </div>
@@ -823,7 +778,7 @@ export default function StepMedia({
         <ImageCropEditor
           imageSrc={croppingImageSrc}
           onCropComplete={handleCropComplete}
-          onClose={() => setCroppingImageSrc(null)}
+          onClose={() => { setCroppingImageSrc(null); setCropTargetIndex(null); }}
         />
       )}
 

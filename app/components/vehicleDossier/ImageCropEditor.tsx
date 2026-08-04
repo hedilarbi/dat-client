@@ -17,12 +17,12 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
   const [displayedSize, setDisplayedSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
   // Crop frame in percentage coordinates (0..1)
-  // Default to 16:9 ratio centered
+  // Default to 4:3 ratio centered
   const [crop, setCrop] = useState<{ x: number; y: number; width: number; height: number }>({
     x: 0.1,
     y: 0.1,
     width: 0.8,
-    height: 0.45, // 0.8 / (16/9) * (displayedWidth/displayedHeight) adjusted dynamically
+    height: 0.6,
   });
 
   const [dragging, setDragging] = useState<{ isMoving: boolean; handle?: string; startX: number; startY: number; initialCrop: typeof crop } | null>(null);
@@ -37,9 +37,8 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
     const dh = img.clientHeight;
     setDisplayedSize({ width: dw, height: dh });
 
-    // Initial 16:9 crop box calculation
-    const imgAspect = dw / dh;
-    const targetAspect = 16 / 9;
+    // Initial 4:3 crop box calculation
+    const targetAspect = 4 / 3;
 
     let cropW = 0.85;
     let cropH = (cropW * dw) / targetAspect / dh;
@@ -84,7 +83,7 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
 
     const dx = (e.clientX - dragging.startX) / displayedSize.width;
     const dy = (e.clientY - dragging.startY) / displayedSize.height;
-    const targetAspect = (16 / 9) * (displayedSize.height / displayedSize.width);
+    const targetAspect = (4 / 3) * (displayedSize.height / displayedSize.width);
 
     let { x, y, width, height } = dragging.initialCrop;
 
@@ -138,8 +137,8 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
     if (!imgRef.current || !naturalSize.width || !naturalSize.height) return;
 
     const canvas = document.createElement('canvas');
-    const targetW = 1280;
-    const targetH = 720;
+    const targetW = 1200;
+    const targetH = 900;
     canvas.width = targetW;
     canvas.height = targetH;
 
@@ -188,16 +187,16 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#efece3]">
           <div>
             <h3 className="text-[18px] font-bold font-heading uppercase text-[#13243c]">
-              Recadrer la photo de couverture
+              Recadrer la photo
             </h3>
-            <p className="text-[12px] text-[#8a8270] mt-0.5">
-              Déplacez et ajustez le cadre pour définir la zone d'affichage (format 16:9).
+            <p className="text-[12px] text-[#4c5058] mt-0.5">
+              Déplacez et ajustez le cadre pour définir la zone d'affichage (format 4:3).
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-[#8a8270] hover:text-[#13243c] text-2xl leading-none px-2"
+            className="text-[#4c5058] hover:text-[#13243c] text-2xl leading-none px-2"
           >
             ×
           </button>
@@ -238,7 +237,7 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
                   }}
                 />
 
-                {/* 16:9 Crop Selection Box */}
+                {/* 4:3 Crop Selection Box */}
                 <div
                   className="absolute border-2 border-[#d9704f] cursor-move shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
                   style={{

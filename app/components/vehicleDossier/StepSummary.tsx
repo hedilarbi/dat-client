@@ -45,7 +45,7 @@ export default function StepSummary({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6.5">
         {recapFields.map((f, i) => (
           <div key={i} className="bg-[#f8f7f2] rounded-[11px] p-4 sm:p-[16px_18px]">
-            <div className="font-semibold text-[11px] uppercase tracking-[0.05em] text-[#8a8270] mb-2">
+            <div className="font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">
               {f.label}
             </div>
             <div className="font-bold text-[15px] leading-snug text-[#13243c]">
@@ -57,7 +57,7 @@ export default function StepSummary({
 
       {/* Photos Grid */}
       <div className="mb-7">
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
           Photos
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">

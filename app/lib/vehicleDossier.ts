@@ -70,6 +70,24 @@ export interface VehicleDossier {
   fuelType?: FuelType;
   vin?: string;
   registrationNumber?: string;
+  registrationCountry?: string;
+  firstRegistrationDate?: string;
+  co2?: string;
+  energyLabel?: string;
+  vehicleGenre?: string;
+  fiscalPower?: string;
+  bodyType?: string;
+  gearbox?: string;
+  passengerCount?: string;
+  doorCount?: string;
+  color?: string;
+  vrade?: string;
+  procedure?: 'VEI' | 'VE' | 'TNR' | 'RIV / VE' | 'RIV';
+  vehicleAddress?: string;
+  registrationCardAvailable?: boolean;
+  registrationCardMissingReasons?: Array<'declaration_perte' | 'declaration_vol' | 'autre'>;
+  identificationSheetAvailable?: boolean;
+  policeBookNumber?: string;
   dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
   vehicleCondition?: string;
@@ -97,6 +115,24 @@ export interface VehicleDossierPayload {
   fuelType?: FuelType;
   vin?: string;
   registrationNumber?: string;
+  registrationCountry?: string;
+  firstRegistrationDate?: string;
+  co2?: string;
+  energyLabel?: string;
+  vehicleGenre?: string;
+  fiscalPower?: string;
+  bodyType?: string;
+  gearbox?: string;
+  passengerCount?: string;
+  doorCount?: string;
+  color?: string;
+  vrade?: string;
+  procedure?: 'VEI' | 'VE' | 'TNR' | 'RIV / VE' | 'RIV';
+  vehicleAddress?: string;
+  registrationCardAvailable?: boolean;
+  registrationCardMissingReasons?: Array<'declaration_perte' | 'declaration_vol' | 'autre'>;
+  identificationSheetAvailable?: boolean;
+  policeBookNumber?: string;
   dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
   vehicleCondition?: string;
@@ -118,6 +154,10 @@ export const emptyDossierPayload = (): VehicleDossierPayload => ({
   fuelType: undefined,
   vin: '',
   registrationNumber: '',
+  registrationCountry: 'FR',
+  registrationCardAvailable: true,
+  registrationCardMissingReasons: [],
+  identificationSheetAvailable: false,
   dossierType: 'Sinistré',
   description: '',
   vehicleCondition: 'Roulant',

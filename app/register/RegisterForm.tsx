@@ -652,7 +652,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               {loading ? t('register.verifying') : t('register.verify')}
             </button>
 
-            <div className="text-[13px] text-[#8a8270]">
+            <div className="text-[13px] text-[#4c5058]">
               {t('register.codeNotReceived')}{' '}
               {otpTimer > 0 ? (
                 <span className="text-gray-400 font-semibold">{t('register.resendCodeTimer', { seconds: otpTimer })}</span>
@@ -867,7 +867,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
                   onChange={e => handleFileSelection(e, 'rib')}
                   maxWidthClass="max-w-[360px]"
                 />
-                <div className="text-[12px] text-[#9a917d] mt-2">
+                <div className="text-[12px] text-[#5a5e66] mt-2">
                   {t('register.ribNameNotice')}
                 </div>
               </div>
@@ -875,7 +875,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
             {/* Right explanation panel */}
             <div className="w-full lg:w-[280px] bg-[#f1efe8] rounded-[12px] p-[22px] self-start select-none">
-              <div className="font-bold text-[12px] text-[#8a8270] tracking-[0.08em] uppercase mb-3">
+              <div className="font-bold text-[12px] text-[#4c5058] tracking-[0.08em] uppercase mb-3">
                 {t('register.paymentTitle')}
               </div>
               <p className="text-[13px] leading-[1.6] text-[#5a5e66]">

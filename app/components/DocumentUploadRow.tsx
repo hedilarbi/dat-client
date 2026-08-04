@@ -41,7 +41,7 @@ export default function DocumentUploadRow({
           <span className={`w-[30px] h-[30px] rounded-[7px] border flex items-center justify-center font-bold text-sm bg-white shrink-0 ${hasDocument ? 'text-[#2f6f4f] border-[#bcd8c8]' : 'text-gray-400 border-[#d3ccbd]'}`}>
             {hasDocument ? '✓' : '↑'}
           </span>
-          <span className={`text-[13px] font-semibold truncate ${maxWidthClass} ${hasDocument ? 'text-[#2f6f4f]' : 'text-[#9a917d]'}`}>
+          <span className={`text-[13px] font-semibold truncate ${maxWidthClass} ${hasDocument ? 'text-[#2f6f4f]' : 'text-[#5a5e66]'}`}>
             {file?.name || (existingUrl ? t('documentUpload.alreadySubmitted') : t('documentUpload.selectDocument'))}
           </span>
         </div>

@@ -13,6 +13,7 @@ import StepPricing from './StepPricing';
 import StepSummary from './StepSummary';
 import type { VehicleDossier, VehicleDossierPayload } from '../../lib/vehicleDossier';
 import type { WizardDocument, WizardPhoto } from './types';
+import { useUser } from '../LayoutWrapper';
 
 const toWizardPhoto = (p: VehicleDossier['photos'][number]): WizardPhoto => ({
   localId: p._id || `local_${Math.random().toString(36).slice(2, 8)}`,
@@ -43,6 +44,10 @@ const STEP_LABELS = ['Informations', 'Photos & documents', 'Mise en vente', 'Ré
 export default function VehicleDossierWizard({ initialDossier }: VehicleDossierWizardProps) {
   const router = useRouter();
   const { language, t } = useLanguage();
+  const { user } = useUser();
+  const sellerAddress = user?.address
+    ? [user.address.street, `${user.address.postalCode || ''} ${user.address.city || ''}`.trim(), user.address.country].filter(Boolean).join(', ')
+    : '';
 
   const [dossierId, setDossierId] = useState<string | undefined>(initialDossier?._id);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -55,6 +60,24 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     fuelType: initialDossier?.fuelType || 'diesel',
     vin: initialDossier?.vin || '',
     registrationNumber: initialDossier?.registrationNumber || '',
+    registrationCountry: initialDossier?.registrationCountry || 'FR',
+    firstRegistrationDate: initialDossier?.firstRegistrationDate || '',
+    co2: initialDossier?.co2 || '',
+    energyLabel: initialDossier?.energyLabel || '',
+    vehicleGenre: initialDossier?.vehicleGenre || '',
+    fiscalPower: initialDossier?.fiscalPower || '',
+    bodyType: initialDossier?.bodyType || '',
+    gearbox: initialDossier?.gearbox || '',
+    passengerCount: initialDossier?.passengerCount || '',
+    doorCount: initialDossier?.doorCount || '',
+    color: initialDossier?.color || '',
+    vrade: initialDossier?.vrade || '',
+    procedure: initialDossier?.procedure,
+    vehicleAddress: initialDossier?.vehicleAddress || sellerAddress,
+    registrationCardAvailable: initialDossier?.registrationCardAvailable ?? true,
+    registrationCardMissingReasons: initialDossier?.registrationCardMissingReasons || [],
+    identificationSheetAvailable: initialDossier?.identificationSheetAvailable ?? false,
+    policeBookNumber: initialDossier?.policeBookNumber || '',
     dossierType: initialDossier?.dossierType || 'Sinistré',
     description: initialDossier?.description || '',
     vehicleCondition: initialDossier?.vehicleCondition || 'Roulant',
@@ -80,11 +103,11 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
   const buildPayload = (submit: boolean): VehicleDossierPayload => ({
     ...values,
-    photos: photos.map((p, index) => ({
+    photos: photos.filter(Boolean).map((p, index) => ({
       originalUrl: p.originalUrl,
       processedUrl: p.processedUrl,
       blurZones: p.blurZones,
-      isCover: p.isCover,
+      isCover: index === 0,
       order: index,
     })),
     expertReport: expertReport
@@ -180,7 +203,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
         <div className="mb-[22px]">
           <Link
             href={localizedPath('/vendeur/dossiers', language)}
-            className="inline-flex items-center gap-1.5 font-semibold text-[12px] leading-none tracking-[0.05em] text-[#8a8270] hover:text-[#13243c] mb-2.5 transition-colors"
+            className="inline-flex items-center gap-1.5 font-semibold text-[12px] leading-none tracking-[0.05em] text-[#4c5058] hover:text-[#13243c] mb-2.5 transition-colors"
           >
             <span className="text-[14px]">←</span>
             <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? 'Mes dossiers' : `Mes dossiers · ${subtitle}`}</span>

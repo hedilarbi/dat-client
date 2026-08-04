@@ -95,7 +95,7 @@ export default function VendeurDossiersPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-semibold text-[#13243c] truncate">{label}</div>
-                  <div className="text-[12px] text-[#9a917d]">
+                  <div className="text-[12px] text-[#5a5e66]">
                     {t('vehicleDossier.updatedAt', { date: new Date(dossier.updatedAt).toLocaleDateString(language) })}
                   </div>
                 </div>

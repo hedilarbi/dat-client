@@ -13,6 +13,8 @@ const ROUTE_SLUGS: Record<string, Record<Language, string>> = {
   '/register': { fr: 'inscription', en: 'register' },
   '/register/acheteur': { fr: 'inscription/acheteur', en: 'register/buyer' },
   '/register/vendeur': { fr: 'inscription/vendeur', en: 'register/seller' },
+  '/vendre-avec-nous': { fr: 'vendre-avec-nous', en: 'sell-with-us' },
+  '/ventes-en-cours': { fr: 'ventes-en-cours', en: 'current-sales' },
   '/forgot-password': { fr: 'mot-de-passe-oublie', en: 'forgot-password' },
   '/forgot-password/reset': { fr: 'mot-de-passe-oublie/reinitialisation', en: 'forgot-password/reset' },
   '/profil': { fr: 'profil', en: 'profile' },

@@ -10,7 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-barlow), sans-serif;
   --font-heading: var(--font-saira-condensed), sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-ibm-plex-mono), monospace;
 }
 
 @media (prefers-color-scheme: dark) {

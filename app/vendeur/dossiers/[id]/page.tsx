@@ -29,7 +29,7 @@ export default function DossierVehiculeDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 w-full bg-white p-8 text-[#9a917d] font-medium text-sm">
+      <div className="flex-1 w-full bg-white p-8 text-[#5a5e66] font-medium text-sm">
         Chargement du dossier...
       </div>
     );
@@ -64,7 +64,7 @@ export default function DossierVehiculeDetailPage() {
       <div className="mb-6">
         <Link
           href={localizedPath('/vendeur/dossiers', language)}
-          className="inline-flex items-center gap-1.5 font-semibold text-[12px] text-[#8a8270] hover:text-[#13243c] mb-3 transition-colors"
+          className="inline-flex items-center gap-1.5 font-semibold text-[12px] text-[#4c5058] hover:text-[#13243c] mb-3 transition-colors"
         >
           <span>←</span>
           <span className="uppercase">Mes dossiers · {vehicleLabel}</span>
@@ -133,12 +133,12 @@ export default function DossierVehiculeDetailPage() {
       )}
 
       {/* Information Grid (Read Only) */}
-      <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+      <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
         Informations du véhicule
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-7">
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             Modèle / Année
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
@@ -147,7 +147,7 @@ export default function DossierVehiculeDetailPage() {
         </div>
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             Immatriculation / VIN
           </div>
           <div className="font-semibold text-[14px] text-[#13243c] font-mono">
@@ -156,7 +156,7 @@ export default function DossierVehiculeDetailPage() {
         </div>
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             Kilométrage
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
@@ -165,7 +165,7 @@ export default function DossierVehiculeDetailPage() {
         </div>
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             Type de dossier
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
@@ -174,7 +174,7 @@ export default function DossierVehiculeDetailPage() {
         </div>
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             État général
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
@@ -183,7 +183,7 @@ export default function DossierVehiculeDetailPage() {
         </div>
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#9a917d] uppercase tracking-[0.04em] mb-1">
+          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
             Prix de réserve
           </div>
           <div className="font-semibold text-[14px] text-[#13243c] font-mono">
@@ -195,18 +195,22 @@ export default function DossierVehiculeDetailPage() {
       {/* Description */}
       {dossier.description && (
         <div className="mb-7">
-          <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-2">
+          <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-2">
             Description
           </div>
-          <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white text-[13px] leading-relaxed text-[#1a2230]">
-            {dossier.description}
+          <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white text-[13px] leading-relaxed text-[#1a2230] whitespace-pre-wrap">
+            {dossier.description.split(/(\*\*.*?\*\*)/g).map((part, index) =>
+              part.startsWith('**') && part.endsWith('**')
+                ? <strong key={index}>{part.slice(2, -2)}</strong>
+                : <React.Fragment key={index}>{part}</React.Fragment>
+            )}
           </div>
         </div>
       )}
 
       {/* Photos */}
       <div className="mb-7">
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#8a8270] mb-3">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
           Photos ({dossier.photos.length})
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
