@@ -87,7 +87,6 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     policeBookNumber: initialDossier?.policeBookNumber || '',
     description: initialDossier?.description || '',
     reservePrice: initialDossier?.reservePrice,
-    conditionDetails: initialDossier?.conditionDetails || '',
     session: initialDossier?.session,
   });
 

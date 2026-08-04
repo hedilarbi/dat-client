@@ -101,7 +101,6 @@ export interface VehicleDossier {
   expertReport?: DossierDocument;
   additionalDocuments: DossierDocument[];
   reservePrice?: number;
-  conditionDetails?: string;
   session?: string;
   listingCount: number;
   status: DossierStatus;
@@ -145,7 +144,6 @@ export interface VehicleDossierPayload {
   expertReport?: DossierDocument;
   additionalDocuments?: DossierDocument[];
   reservePrice?: number;
-  conditionDetails?: string;
   session?: string;
   submit?: boolean;
 }
@@ -168,6 +166,5 @@ export const emptyDossierPayload = (): VehicleDossierPayload => ({
   expertReport: undefined,
   additionalDocuments: [],
   reservePrice: undefined,
-  conditionDetails: '',
   session: undefined,
 });
