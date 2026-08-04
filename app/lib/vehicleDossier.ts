@@ -59,6 +59,13 @@ export interface DossierRefusal {
   resubmittedAt?: string;
 }
 
+export interface VehicleAddressDetails {
+  street: string;
+  postalCode: string;
+  city: string;
+  country: string;
+}
+
 export interface VehicleDossier {
   _id: string;
   seller: string;
@@ -84,13 +91,12 @@ export interface VehicleDossier {
   vrade?: string;
   procedure?: 'VEI' | 'VE' | 'TNR' | 'RIV / VE' | 'RIV';
   vehicleAddress?: string;
+  vehicleAddressDetails?: VehicleAddressDetails;
   registrationCardAvailable?: boolean;
   registrationCardMissingReasons?: Array<'declaration_perte' | 'declaration_vol' | 'autre'>;
   identificationSheetAvailable?: boolean;
   policeBookNumber?: string;
-  dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
-  vehicleCondition?: string;
   photos: DossierPhoto[];
   expertReport?: DossierDocument;
   additionalDocuments: DossierDocument[];
@@ -129,13 +135,12 @@ export interface VehicleDossierPayload {
   vrade?: string;
   procedure?: 'VEI' | 'VE' | 'TNR' | 'RIV / VE' | 'RIV';
   vehicleAddress?: string;
+  vehicleAddressDetails?: VehicleAddressDetails;
   registrationCardAvailable?: boolean;
   registrationCardMissingReasons?: Array<'declaration_perte' | 'declaration_vol' | 'autre'>;
   identificationSheetAvailable?: boolean;
   policeBookNumber?: string;
-  dossierType?: 'Sinistré' | 'VHU' | 'Flotte' | 'Occasion';
   description?: string;
-  vehicleCondition?: string;
   photos?: DossierPhoto[];
   expertReport?: DossierDocument;
   additionalDocuments?: DossierDocument[];
@@ -158,9 +163,7 @@ export const emptyDossierPayload = (): VehicleDossierPayload => ({
   registrationCardAvailable: true,
   registrationCardMissingReasons: [],
   identificationSheetAvailable: false,
-  dossierType: 'Sinistré',
   description: '',
-  vehicleCondition: 'Roulant',
   photos: [],
   expertReport: undefined,
   additionalDocuments: [],

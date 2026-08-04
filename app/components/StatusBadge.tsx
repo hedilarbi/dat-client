@@ -31,15 +31,15 @@ export function getVehicleDossierStatusBadge(status: string, t?: (key: string) =
       return { label: tr('vehicleDossier.status.brouillon'), color: '#8a8270', bg: '#f1efe8' };
     case 'soumis':
     case 'en_attente_validation':
-      return { label: tr('vehicleDossier.status.enAttenteValidation'), color: '#b3893f', bg: '#faf1e4' };
+      return { label: tr('vehicleDossier.status.enAttenteValidation'), color: '#ffffff', bg: '#2563eb' };
     case 'correction_demandee':
-      return { label: tr('vehicleDossier.status.correctionDemandee'), color: '#d9704f', bg: '#fdece4' };
+      return { label: tr('vehicleDossier.status.correctionDemandee'), color: '#ffffff', bg: '#f97316' };
     case 'refuse':
-      return { label: tr('vehicleDossier.status.refuse'), color: '#b3261e', bg: '#fbeaea' };
+      return { label: tr('vehicleDossier.status.refuse'), color: '#ffffff', bg: '#dc2626' };
     case 'valide':
-      return { label: tr('vehicleDossier.status.valide'), color: '#2f6f4f', bg: '#e9f4ee' };
+      return { label: tr('vehicleDossier.status.valide'), color: '#ffffff', bg: '#16a34a' };
     case 'annule_vendeur':
-      return { label: tr('vehicleDossier.status.annule'), color: '#5a5e66', bg: '#f1efe8' };
+      return { label: tr('vehicleDossier.status.annule'), color: '#8a8270', bg: '#f1efe8' };
     default:
       return { label: status, color: '#13243c', bg: '#eef1f5' };
   }

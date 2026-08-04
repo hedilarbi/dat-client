@@ -4,36 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { localizedPath, useLanguage } from "./i18n";
+import { formatTimeLeft, useCurrentSales } from "./lib/currentSales";
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
 const CTA_IMAGE = 'https://images.unsplash.com/photo-1692807381316-e51140a7a00f?q=80&w=1600&auto=format&fit=crop';
-const LOT_IMAGE_A = 'https://images.unsplash.com/photo-1709441379495-2e193a3880ca?q=80&w=900&auto=format&fit=crop';
-const LOT_IMAGE_B = 'https://images.unsplash.com/photo-1705609134875-0335b6bc8d82?q=80&w=900&auto=format&fit=crop';
-
-const CURRENT_SESSION = 'Session #131';
-const CLOSING_IN = '02:14:08';
-
-const BRANDS = [
-  { name: 'Renault', count: 214 },
-  { name: 'Peugeot', count: 186 },
-  { name: 'Citroën', count: 152 },
-  { name: 'Volkswagen', count: 129 },
-  { name: 'Mercedes', count: 98 },
-  { name: 'Iveco', count: 74 },
-];
-
-const LOTS = [
-  { mark: 'RN', name: 'Renault Trafic III', specs: '2016 · 142 000 km · Roulant', img: LOT_IMAGE_A },
-  { mark: 'PG', name: 'Peugeot 308 II', specs: '2018 · 96 000 km · Roulant', img: LOT_IMAGE_B },
-  { mark: 'CT', name: 'Citroën Jumpy', specs: '2015 · 178 000 km · Roulant', img: LOT_IMAGE_A },
-  { mark: 'MB', name: 'Mercedes Sprinter', specs: '2019 · 88 000 km · Non roulant', img: LOT_IMAGE_B },
-  { mark: 'FT', name: 'Fiat Ducato', specs: '2013 · 210 000 km · Pour pièces', img: LOT_IMAGE_A },
-  { mark: 'VW', name: 'Volkswagen Crafter', specs: '2017 · 132 000 km · Roulant', img: LOT_IMAGE_B },
-  { mark: 'AU', name: 'Audi A4 B8', specs: '2014 · 165 000 km · Roulant', img: LOT_IMAGE_A },
-  { mark: 'IV', name: 'Iveco Daily', specs: '2020 · 54 000 km · Roulant', img: LOT_IMAGE_B },
-];
-
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%">
@@ -65,6 +40,14 @@ function SupportIcon() {
 export default function Home() {
   const { language, t } = useLanguage();
   const router = useRouter();
+  const { vehicles, sessions, loading: salesLoading, error: salesError } = useCurrentSales();
+  const currentSession = sessions[0];
+  const currentSessionName = currentSession?.name || (language === 'fr' ? 'Aucune session ouverte' : 'No open session');
+  const closingIn = formatTimeLeft(currentSession?.endDate);
+  const brands = Object.entries(vehicles.reduce<Record<string, number>>((counts, vehicle) => {
+    if (vehicle.brand) counts[vehicle.brand] = (counts[vehicle.brand] || 0) + 1;
+    return counts;
+  }, {})).map(([name, count]) => ({ name, count }));
 
   // Le français reste sur "/" (langue par défaut) ; l'anglais choisi précédemment
   // redirige automatiquement vers "/en" pour rester cohérent avec le reste du site.
@@ -105,7 +88,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-[40px] pointer-events-none">
           <div className="inline-flex items-center gap-2 font-bold text-[11px] tracking-[0.28em] uppercase text-[#0c1626] bg-[#e2a175] px-4 py-2.5 rounded-full w-fit mb-5">
-            ● {t('home.sessionStatus', { session: CURRENT_SESSION, time: CLOSING_IN })}
+            ● {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}
           </div>
           <h1 className="m-0 mb-5 font-extrabold text-[46px] sm:text-[76px] leading-[.94] uppercase text-white max-w-[840px] font-heading tracking-[-.01em]">
             {t('home.heroTitleLine1')}<br />{t('home.heroTitleLine2')}
@@ -146,7 +129,7 @@ export default function Home() {
         <div className="font-semibold text-[11px] tracking-[0.2em] uppercase text-[#a3987f] mb-2.5">{t('home.brandsEyebrow')}</div>
         <div className="font-bold text-[26px] sm:text-[30px] uppercase text-[#13243c] mb-5 font-heading">{t('home.brandsTitle')}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {BRANDS.map(brand => (
+          {brands.map(brand => (
             <div key={brand.name} className="border border-[#eceadf] rounded-[14px] p-6 sm:p-[26px_16px] flex flex-col items-center gap-3">
               <div className="font-bold text-xl text-[#13243c] font-heading">{brand.name}</div>
               <div className="font-medium text-xs text-[#5a5e66]">{t('home.brandLots', { count: String(brand.count) })}</div>
@@ -159,10 +142,10 @@ export default function Home() {
       <div id="ventes-en-cours" className="scroll-mt-[70px] px-4 sm:px-[40px] pt-10 sm:pt-12 pb-5 flex flex-col sm:flex-row justify-between sm:items-end gap-3">
         <div>
           <div className="font-semibold text-[11px] tracking-[0.18em] uppercase text-[#a3987f] mb-2">
-            {t('home.sessionStatus', { session: CURRENT_SESSION, time: CLOSING_IN })}
+            {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}
           </div>
           <div className="font-bold text-2xl sm:text-[28px] uppercase text-[#13243c] font-heading">
-            {t('home.lotsCount', { count: String(LOTS.length) })}
+            {t('home.lotsCount', { count: String(vehicles.length) })}
           </div>
         </div>
         <Link href={localizedPath('/ventes-en-cours', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
@@ -171,18 +154,19 @@ export default function Home() {
       </div>
 
       <div className="px-4 sm:px-[40px] pb-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {LOTS.map((lot, i) => (
-          <div key={i} className="border border-[#eceadf] rounded-[14px] overflow-hidden flex flex-col shadow-[0_2px_10px_rgba(19,36,60,.05)]">
+        {salesLoading && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Chargement des véhicules…</div>}
+        {!salesLoading && salesError && <div className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{salesError}</div>}
+        {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Aucun véhicule dans une session en cours.</div>}
+        {vehicles.slice(0, 8).map((lot) => (
+          <div key={lot.id} className="border border-[#eceadf] rounded-[14px] overflow-hidden flex flex-col shadow-[0_2px_10px_rgba(19,36,60,.05)]">
             <div className="relative aspect-[4/3] bg-[#eef1f5] overflow-hidden">
-              <img src={lot.img} alt={lot.name} className="absolute inset-0 w-full h-full object-cover" />
+              {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="absolute inset-0 w-full h-full object-cover" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
               <span className="absolute top-2.5 right-2.5 font-bold text-[11px] text-white bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 rounded-[7px] font-mono">
-                {CLOSING_IN}
+                {formatTimeLeft(lot.session?.endDate)}
               </span>
             </div>
             <div className="p-4 pb-[18px] flex flex-col flex-1">
-              <div className="font-semibold text-[11px] text-[#5a5e66] mb-1.5">{CURRENT_SESSION}</div>
-              <div className="font-bold text-[17px] uppercase text-[#13243c] mb-1 font-heading">{lot.name}</div>
-              <div className="text-xs leading-[1.4] text-[#5a5e66] mb-4">{lot.specs}</div>
+              <div className="font-bold text-[17px] uppercase text-[#13243c] mb-4 font-heading">{[lot.brand, lot.model].filter(Boolean).join(' ')}</div>
               <div className="mt-auto">
                 <button type="button" className="w-full font-bold text-xs text-white bg-[#13243c] hover:bg-slate-800 py-[11px] px-4 rounded-[8px] uppercase tracking-[0.02em] transition cursor-pointer">
                   {t('home.bidButton')}

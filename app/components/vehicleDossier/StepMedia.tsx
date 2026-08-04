@@ -33,8 +33,8 @@ const STANDARD_SLOTS = [
   { id: 'rear', label: 'Face arrière', icon: '/face-arriere.png' },
   { id: 'left_profile', label: 'Profil gauche', icon: '/profil-gauche.png' },
   { id: 'right_profile', label: 'Profil droit', icon: '/profil-droit.png' },
-  { id: 'interior', label: 'Intérieur / habitacle', icon: '/interieur.png' },
   { id: 'odometer', label: 'Compteur kilométrique', icon: '/compteur.png' },
+  { id: 'interior', label: 'Intérieur / habitacle', icon: '/interieur.png' },
 ] as const;
 
 export default function StepMedia({
@@ -437,11 +437,8 @@ export default function StepMedia({
               </div>
             );
           })}
-        </div>
 
-        {photos.length > STANDARD_SLOTS.length && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
-            {photos.slice(STANDARD_SLOTS.length).map((photo, offset) => (
+          {photos.slice(STANDARD_SLOTS.length).map((photo, offset) => (
               <div key={photo.localId} className="relative aspect-[4/3] overflow-hidden rounded-[10px] border border-[#eceadf] bg-[#f2f8f4] group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photo.processedUrl || photo.originalUrl} alt={`Photo supplémentaire ${offset + 1}`} className="h-full w-full object-cover" />
@@ -451,24 +448,17 @@ export default function StepMedia({
                   <button type="button" onClick={() => removeSlotPhoto(photo.localId)} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Suppr.</button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+          ))}
 
-        {/* Upload custom photos if needed */}
-        {photos.length < 20 && (
-          <div className="flex justify-end mb-4">
-            <label className="px-4 py-2 bg-white border border-[#dcd7cb] hover:bg-gray-50 rounded-[9px] text-[12px] font-semibold text-[#13243c] cursor-pointer inline-flex items-center gap-2 transition">
-              + Ajouter une photo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleCustomPhotoUpload}
-                className="hidden"
-              />
+          {photos.length < 20 && (
+            <label className="relative aspect-[4/3] border-[1.5px] border-dashed border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270] rounded-[10px] flex flex-col items-center justify-center p-3 text-center cursor-pointer transition-all group">
+              <span className="w-12 h-12 rounded-full bg-white border border-[#e2ddd1] flex items-center justify-center text-[28px] leading-none text-[#13243c] shadow-sm transition-transform group-hover:scale-105">+</span>
+              <span className="mt-2 font-semibold text-[12px] leading-tight text-[#5a5e66]">Ajouter une photo</span>
+              <input type="file" accept="image/*" onChange={handleCustomPhotoUpload} className="hidden" />
             </label>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
 
       {/* 3. Section Documents */}

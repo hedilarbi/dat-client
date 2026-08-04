@@ -139,10 +139,10 @@ export default function DossierVehiculeDetailPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-7">
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
           <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Modèle / Année
+            Marque / Modèle
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
-            {dossier.model || vehicleLabel} · {dossier.year || '—'}
+            {vehicleLabel}
           </div>
         </div>
 
@@ -166,19 +166,10 @@ export default function DossierVehiculeDetailPage() {
 
         <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
           <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Type de dossier
+            Procédure
           </div>
           <div className="font-semibold text-[14px] text-[#13243c]">
-            {dossier.dossierType || 'Sinistré'}
-          </div>
-        </div>
-
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            État général
-          </div>
-          <div className="font-semibold text-[14px] text-[#13243c]">
-            {dossier.vehicleCondition || 'Roulant'}
+            {dossier.procedure || '—'}
           </div>
         </div>
 

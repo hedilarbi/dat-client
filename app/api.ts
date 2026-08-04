@@ -54,14 +54,16 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
+    const isAuthenticationError =
+      typeof data.error === 'string' && data.error.startsWith('auth.');
+
     // Session invalide/expirée (401) ou compte suspendu/bloqué (403) : ces deux statuts ne sont
-    // renvoyés par le serveur que par le middleware d'authentification (`protect`), donc sans
-    // ambiguïté ici. Sans ce renvoi, une session expirée en cours de navigation (sans rechargement
-    // de page, donc sans repasser par UserProvider) laisse l'utilisateur bloqué sur une page qui
-    // échoue silencieusement au lieu d'être renvoyé vers la connexion — /auth/me est exclu car il
-    // échoue normalement pour tout visiteur non connecté et est déjà géré par UserProvider.
+    // considérés comme des erreurs d'authentification que lorsque le serveur fournit un code
+    // `auth.*`. Une API tierce peut aussi renvoyer 401/403 (par exemple la recherche de plaque),
+    // sans que la session de l'utilisateur soit expirée.
     if (
       (response.status === 401 || response.status === 403) &&
+      isAuthenticationError &&
       path !== '/auth/me' &&
       typeof window !== 'undefined'
     ) {

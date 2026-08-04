@@ -48,6 +48,12 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
   const sellerAddress = user?.address
     ? [user.address.street, `${user.address.postalCode || ''} ${user.address.city || ''}`.trim(), user.address.country].filter(Boolean).join(', ')
     : '';
+  const sellerAddressDetails = {
+    street: user?.address?.street || '',
+    postalCode: user?.address?.postalCode || '',
+    city: user?.address?.city || '',
+    country: user?.address?.country || 'France',
+  };
 
   const [dossierId, setDossierId] = useState<string | undefined>(initialDossier?._id);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -74,13 +80,12 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     vrade: initialDossier?.vrade || '',
     procedure: initialDossier?.procedure,
     vehicleAddress: initialDossier?.vehicleAddress || sellerAddress,
+    vehicleAddressDetails: initialDossier?.vehicleAddressDetails || sellerAddressDetails,
     registrationCardAvailable: initialDossier?.registrationCardAvailable ?? true,
     registrationCardMissingReasons: initialDossier?.registrationCardMissingReasons || [],
     identificationSheetAvailable: initialDossier?.identificationSheetAvailable ?? false,
     policeBookNumber: initialDossier?.policeBookNumber || '',
-    dossierType: initialDossier?.dossierType || 'Sinistré',
     description: initialDossier?.description || '',
-    vehicleCondition: initialDossier?.vehicleCondition || 'Roulant',
     reservePrice: initialDossier?.reservePrice,
     conditionDetails: initialDossier?.conditionDetails || '',
     session: initialDossier?.session,
@@ -289,6 +294,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
           <StepVehicleInfo
             values={values}
             onChange={patchValues}
+            verifyExistingRegistration={Boolean(initialDossier)}
             onNext={() => setStep(2)}
             onSaveDraft={handleSaveDraft}
             savingDraft={savingDraft}

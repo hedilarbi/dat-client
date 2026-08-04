@@ -385,9 +385,9 @@ export default function VendeurTableauDeBordPage() {
 
   // VALIDATED STATE
   const sellerDossiers = [
-    { vehicle: 'Renault Trafic III · Sinistré', session: 'Session #128', maxOffer: '7 400 €', action: t('profil.view'), meta: { label: t('vendeurDashboard.statusPublished'), color: '#13243c', bg: '#eef1f5' } },
+    { vehicle: 'Renault Trafic III', session: 'Session #128', maxOffer: '7 400 €', action: t('profil.view'), meta: { label: t('vendeurDashboard.statusPublished'), color: '#13243c', bg: '#eef1f5' } },
     { vehicle: 'Peugeot Boxer · Flotte', session: 'Session #126', maxOffer: '11 900 €', action: t('vendeurDashboard.actionDocuments'), meta: { label: t('vendeurDashboard.statusAwarded'), color: '#2f6f4f', bg: '#e9f4ee' } },
-    { vehicle: 'Citroën Jumpy · Sinistré', session: 'Session #124', maxOffer: '4 800 €', action: t('vendeurDashboard.actionDecide'), meta: { label: t('vendeurDashboard.statusReserveNotMet'), color: '#d9704f', bg: '#fdece4' } },
+    { vehicle: 'Citroën Jumpy', session: 'Session #124', maxOffer: '4 800 €', action: t('vendeurDashboard.actionDecide'), meta: { label: t('vendeurDashboard.statusReserveNotMet'), color: '#d9704f', bg: '#fdece4' } },
     { vehicle: 'Fiat Ducato · VHU', session: 'Session #120', maxOffer: '—', action: t('vendeurDashboard.actionReschedule'), meta: { label: t('vendeurDashboard.statusUnsold'), color: '#5a5e66', bg: '#f1efe8' } },
   ];
 

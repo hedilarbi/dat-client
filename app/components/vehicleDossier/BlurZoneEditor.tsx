@@ -30,6 +30,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
   const [loadingPages, setLoadingPages] = useState(isPdf);
   const [pagesError, setPagesError] = useState('');
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     if (!isPdf) return;
@@ -46,6 +47,9 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
 
   const displaySrc = isPdf ? pdfPages?.[currentPageIndex]?.dataUrl : imageUrl;
   const currentPdfPage = isPdf ? pdfPages?.[currentPageIndex] : null;
+  const mediaWidth = currentPdfPage?.width || imageDimensions?.width || 4;
+  const mediaHeight = currentPdfPage?.height || imageDimensions?.height || 3;
+  const mediaRatio = mediaWidth / mediaHeight;
 
   const pageZoneEntries = zones
     .map((zone, index) => ({ zone, index }))
@@ -127,7 +131,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
           <button
             type="button"
             onClick={() => setDrawingEnabled((enabled) => !enabled)}
-            className={`mb-4 h-11 px-5 rounded-[9px] text-[13px] font-bold uppercase transition ${drawingEnabled ? 'bg-[#d9704f] text-white' : 'bg-[#13243c] text-white hover:bg-slate-800'}`}
+            className="mb-4 h-11 px-5 rounded-[9px] bg-[#d9704f] text-white text-[13px] font-bold uppercase transition hover:bg-[#c26040]"
           >
             {drawingEnabled ? 'Dessinez la zone sur le document…' : '+ Dessiner un floutage'}
           </button>
@@ -164,8 +168,12 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
           ) : (
             <div
               ref={containerRef}
-              className={`relative select-none touch-none w-full bg-[#13243c] rounded-[9px] overflow-hidden max-h-[60vh] ${drawingEnabled ? 'cursor-crosshair ring-2 ring-[#d9704f]' : 'cursor-default'}`}
-              style={{ aspectRatio: currentPdfPage ? `${currentPdfPage.width} / ${currentPdfPage.height}` : '4 / 3' }}
+              className={`relative select-none touch-none mx-auto bg-transparent rounded-[9px] overflow-hidden ${drawingEnabled ? 'cursor-crosshair ring-2 ring-[#d9704f]' : 'cursor-default'}`}
+              style={{
+                aspectRatio: `${mediaWidth} / ${mediaHeight}`,
+                width: '100%',
+                maxWidth: `min(100%, calc(60vh * ${mediaRatio}))`,
+              }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -173,7 +181,17 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
             >
               {displaySrc && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={displaySrc} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                <img
+                  src={displaySrc}
+                  alt=""
+                  draggable={false}
+                  onLoad={(event) => {
+                    if (!isPdf) {
+                      setImageDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                />
               )}
               {displayedZoneEntries.map(({ zone, index }, i) => (
                 <div

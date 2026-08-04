@@ -3,42 +3,28 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLanguage } from '../i18n';
+import { formatTimeLeft, useCurrentSales } from '../lib/currentSales';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
-const LOT_IMAGES = [
-  'https://images.unsplash.com/photo-1709441379495-2e193a3880ca?q=80&w=900&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1705609134875-0335b6bc8d82?q=80&w=900&auto=format&fit=crop',
-];
-
-const LOTS = [
-  { mark: 'RN', brand: 'Renault', name: 'Renault Trafic III', year: 2016, mileage: 142000, condition: 'Roulant' },
-  { mark: 'PG', brand: 'Peugeot', name: 'Peugeot 308 II', year: 2018, mileage: 96000, condition: 'Roulant' },
-  { mark: 'CT', brand: 'Citroën', name: 'Citroën Jumpy', year: 2015, mileage: 178000, condition: 'Roulant' },
-  { mark: 'MB', brand: 'Mercedes', name: 'Mercedes Sprinter', year: 2019, mileage: 88000, condition: 'Non roulant' },
-  { mark: 'FT', brand: 'Fiat', name: 'Fiat Ducato', year: 2013, mileage: 210000, condition: 'Pour pièces' },
-  { mark: 'VW', brand: 'Volkswagen', name: 'Volkswagen Crafter', year: 2017, mileage: 132000, condition: 'Roulant' },
-  { mark: 'AU', brand: 'Audi', name: 'Audi A4 B8', year: 2014, mileage: 165000, condition: 'Roulant' },
-  { mark: 'IV', brand: 'Iveco', name: 'Iveco Daily', year: 2020, mileage: 54000, condition: 'Roulant' },
-];
-
-const SESSION = 'Session #131';
-const TIME_LEFT = '02:14:08';
-
 export default function CurrentSalesPage() {
   const { language, t } = useLanguage();
+  const { vehicles, sessions, loading, error } = useCurrentSales();
   const [brand, setBrand] = useState('');
   const [year, setYear] = useState('');
   const [mileage, setMileage] = useState('');
   const [filters, setFilters] = useState({ brand: '', year: '', mileage: '' });
-
-  const lots = useMemo(() => LOTS.filter((lot) => {
-    if (filters.brand && lot.brand !== filters.brand) return false;
-    if (filters.year && lot.year < Number(filters.year)) return false;
-    if (filters.mileage && lot.mileage > Number(filters.mileage)) return false;
-    return true;
-  }), [filters]);
-
   const fr = language === 'fr';
+
+  const lots = useMemo(() => vehicles.filter((lot) => {
+    if (filters.brand && lot.brand !== filters.brand) return false;
+    if (filters.year && (lot.year == null || lot.year < Number(filters.year))) return false;
+    if (filters.mileage && (lot.mileage == null || lot.mileage > Number(filters.mileage))) return false;
+    return true;
+  }), [filters, vehicles]);
+  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand).filter(Boolean))];
+  const currentSession = sessions[0];
+  const sessionName = currentSession?.name || (fr ? 'Aucune session ouverte' : 'No open session');
+  const sessionTimeLeft = formatTimeLeft(currentSession?.endDate);
 
   return (
     <main className="min-h-screen bg-white font-sans text-black">
@@ -65,7 +51,7 @@ export default function CurrentSalesPage() {
         <div className="flex flex-wrap items-end gap-4 rounded-[14px] border border-[#eceadf] bg-white p-5 shadow-[0_16px_34px_rgba(19,36,60,.16)] sm:px-[26px] sm:py-[22px]">
           <Filter label={t('home.filterBrand')} value={brand} onChange={setBrand}>
             <option value="">{t('home.filterBrandValue')}</option>
-            {[...new Set(LOTS.map((lot) => lot.brand))].map((item) => <option key={item}>{item}</option>)}
+            {brands.map((item) => <option key={item}>{item}</option>)}
           </Filter>
           <Filter label={t('home.filterYear')} value={year} onChange={setYear}>
             <option value="">{t('home.filterYearValue')}</option>
@@ -93,7 +79,7 @@ export default function CurrentSalesPage() {
       <section className="flex items-end justify-between px-4 pb-[22px] pt-2 sm:px-10">
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-[.18em] text-[#a3987f]">
-            {SESSION} · {fr ? 'clôture dans' : 'closes in'} {TIME_LEFT}
+            {sessionName}{currentSession ? ` · ${fr ? 'clôture dans' : 'closes in'} ${sessionTimeLeft}` : ''}
           </p>
           <h2 className="font-heading text-[28px] font-bold uppercase leading-none text-[#13243c]">
             {fr ? `${lots.length} véhicules aux enchères` : `${lots.length} vehicles at auction`}
@@ -102,18 +88,20 @@ export default function CurrentSalesPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-5 px-4 pb-12 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
-        {lots.map((lot, index) => (
-          <article key={lot.name} className="flex flex-col overflow-hidden rounded-[14px] border border-[#eceadf] bg-white">
+        {loading && <p className="col-span-full py-12 text-center text-sm text-[#5a5e66]">Chargement des véhicules…</p>}
+        {!loading && error && <p className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>}
+        {!loading && !error && lots.length === 0 && <p className="col-span-full py-12 text-center text-sm text-[#5a5e66]">{fr ? 'Aucun véhicule dans une session en cours.' : 'No vehicles in an active session.'}</p>}
+        {lots.map((lot) => (
+          <article key={lot.id} className="flex flex-col overflow-hidden rounded-[14px] border border-[#eceadf] bg-white">
             <div className="relative aspect-4/3 bg-[#eef1f5]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={LOT_IMAGES[index % LOT_IMAGES.length]} alt={lot.name} className="h-full w-full object-cover" />
-              <span className="absolute right-2.5 top-2.5 rounded-[7px] bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 font-mono text-[11px] font-bold text-white">{TIME_LEFT}</span>
+              {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
+              <span className="absolute right-2.5 top-2.5 rounded-[7px] bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 font-mono text-[11px] font-bold text-white">{formatTimeLeft(lot.session?.endDate)}</span>
             </div>
             <div className="flex flex-1 flex-col p-4 pb-[18px]">
-              <p className="mb-1.5 text-[11px] font-semibold text-[#5a5e66]">{SESSION}</p>
-              <h3 className="mb-1 font-heading text-[17px] font-bold uppercase leading-tight text-[#13243c]">{lot.name}</h3>
+              <p className="mb-1.5 text-[11px] font-semibold text-[#5a5e66]">{lot.session?.name}</p>
+              <h3 className="mb-1 font-heading text-[17px] font-bold uppercase leading-tight text-[#13243c]">{[lot.brand, lot.model].filter(Boolean).join(' ')}</h3>
               <p className="mb-4 text-xs leading-[1.4] text-[#5a5e66]">
-                {lot.year} · {lot.mileage.toLocaleString('fr-FR')} km · {lot.condition}
+                {lot.year || '—'} · {lot.mileage != null ? `${lot.mileage.toLocaleString('fr-FR')} km` : '—'}
               </p>
               <button type="button" className="mt-auto w-full rounded-lg bg-[#13243c] px-4 py-[11px] text-xs font-bold uppercase tracking-[.02em] text-white transition hover:bg-[#1a3050]">
                 {t('home.bidButton')}
