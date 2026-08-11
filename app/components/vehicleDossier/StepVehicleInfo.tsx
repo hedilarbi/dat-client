@@ -197,7 +197,11 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">VRADE</h2>
-        <label><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">VRADE</span><input value={values.vrade || ''} onChange={(e) => onChange({ vrade: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" /></label>
+        <label>
+          <span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-1">VRADE</span>
+          <span className="block text-xs leading-5 text-[#5a5e66] mb-2">Montant estimé par un expert automobile pour racheter un véhicule équivalent avant qu’il ne soit détruit ou volé.</span>
+          <input value={values.vrade || ''} onChange={(e) => onChange({ vrade: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" />
+        </label>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
@@ -207,7 +211,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Adresse de la voiture</h2>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Où se trouve la voiture actuellement</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label className="sm:col-span-2">
             <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Adresse</span>
@@ -238,13 +242,15 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Carte grise</h2>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Carte grise disponible</h2>
         <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Carte grise disponible</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ registrationCardAvailable: choice, registrationCardMissingReasons: choice ? [] : values.registrationCardMissingReasons })} className={`px-5 py-2 rounded-full border font-semibold ${values.registrationCardAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? 'Oui' : 'Non'}</button>)}</div></div>
+        {values.registrationCardAvailable === true && (
+          <label className="block max-w-md"><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Numéro du livre de police (optionnel)</span><input value={values.policeBookNumber || ''} onChange={(e) => onChange({ policeBookNumber: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4" /></label>
+        )}
         {values.registrationCardAvailable === false && (
           <div className="space-y-4 rounded-lg bg-[#fbfaf7] p-4">
             <div className="flex flex-wrap gap-4">{([['declaration_perte', 'Déclaration de perte'], ['declaration_vol', 'Déclaration de vol'], ['autre', 'Autre']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(values.registrationCardMissingReasons || []).includes(key)} onChange={() => toggleMissingReason(key)} />{label}</label>)}</div>
             <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Fiche d’identification disponible</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ identificationSheetAvailable: choice })} className={`px-5 py-2 rounded-full border font-semibold ${values.identificationSheetAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? 'Oui' : 'Non'}</button>)}</div></div>
-            <label className="block max-w-md"><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Numéro du livre de police (optionnel)</span><input value={values.policeBookNumber || ''} onChange={(e) => onChange({ policeBookNumber: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4" /></label>
           </div>
         )}
       </section>

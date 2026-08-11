@@ -85,11 +85,11 @@ export default function StepSummary({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SummaryField label="Adresse de la voiture" value={formattedAddress} />
+          <SummaryField label="Où se trouve la voiture actuellement" value={formattedAddress} />
           <SummaryField label="Carte grise disponible" value={values.registrationCardAvailable === false ? 'Non' : 'Oui'} />
           {values.registrationCardAvailable === false && <SummaryField label="Motif d'absence" value={missingReasons} />}
           {values.registrationCardAvailable === false && <SummaryField label="Fiche d'identification disponible" value={values.identificationSheetAvailable ? 'Oui' : 'Non'} />}
-          {values.registrationCardAvailable === false && <SummaryField label="Numéro du livre de police" value={values.policeBookNumber} />}
+          {values.registrationCardAvailable === true && <SummaryField label="Numéro du livre de police" value={values.policeBookNumber} />}
         </div>
 
         <div>
