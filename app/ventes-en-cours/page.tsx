@@ -6,22 +6,60 @@ import { useLanguage } from '../i18n';
 import { formatTimeLeft, useCurrentSales } from '../lib/currentSales';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
+const CURRENT_YEAR = new Date().getFullYear();
+const PROCEDURE_OPTIONS = ['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'];
+const GEARBOX_OPTIONS = [
+  { value: 'M', fr: 'Manuelle', en: 'Manual' },
+  { value: 'A', fr: 'Automatique', en: 'Automatic' },
+];
+const ENERGY_OPTIONS = [
+  { value: 'essence', fr: 'Essence', en: 'Petrol' },
+  { value: 'diesel', fr: 'Diesel', en: 'Diesel' },
+  { value: 'hybride', fr: 'Hybride', en: 'Hybrid' },
+  { value: 'electrique', fr: 'Électrique', en: 'Electric' },
+  { value: 'gpl', fr: 'GPL', en: 'LPG' },
+  { value: 'autre', fr: 'Autre', en: 'Other' },
+];
+
+interface SaleFilters {
+  brand: string;
+  model: string;
+  energy: string;
+  procedure: string;
+  gearbox: string;
+  yearFrom: string;
+  yearTo: string;
+  mileageFrom: string;
+  mileageTo: string;
+}
+
+const EMPTY_FILTERS: SaleFilters = { brand: '', model: '', energy: '', procedure: '', gearbox: '', yearFrom: '', yearTo: '', mileageFrom: '', mileageTo: '' };
+
 export default function CurrentSalesPage() {
   const { language, t } = useLanguage();
   const { vehicles, sessions, loading, error } = useCurrentSales();
-  const [brand, setBrand] = useState('');
-  const [year, setYear] = useState('');
-  const [mileage, setMileage] = useState('');
-  const [filters, setFilters] = useState({ brand: '', year: '', mileage: '' });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<SaleFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<SaleFilters>(EMPTY_FILTERS);
   const fr = language === 'fr';
 
   const lots = useMemo(() => vehicles.filter((lot) => {
     if (filters.brand && lot.brand !== filters.brand) return false;
-    if (filters.year && (lot.year == null || lot.year < Number(filters.year))) return false;
-    if (filters.mileage && (lot.mileage == null || lot.mileage > Number(filters.mileage))) return false;
+    if (filters.model && lot.model !== filters.model) return false;
+    if (filters.energy && lot.fuelType !== filters.energy) return false;
+    if (filters.procedure && lot.procedure !== filters.procedure) return false;
+    if (filters.gearbox && lot.gearbox !== filters.gearbox) return false;
+    if (filters.yearFrom && (lot.year == null || lot.year < Number(filters.yearFrom))) return false;
+    if (filters.yearTo && (lot.year == null || lot.year > Number(filters.yearTo))) return false;
+    if (filters.mileageFrom && (lot.mileage == null || lot.mileage < Number(filters.mileageFrom))) return false;
+    if (filters.mileageTo && (lot.mileage == null || lot.mileage > Number(filters.mileageTo))) return false;
     return true;
   }), [filters, vehicles]);
-  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand).filter(Boolean))];
+  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand).filter(Boolean))].sort();
+  const models = [...new Set(vehicles.filter((vehicle) => vehicle.brand === draftFilters.brand).map((vehicle) => vehicle.model).filter(Boolean))].sort();
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const updateDraft = (key: keyof SaleFilters, value: string) => setDraftFilters((current) => ({ ...current, [key]: value }));
+  const resetFilters = () => { setDraftFilters(EMPTY_FILTERS); setFilters(EMPTY_FILTERS); };
   const currentSession = sessions[0];
   const sessionName = currentSession?.name || (fr ? 'Aucune session ouverte' : 'No open session');
   const sessionTimeLeft = formatTimeLeft(currentSession?.endDate);
@@ -48,31 +86,31 @@ export default function CurrentSalesPage() {
       </section>
 
       <section className="relative z-2 -mt-[38px] mb-5 px-4 sm:px-10">
-        <div className="flex flex-wrap items-end gap-4 rounded-[14px] border border-[#eceadf] bg-white p-5 shadow-[0_16px_34px_rgba(19,36,60,.16)] sm:px-[26px] sm:py-[22px]">
-          <Filter label={t('home.filterBrand')} value={brand} onChange={setBrand}>
-            <option value="">{t('home.filterBrandValue')}</option>
-            {brands.map((item) => <option key={item}>{item}</option>)}
-          </Filter>
-          <Filter label={t('home.filterYear')} value={year} onChange={setYear}>
-            <option value="">{t('home.filterYearValue')}</option>
-            <option value="2020">2020 et après</option>
-            <option value="2018">2018 et après</option>
-            <option value="2015">2015 et après</option>
-          </Filter>
-          <Filter label={t('home.filterMileage')} value={mileage} onChange={setMileage}>
-            <option value="">{t('home.filterMileageValue')}</option>
-            <option value="75000">75 000 km</option>
-            <option value="100000">100 000 km</option>
-            <option value="150000">150 000 km</option>
-            <option value="200000">200 000 km</option>
-          </Filter>
-          <button
-            type="button"
-            onClick={() => setFilters({ brand, year, mileage })}
-            className="h-12 rounded-[9px] bg-[#13243c] px-[30px] text-[13px] font-bold uppercase tracking-[.03em] text-white transition hover:bg-[#1a3050]"
-          >
-            {t('home.searchButton')}
-          </button>
+        <div className="rounded-[14px] border border-[#eceadf] bg-white shadow-[0_16px_34px_rgba(19,36,60,.16)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-6">
+            <div><p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#13243c]">{fr ? 'Affiner les véhicules' : 'Refine vehicles'}</p>{activeFilterCount > 0 && <p className="mt-1 text-xs text-[#d9704f]">{activeFilterCount} {fr ? 'filtre(s) appliqué(s)' : 'active filter(s)'}</p>}</div>
+            <div className="flex gap-2">
+              {activeFilterCount > 0 && <button type="button" onClick={resetFilters} className="h-10 rounded-[8px] border border-[#dcd7cb] bg-white px-4 text-[11px] font-bold uppercase text-[#13243c] hover:bg-[#f8f7f2]">{fr ? 'Réinitialiser' : 'Reset'}</button>}
+              <button type="button" onClick={() => setFiltersOpen((open) => !open)} className="flex h-10 items-center gap-2 rounded-[8px] bg-[#13243c] px-5 text-[11px] font-bold uppercase text-white hover:bg-[#1a3050]"><span aria-hidden="true">☷</span>{filtersOpen ? (fr ? 'Fermer' : 'Close') : (fr ? 'Afficher les filtres' : 'Show filters')}</button>
+            </div>
+          </div>
+
+          {filtersOpen && <div className="border-t border-[#efece3] p-5 sm:p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <Filter label={fr ? 'Marque' : 'Brand'} value={draftFilters.brand} onChange={(value) => setDraftFilters((current) => ({ ...current, brand: value, model: '' }))}><option value="">{fr ? 'Toutes les marques' : 'All brands'}</option>{brands.map((item) => <option key={item}>{item}</option>)}</Filter>
+              <Filter label={fr ? 'Modèle' : 'Model'} value={draftFilters.model} onChange={(value) => updateDraft('model', value)} disabled={!draftFilters.brand}><option value="">{draftFilters.brand ? (fr ? 'Tous les modèles' : 'All models') : (fr ? 'Choisir une marque' : 'Choose a brand')}</option>{models.map((item) => <option key={item}>{item}</option>)}</Filter>
+              <Filter label={fr ? 'Énergie' : 'Energy'} value={draftFilters.energy} onChange={(value) => updateDraft('energy', value)}><option value="">{fr ? 'Toutes les énergies' : 'All energies'}</option>{ENERGY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
+              <Filter label={fr ? 'Procédure' : 'Procedure'} value={draftFilters.procedure} onChange={(value) => updateDraft('procedure', value)}><option value="">{fr ? 'Toutes les procédures' : 'All procedures'}</option>{PROCEDURE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</Filter>
+              <Filter label={fr ? 'Boîte de vitesse' : 'Gearbox'} value={draftFilters.gearbox} onChange={(value) => updateDraft('gearbox', value)}><option value="">{fr ? 'Toutes' : 'All'}</option>{GEARBOX_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <NumberFilter label={fr ? 'Année de' : 'Year from'} value={draftFilters.yearFrom} onChange={(value) => updateDraft('yearFrom', value)} placeholder="2015" />
+              <NumberFilter label={fr ? 'Année à' : 'Year to'} value={draftFilters.yearTo} onChange={(value) => updateDraft('yearTo', value)} placeholder={String(CURRENT_YEAR)} />
+              <NumberFilter label={fr ? 'Kilométrage de' : 'Mileage from'} value={draftFilters.mileageFrom} onChange={(value) => updateDraft('mileageFrom', value)} placeholder="0" />
+              <NumberFilter label={fr ? 'Kilométrage à' : 'Mileage to'} value={draftFilters.mileageTo} onChange={(value) => updateDraft('mileageTo', value)} placeholder="200000" />
+            </div>
+            <div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" onClick={resetFilters} className="h-11 rounded-[9px] border border-[#dcd7cb] px-5 text-xs font-bold uppercase text-[#13243c] hover:bg-[#f8f7f2]">{fr ? 'Effacer' : 'Clear'}</button><button type="button" onClick={() => { setFilters(draftFilters); setFiltersOpen(false); }} className="h-11 rounded-[9px] bg-[#d9704f] px-7 text-xs font-bold uppercase text-white hover:bg-[#c66042]">{t('home.searchButton')}</button></div>
+          </div>}
         </div>
       </section>
 
@@ -114,13 +152,17 @@ export default function CurrentSalesPage() {
   );
 }
 
-function Filter({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
+function Filter({ label, value, onChange, children, disabled = false }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode; disabled?: boolean }) {
   return (
     <label className="min-w-[170px] flex-1">
       <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[.06em] text-[#5a5e66]">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-[9px] border border-[#dcd7cb] bg-white px-3.5 text-sm font-medium text-[#5a5e66] outline-none focus:border-[#13243c]">
+      <select disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-[9px] border border-[#dcd7cb] bg-white px-3.5 text-sm font-medium text-[#5a5e66] outline-none focus:border-[#13243c] disabled:cursor-not-allowed disabled:bg-[#f1efe8] disabled:text-[#9a917d]">
         {children}
       </select>
     </label>
   );
+}
+
+function NumberFilter({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+  return <label><span className="mb-2 block text-[10px] font-semibold uppercase tracking-[.06em] text-[#5a5e66]">{label}</span><input type="number" min="0" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-12 w-full rounded-[9px] border border-[#dcd7cb] bg-white px-3.5 text-sm font-medium text-[#5a5e66] outline-none focus:border-[#13243c]" /></label>;
 }

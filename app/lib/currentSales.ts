@@ -18,6 +18,9 @@ export interface CurrentSaleVehicle {
   year: number | null;
   mileage: number | null;
   fuelType: string;
+  energyLabel: string;
+  procedure: string;
+  gearbox: string;
   bodyType: string;
   photoUrl: string | null;
   session: CurrentSaleSession | null;
