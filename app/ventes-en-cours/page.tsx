@@ -27,13 +27,14 @@ interface SaleFilters {
   energy: string;
   procedure: string;
   gearbox: string;
+  registrationCardAvailable: string;
   yearFrom: string;
   yearTo: string;
   mileageFrom: string;
   mileageTo: string;
 }
 
-const EMPTY_FILTERS: SaleFilters = { brand: '', model: '', energy: '', procedure: '', gearbox: '', yearFrom: '', yearTo: '', mileageFrom: '', mileageTo: '' };
+const EMPTY_FILTERS: SaleFilters = { brand: '', model: '', energy: '', procedure: '', gearbox: '', registrationCardAvailable: '', yearFrom: '', yearTo: '', mileageFrom: '', mileageTo: '' };
 
 export default function CurrentSalesPage() {
   const { language, t } = useLanguage();
@@ -49,6 +50,7 @@ export default function CurrentSalesPage() {
     if (filters.energy && lot.fuelType !== filters.energy) return false;
     if (filters.procedure && lot.procedure !== filters.procedure) return false;
     if (filters.gearbox && lot.gearbox !== filters.gearbox) return false;
+    if (filters.registrationCardAvailable && String(lot.registrationCardAvailable) !== filters.registrationCardAvailable) return false;
     if (filters.yearFrom && (lot.year == null || lot.year < Number(filters.yearFrom))) return false;
     if (filters.yearTo && (lot.year == null || lot.year > Number(filters.yearTo))) return false;
     if (filters.mileageFrom && (lot.mileage == null || lot.mileage < Number(filters.mileageFrom))) return false;
@@ -102,6 +104,7 @@ export default function CurrentSalesPage() {
               <Filter label={fr ? 'Énergie' : 'Energy'} value={draftFilters.energy} onChange={(value) => updateDraft('energy', value)}><option value="">{fr ? 'Toutes les énergies' : 'All energies'}</option>{ENERGY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
               <Filter label={fr ? 'Procédure' : 'Procedure'} value={draftFilters.procedure} onChange={(value) => updateDraft('procedure', value)}><option value="">{fr ? 'Toutes les procédures' : 'All procedures'}</option>{PROCEDURE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</Filter>
               <Filter label={fr ? 'Boîte de vitesse' : 'Gearbox'} value={draftFilters.gearbox} onChange={(value) => updateDraft('gearbox', value)}><option value="">{fr ? 'Toutes' : 'All'}</option>{GEARBOX_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
+              <Filter label={fr ? 'Carte grise disponible' : 'Registration document available'} value={draftFilters.registrationCardAvailable} onChange={(value) => updateDraft('registrationCardAvailable', value)}><option value="">{fr ? 'Toutes' : 'All'}</option><option value="true">{fr ? 'Oui' : 'Yes'}</option><option value="false">{fr ? 'Non' : 'No'}</option></Filter>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <NumberFilter label={fr ? 'Année de' : 'Year from'} value={draftFilters.yearFrom} onChange={(value) => updateDraft('yearFrom', value)} placeholder="2015" />

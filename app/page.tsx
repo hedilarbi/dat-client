@@ -57,12 +57,6 @@ export default function Home() {
     }
   }, [language, router]);
 
-  const searchFilters = [
-    { label: t('home.filterBrand'), value: t('home.filterBrandValue') },
-    { label: t('home.filterYear'), value: t('home.filterYearValue') },
-    { label: t('home.filterMileage'), value: t('home.filterMileageValue') },
-  ];
-
   const trustPoints = [
     { icon: <CheckIcon />, label: t('home.trustVerified') },
     { icon: <LockIcon />, label: t('home.trustPayment') },
@@ -107,25 +101,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="px-4 sm:px-[40px] -mt-8 sm:-mt-[42px] relative z-[2] mb-10 sm:mb-[52px]">
-        <div className="bg-white border border-[#eceadf] rounded-[14px] shadow-[0_20px_44px_rgba(8,15,27,.22)] p-5 sm:p-[22px_26px] flex flex-wrap items-end gap-4">
-          {searchFilters.map((filt, i) => (
-            <div key={i} className="flex-1 min-w-[170px]">
-              <div className="font-semibold text-[10px] text-[#5a5e66] uppercase tracking-[0.06em] mb-2">{filt.label}</div>
-              <div className="h-12 border border-[#dcd7cb] rounded-[9px] flex items-center justify-between px-3.5 font-medium text-sm text-[#5a5e66]">
-                <span>{filt.value}</span><span className="text-[#5a5e66] text-[11px]">▾</span>
-              </div>
-            </div>
-          ))}
-          <button type="button" className="h-12 px-8 rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[13px] uppercase tracking-[0.03em] whitespace-nowrap transition cursor-pointer">
-            {t('home.searchButton')}
-          </button>
-        </div>
-      </div>
-
       {/* Brands */}
-      <div className="px-4 sm:px-[40px] pb-6">
+      <div className="px-4 sm:px-[40px] pt-10 sm:pt-12 pb-6">
         <div className="font-semibold text-[11px] tracking-[0.2em] uppercase text-[#a3987f] mb-2.5">{t('home.brandsEyebrow')}</div>
         <div className="font-bold text-[26px] sm:text-[30px] uppercase text-[#13243c] mb-5 font-heading">{t('home.brandsTitle')}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">

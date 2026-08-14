@@ -21,6 +21,7 @@ export interface CurrentSaleVehicle {
   energyLabel: string;
   procedure: string;
   gearbox: string;
+  registrationCardAvailable: boolean | null;
   bodyType: string;
   photoUrl: string | null;
   session: CurrentSaleSession | null;
