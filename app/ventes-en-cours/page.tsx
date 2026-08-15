@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLanguage } from '../i18n';
 import { formatTimeLeft, useCurrentSales } from '../lib/currentSales';
+import vehicleCatalog from '../lib/vehicleCatalog.json';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const CURRENT_YEAR = new Date().getFullYear();
@@ -57,8 +58,8 @@ export default function CurrentSalesPage() {
     if (filters.mileageTo && (lot.mileage == null || lot.mileage > Number(filters.mileageTo))) return false;
     return true;
   }), [filters, vehicles]);
-  const brands = [...new Set(vehicles.map((vehicle) => vehicle.brand).filter(Boolean))].sort();
-  const models = [...new Set(vehicles.filter((vehicle) => vehicle.brand === draftFilters.brand).map((vehicle) => vehicle.model).filter(Boolean))].sort();
+  const brands = vehicleCatalog.map((entry) => entry.brand);
+  const models = vehicleCatalog.find((entry) => entry.brand === draftFilters.brand)?.models || [];
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
   const updateDraft = (key: keyof SaleFilters, value: string) => setDraftFilters((current) => ({ ...current, [key]: value }));
   const resetFilters = () => { setDraftFilters(EMPTY_FILTERS); setFilters(EMPTY_FILTERS); };
