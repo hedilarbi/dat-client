@@ -169,7 +169,7 @@ export default function WonSaleDetailPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role !== 'acheteur' || user.status !== 'valide') return;
+    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     apiRequest(`/sales/${params.id}`)
       .then((res) => { setSale(res.sale); setError(''); })
       .catch((requestError) => {
@@ -808,7 +808,7 @@ const handleSubmitCertificate = async () => {
 
             {renderStepNumber === 5 && (
               <>
-                {!isHistorical && sale.certificate.lastRejection && (
+                {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'seller' && (
                   <div className="mb-4 rounded-[10px] border-l-4 border-[#9a3b2f] bg-[#fdece4] p-3.5">
                     <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#9a3b2f]">
                       {t('saleDetail.rejectedTitle')}

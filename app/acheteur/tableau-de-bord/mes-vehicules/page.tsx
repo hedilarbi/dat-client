@@ -81,7 +81,7 @@ export default function WonSalesPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role === 'acheteur' && user.status === 'valide') fetchSales();
+    if (user?.role === 'acheteur' && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
   }, [fetchSales, user]);
 
   if (userLoading || !user) {

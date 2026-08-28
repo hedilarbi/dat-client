@@ -106,7 +106,7 @@ export default function SellerSaleDetailPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role !== 'vendeur' || user.status !== 'valide') return;
+    if (user?.role !== 'vendeur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     apiRequest(`/sales/seller/${params.id}`)
       .then((res) => { setSale(res.sale); setError(''); })
       .catch((requestError) => {

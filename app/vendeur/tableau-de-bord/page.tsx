@@ -163,7 +163,7 @@ export default function VendeurTableauDeBordPage() {
   }, [userLoading, user, router, language]);
 
   useEffect(() => {
-    if (user?.role !== 'vendeur' || user.status !== 'valide') return;
+    if (user?.role !== 'vendeur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     
     Promise.all([
       apiRequest('/sales/seller'),
@@ -334,9 +334,7 @@ export default function VendeurTableauDeBordPage() {
     ? user.rejections[user.rejections.length - 1] as Rejection
     : null;
 
-  if (user.status === 'suspendu') {
-    return <SuspendedNotice />;
-  }
+
 
   if (user.status === 'brouillon' && user.emailVerified) {
     return (
@@ -441,7 +439,7 @@ export default function VendeurTableauDeBordPage() {
     );
   }
 
-  if (user.status !== 'valide') {
+  if (user.status !== 'valide' && user.status !== 'suspendu') {
     return <UnderReviewNotice />;
   }
 
@@ -478,16 +476,23 @@ export default function VendeurTableauDeBordPage() {
 
   return (
     <div className="flex-1 w-full p-6 sm:p-[32px_40px_44px] text-black font-sans bg-white select-none">
+      {user.status === 'suspendu' && (
+        <div className="mb-6 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8">
+          <SuspendedNotice />
+        </div>
+      )}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[28px] sm:text-[36px] font-bold font-heading uppercase text-[#13243c]">
           {t('vendeurDashboard.title')}
         </h1>
-        <Link
-          href={localizedPath('/vendeur/dossiers/nouveau', language)}
-          className="h-11 flex items-center justify-center rounded-[9px] bg-[#d9704f] px-6 text-[13px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#c26040]"
-        >
-          {t('vehicleDossier.createButton')}
-        </Link>
+        {user.status !== 'suspendu' && (
+          <Link
+            href={localizedPath('/vendeur/dossiers/nouveau', language)}
+            className="h-11 flex items-center justify-center rounded-[9px] bg-[#d9704f] px-6 text-[13px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#c26040]"
+          >
+            {t('vehicleDossier.createButton')}
+          </Link>
+        )}
       </div>
 
       {!user.stampUrl && <StampReminderBanner />}

@@ -23,7 +23,7 @@ export default function BuyerDashboardLayout({ children }: { children: React.Rea
 
   const navItems = [
     { href: '/acheteur/tableau-de-bord', label: 'Tableau de bord', exact: true },
-    { href: '/acheteur/tableau-de-bord/mes-offres', label: 'Mes offres', exact: false },
+    ...(user.status !== 'suspendu' ? [{ href: '/acheteur/tableau-de-bord/mes-offres', label: 'Mes offres', exact: false }] : []),
     { href: '/acheteur/tableau-de-bord/mes-vehicules', label: 'Mes véhicules', exact: false },
     { href: '/acheteur/tableau-de-bord/profil', label: 'Mon profil', exact: false },
     { href: '/acheteur/tableau-de-bord/support', label: 'Support', exact: false },

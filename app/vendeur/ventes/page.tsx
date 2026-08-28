@@ -80,7 +80,7 @@ export default function SellerSalesPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role === 'vendeur' && user.status === 'valide') fetchSales();
+    if (user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
   }, [fetchSales, user]);
 
   // Les comptes à rebours de clôture s'égrènent à la seconde

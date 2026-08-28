@@ -161,6 +161,10 @@ export function SuspendedNotice() {
             </div>
           </div>
         )}
+
+        <div className="mt-4 pt-3 border-t border-red-200 text-xs text-red-700 font-medium">
+          ℹ️ Vos ventes déjà en cours (étape 3 et supérieures) restent accessibles et peuvent être finalisées normalement.
+        </div>
       </div>
     </div>
   );

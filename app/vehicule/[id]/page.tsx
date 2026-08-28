@@ -310,7 +310,11 @@ export default function VehicleDetailPage() {
               </>
             )}
 
-            {user && user.status !== 'valide' && (
+            {user && user.status === 'suspendu' && (
+              <p className="text-center text-sm font-semibold leading-6 text-red-600 bg-red-50 p-3 rounded-[8px] border border-red-200">{t('bid.accountSuspended')}</p>
+            )}
+
+            {user && user.status !== 'valide' && user.status !== 'suspendu' && (
               <p className="text-center text-sm leading-6 text-[#5a5e66]">{t('bid.accountPending')}</p>
             )}
 

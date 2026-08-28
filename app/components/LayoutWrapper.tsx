@@ -411,7 +411,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // mais sans attendre la vérification de session (son contenu ne dépend pas de l'utilisateur).
   const isHomePage = currentPath === '/';
   const homePath = localizedPath('/', language);
-  const isValidatedSeller = user?.role === 'vendeur' && user.status === 'valide';
+  const isValidatedSeller = user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu');
 
   const isSellerSpacePage = currentPath.startsWith('/vendeur/') || currentPath === '/sessions';
 
@@ -429,7 +429,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   }, [setLanguage, user?.language]);
 
   useEffect(() => {
-    if (!user || user.role === 'admin' || user.status === 'valide') return;
+    if (!user || user.role === 'admin' || user.status === 'valide' || user.status === 'suspendu') return;
     // Hors de son espace, un compte en attente navigue librement : le header ne doit jamais
     // renvoyer vers le profil.
     if (!isOwnSpacePage || isAuthPage) return;
@@ -476,7 +476,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // Écran d'attente pendant que la redirection ci-dessus s'applique. Même périmètre
   // exactement : sinon une page publique afficherait un chargement qui ne finit jamais,
   // puisqu'aucune redirection ne viendrait le remplacer.
-  if (user && user.role !== 'admin' && user.status !== 'valide' && isOwnSpacePage && !isAuthPage) {
+  if (user && user.role !== 'admin' && user.status !== 'valide' && user.status !== 'suspendu' && isOwnSpacePage && !isAuthPage) {
     const profilPath = `${roleSpacePrefix}tableau-de-bord/profil`;
     const supportPath = `${roleSpacePrefix}tableau-de-bord/support`;
 

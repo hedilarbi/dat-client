@@ -70,6 +70,13 @@ export default function MyOffersPage() {
     }
   }, [user, router, language]);
 
+  // Un acheteur suspendu n'a pas accès à ses offres : renvoi vers le tableau de bord
+  useEffect(() => {
+    if (user && user.status === 'suspendu') {
+      router.replace(localizedPath('/acheteur/tableau-de-bord', language));
+    }
+  }, [user, router, language]);
+
   useEffect(() => {
     if (user?.role === 'acheteur' && user.status === 'valide') fetchOffers();
   }, [fetchOffers, user]);
@@ -96,11 +103,11 @@ export default function MyOffersPage() {
     }
   };
 
-  if (userLoading || !user) {
+  if (userLoading || !user || user.status === 'suspendu') {
     return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('offers.loading')}</div>;
   }
 
-  if (user.status !== 'valide' && user.status !== 'suspendu') {
+  if (user.status !== 'valide') {
     return <UnderReviewNotice />;
   }
 

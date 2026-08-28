@@ -142,7 +142,7 @@ export default function ProfilPage() {
   // Le composant est désormais accessible aux deux rôles (acheteur et vendeur)
 
   useEffect(() => {
-    if (user?.role !== 'acheteur' || user.status !== 'valide') return;
+    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     apiRequest('/offers/mine')
       .then((res) => {
         setOngoingOffers(res.ongoing || []);
@@ -414,7 +414,7 @@ export default function ProfilPage() {
     );
   }
 
-  if (user.status !== 'valide') {
+  if (user.status !== 'valide' && user.status !== 'suspendu') {
     return <UnderReviewNotice />;
   }
 

@@ -29,12 +29,16 @@ export default function BuyerDashboardPage() {
   const [offersLoaded, setOffersLoaded] = useState(false);
 
   useEffect(() => {
-    if (user?.role !== 'acheteur' || user.status !== 'valide') return;
+    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     
-    Promise.all([
-      apiRequest('/offers/mine'),
-      apiRequest('/sales/mine')
-    ])
+    const promises: Promise<any>[] = [
+      user.status === 'valide'
+        ? apiRequest('/offers/mine').catch(() => ({ ongoing: [], past: [] }))
+        : Promise.resolve({ ongoing: [], past: [] }),
+      apiRequest('/sales/mine').catch(() => ({ ongoing: [], closed: [] }))
+    ];
+
+    Promise.all(promises)
       .then(([offersRes, salesRes]) => {
         setOngoingOffers(offersRes.ongoing || []);
         setPastOffersCount((offersRes.past || []).length);
@@ -71,7 +75,9 @@ export default function BuyerDashboardPage() {
 
       {/* Vibrant KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label={t('profil.offersInProgress')} value={ongoingOffers.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
+        {user.status !== 'suspendu' && (
+          <StatCard label={t('profil.offersInProgress')} value={ongoingOffers.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
+        )}
         <StatCard label={t('profil.offersWon')} value={ongoingSales.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
         <StatCard label={t('profil.commissionDue')} value={ongoingSales.filter(s => s.currentStep === 1).length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
         <StatCard label={t('profil.salesFinalized')} value={closedSalesCount} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
@@ -142,57 +148,61 @@ export default function BuyerDashboardPage() {
         </div>
       )}
 
-      <div className="mb-4">
-        <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em]">
-          Dernières offres
-        </h2>
-        {offersLoaded && (
-          <div className="mt-1 text-[13px] text-[#5a5e66]">
-            {t('profil.myOffersSummary', { ongoing: String(ongoingOffers.length), past: String(pastOffersCount) })}
+      {user.status !== 'suspendu' && (
+        <>
+          <div className="mb-4">
+            <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em]">
+              Dernières offres
+            </h2>
+            {offersLoaded && (
+              <div className="mt-1 text-[13px] text-[#5a5e66]">
+                {t('profil.myOffersSummary', { ongoing: String(ongoingOffers.length), past: String(pastOffersCount) })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div className="border border-[#eceadf] rounded-[12px] bg-white overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
-            <div className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] bg-[#f8f9fa] border-b border-[#eceadf] text-[12px] font-bold uppercase tracking-[0.05em] text-[#111827]">
-              <div>{t('profil.vehicle')}</div>
-              <div>{t('profil.session')}</div>
-              <div>{t('profil.amountOffered')}</div>
-              <div>{t('offers.totalIfWon')}</div>
-              <div></div>
-            </div>
-
-            <div className="divide-y divide-[#eceadf]">
-              {!offersLoaded && (
-                <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.loading')}</div>
-              )}
-              {offersLoaded && ongoingOffers.length === 0 && (
-                <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.emptyOngoing')}</div>
-              )}
-              {ongoingOffers.slice(0, 3).map((row) => (
-                <div key={row.id} className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] items-center text-[13px] text-[#111827] hover:bg-[#f8f9fa] transition-colors">
-                  <div className="font-bold text-[14px] text-[#13243c]">
-                    {[row.vehicle?.brand, row.vehicle?.model].filter(Boolean).join(' ') || '—'}
-                  </div>
-                  <div className="text-[#4c5058]">{row.session?.name || '—'}</div>
-                  <div className="text-[#4c5058] font-semibold">{formatEuros(row.amount, language)}</div>
-                  <div className="text-[#4c5058] font-semibold">{formatEuros(row.fees.total, language)}</div>
-                  <div className="text-right">
-                    <Link 
-                      href={localizedPath('/acheteur/tableau-de-bord/mes-offres', language)} 
-                      className="btn btn-primary"
-                    >
-                      {t('profil.view')}
-                    </Link>
-                  </div>
+          <div className="border border-[#eceadf] rounded-[12px] bg-white overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <div className="min-w-[640px]">
+                <div className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] bg-[#f8f9fa] border-b border-[#eceadf] text-[12px] font-bold uppercase tracking-[0.05em] text-[#111827]">
+                  <div>{t('profil.vehicle')}</div>
+                  <div>{t('profil.session')}</div>
+                  <div>{t('profil.amountOffered')}</div>
+                  <div>{t('offers.totalIfWon')}</div>
+                  <div></div>
                 </div>
-              ))}
+
+                <div className="divide-y divide-[#eceadf]">
+                  {!offersLoaded && (
+                    <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.loading')}</div>
+                  )}
+                  {offersLoaded && ongoingOffers.length === 0 && (
+                    <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.emptyOngoing')}</div>
+                  )}
+                  {ongoingOffers.slice(0, 3).map((row) => (
+                    <div key={row.id} className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] items-center text-[13px] text-[#111827] hover:bg-[#f8f9fa] transition-colors">
+                      <div className="font-bold text-[14px] text-[#13243c]">
+                        {[row.vehicle?.brand, row.vehicle?.model].filter(Boolean).join(' ') || '—'}
+                      </div>
+                      <div className="text-[#4c5058]">{row.session?.name || '—'}</div>
+                      <div className="text-[#4c5058] font-semibold">{formatEuros(row.amount, language)}</div>
+                      <div className="text-[#4c5058] font-semibold">{formatEuros(row.fees.total, language)}</div>
+                      <div className="text-right">
+                        <Link 
+                          href={localizedPath('/acheteur/tableau-de-bord/mes-offres', language)} 
+                          className="btn btn-primary"
+                        >
+                          {t('profil.view')}
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
