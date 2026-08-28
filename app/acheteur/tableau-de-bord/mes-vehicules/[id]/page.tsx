@@ -37,7 +37,7 @@ interface WonSaleDetail {
     sellerSignedUrl: string | null; sellerSignedAt: string | null;
     signedUrl: string | null; signedAt: string | null;
     validatedAt: string | null;
-    lastRejection: { reason: string; comment?: string; rejectedAt: string } | null;
+    lastRejection: { reason: string; comment?: string; rejectedAt?: string; rejectedBy?: string; url?: string; createdAt?: string } | null;
     rejectionCount: number;
   };
   handover: { declarationUrl: string | null; generatedAt: string | null; otp: string | null; confirmedAt: string | null };
