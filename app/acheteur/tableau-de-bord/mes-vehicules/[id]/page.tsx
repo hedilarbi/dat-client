@@ -868,7 +868,7 @@ const handleSubmitCertificate = async () => {
                   >
                     <span className="text-sm font-bold text-[#b91c1c]">↓ Télécharger votre certificat refusé</span>
                     <span className="text-[11px] text-[#b91c1c]">
-                      Refusé le {formatDate(sale.certificate.lastRejection.createdAt)}
+                      Refusé le {sale.certificate.lastRejection.createdAt && formatDate(sale.certificate.lastRejection.createdAt)}
                     </span>
                   </a>
                 )}
