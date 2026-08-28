@@ -19,13 +19,13 @@ export default function SellWithUsPage() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href={localizedPath(getRoleLoginPath('vendeur'), language)}
-              className="rounded-lg border border-white/70 px-7 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-white transition hover:bg-white hover:text-[#13243c]"
+              className="btn btn-secondary"
             >
               {t('sell.login')}
             </Link>
             <Link
               href={localizedPath(getRoleRegisterPath('vendeur'), language)}
-              className="rounded-lg bg-[#d9704f] px-7 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c26040]"
+              className="btn btn-accent"
             >
               {t('sell.register')}
             </Link>
@@ -47,8 +47,8 @@ export default function SellWithUsPage() {
         <h2 className="font-heading text-3xl font-bold uppercase">{t('sell.actionsTitle')}</h2>
         <p className="mx-auto mt-3 max-w-[620px] text-sm leading-6 text-[#5a5e66]">{t('sell.actionsText')}</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href={localizedPath(getRoleRegisterPath('vendeur'), language)} className="rounded-lg bg-[#d9704f] px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#c26040]">{t('sell.register')}</Link>
-          <Link href={localizedPath(getRoleLoginPath('vendeur'), language)} className="rounded-lg border border-[#13243c] px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-[#13243c] transition hover:bg-[#13243c] hover:text-white">{t('sell.login')}</Link>
+          <Link href={localizedPath(getRoleRegisterPath('vendeur'), language)} className="btn btn-accent">{t('sell.register')}</Link>
+          <Link href={localizedPath(getRoleLoginPath('vendeur'), language)} className="btn btn-primary">{t('sell.login')}</Link>
         </div>
       </section>
     </div>

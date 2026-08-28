@@ -10,8 +10,8 @@ import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
 import Link from 'next/link';
 
-function getBuyerReturnPath(role: 'acheteur' | 'vendeur') {
-  if (role !== 'acheteur' || typeof window === 'undefined') return null;
+function getReturnPath() {
+  if (typeof window === 'undefined') return null;
 
   const candidate = new URLSearchParams(window.location.search).get('next');
   if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) return null;
@@ -40,7 +40,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
     if (!user) return;
     const nextPath = user.status === 'brouillon' && user.emailVerified
       ? localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language)
-      : getBuyerReturnPath(role) || localizedPath(getRoleHomePath(user.role), language);
+      : getReturnPath() || localizedPath(getRoleHomePath(user.role), language);
     router.replace(nextPath);
   }, [user, router, language, role]);
 
@@ -64,7 +64,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
 
       const nextPath = res.user.status === 'brouillon' && res.user.emailVerified
         ? localizedPath(`${getRoleRegisterPath(res.user.role)}?step=documents`, language)
-        : getBuyerReturnPath(role) || localizedPath(getRoleHomePath(res.user.role), language);
+        : getReturnPath() || localizedPath(getRoleHomePath(res.user.role), language);
 
       setTimeout(() => {
         router.push(nextPath);

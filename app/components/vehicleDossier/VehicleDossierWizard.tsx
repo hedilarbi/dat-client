@@ -207,7 +207,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
         <div className="mb-[22px]">
           <Link
             href={localizedPath('/vendeur/dossiers', language)}
-            className="inline-flex items-center gap-1.5 font-semibold text-[12px] leading-none tracking-[0.05em] text-[#4c5058] hover:text-[#13243c] mb-2.5 transition-colors"
+            className="btn-back mb-3"
           >
             <span className="text-[14px]">←</span>
             <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? 'Mes dossiers' : `Mes dossiers · ${subtitle}`}</span>
@@ -358,7 +358,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
             type="button"
             onClick={handleSaveDraft}
             disabled={savingDraft || submitting}
-            className="h-[48px] px-[26px] rounded-[9px] border border-[#dcd7cb] text-[#13243c] font-semibold text-[14px] leading-[48px] hover:bg-gray-50 transition disabled:opacity-50 flex items-center gap-2"
+            className="btn btn-secondary leading-[48px] disabled:opacity-50 gap-2"
           >
             {savingDraft && <Spinner />}
             Enregistrer le brouillon
@@ -370,7 +370,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
             <button
               type="button"
               onClick={handleNextClick}
-              className="h-[48px] px-[30px] rounded-[9px] bg-[#13243c] hover:bg-[#1a3050] text-white font-bold text-[14px] leading-[48px] uppercase tracking-[0.03em] transition shadow-sm"
+              className="btn btn-primary leading-[48px]"
             >
               Continuer
             </button>
@@ -379,7 +379,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
               type="button"
               onClick={handleSubmitFinal}
               disabled={submitting || savingDraft}
-              className="h-[48px] px-[32px] rounded-[9px] bg-[#13243c] hover:bg-[#1a3050] text-white font-bold text-[14px] leading-[48px] uppercase tracking-[0.03em] transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+              className="btn btn-primary leading-[48px] disabled:opacity-50 gap-2"
             >
               {submitting && <Spinner />}
               Soumettre pour validation

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
-import { getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
+import { getRoleHomePath, getRoleProfilePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
 import PasswordInput from '../components/PasswordInput';
 import OtpCodeInput from '../components/OtpCodeInput';
 import Alert from '../components/Alert';
@@ -15,10 +15,11 @@ import DocumentUploadRow from '../components/DocumentUploadRow';
 import { countries } from '../lib/countries';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
-type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib';
+type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib' | 'stamp';
 
-const SIREN_REGEX = /^\d{9}$/;
-const isValidSiren = (value: string) => SIREN_REGEX.test(value.replace(/\s/g, ''));
+// SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
+const SIRET_REGEX = /^\d{14}$/;
+const isValidSiret = (value: string) => SIRET_REGEX.test(value.replace(/\s/g, ''));
 
 export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const router = useRouter();
@@ -49,8 +50,10 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('France');
   const [postalCode, setPostalCode] = useState('');
-  const [kbisNumber, setKbisNumber] = useState('');
+  const [siret, setSiret] = useState('');
   const [kbisUrl, setKbisUrl] = useState('');
+  const [stampFile, setStampFile] = useState<File | null>(null);
+  const [stampUrl, setStampUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
   const [kbisFile, setKbisFile] = useState<File | null>(null);
@@ -114,8 +117,9 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setCity(user.address?.city || '');
     setCountry(user.address?.country || 'France');
     setPostalCode(user.address?.postalCode || '');
-    setKbisNumber(user.kbisNumber || '');
+    setSiret(user.siret || '');
     setKbisUrl(user.kbisUrl || '');
+    setStampUrl(user.stampUrl || '');
     setCinRectoUrl(user.cinRectoUrl || '');
     setCinVersoUrl(user.cinVersoUrl || '');
     setVhuNumber(user.vhuNumber || '');
@@ -278,13 +282,19 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       setRibFile(file);
       setRibUrl('');
     }
+    if (docType === 'stamp') {
+      setStampFile(file);
+      setStampUrl('');
+    }
   };
 
   const uploadFile = async (file: File, docType: DocumentType) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch('/api/upload', {
+    // Le tampon passe par un endpoint dédié : le serveur détoure la photo pour en faire
+    // un PNG à fond transparent avant de la stocker.
+    const res = await fetch(docType === 'stamp' ? '/api/upload/stamp' : '/api/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -320,23 +330,26 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setUploading('documents');
 
     try {
-      const [nextKbisUrl, nextCinRectoUrl, nextCinVersoUrl, nextRibUrl] = await Promise.all([
+      const [nextKbisUrl, nextCinRectoUrl, nextCinVersoUrl, nextRibUrl, nextStampUrl] = await Promise.all([
         kbisFile ? uploadFile(kbisFile, 'kbis') : Promise.resolve(kbisUrl),
         cinRectoFile ? uploadFile(cinRectoFile, 'cinRecto') : Promise.resolve(cinRectoUrl),
         cinVersoFile ? uploadFile(cinVersoFile, 'cinVerso') : Promise.resolve(cinVersoUrl),
         includeRib && ribFile ? uploadFile(ribFile, 'rib') : Promise.resolve(ribUrl),
+        stampFile ? uploadFile(stampFile, 'stamp') : Promise.resolve(stampUrl),
       ]);
 
       setKbisUrl(nextKbisUrl);
       setCinRectoUrl(nextCinRectoUrl);
       setCinVersoUrl(nextCinVersoUrl);
       if (includeRib) setRibUrl(nextRibUrl);
+      setStampUrl(nextStampUrl);
 
       return {
         kbisUrl: nextKbisUrl,
         cinRectoUrl: nextCinRectoUrl,
         cinVersoUrl: nextCinVersoUrl,
         ribUrl: nextRibUrl,
+        stampUrl: nextStampUrl,
       };
     } finally {
       setUploading(null);
@@ -349,8 +362,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
     setError('');
     setMessage('');
-    if (!isValidSiren(kbisNumber)) {
-      setError(t('register.sirenInvalid'));
+    if (!isValidSiret(siret)) {
+      setError(t('register.siretInvalid'));
       return;
     }
 
@@ -372,17 +385,18 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
         method: 'POST',
         body: JSON.stringify({
           address: { street, city, country, postalCode },
-          kbisNumber,
+          siret,
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
+          stampUrl: uploadedDocuments.stampUrl || undefined,
         }),
       });
 
       setMessage(t('register.completeBuyer'));
       await refreshProfile();
       setTimeout(() => {
-        router.push(localizedPath('/profil', language));
+        router.push(localizedPath(getRoleProfilePath('acheteur'), language));
       }, 1500);
     } catch (err: any) {
       setError(err.message || t('register.submitError'));
@@ -405,10 +419,11 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
         method: 'POST',
         body: JSON.stringify({
           address: { street, city, country, postalCode },
-          kbisNumber,
+          siret,
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
+          stampUrl: uploadedDocuments.stampUrl || undefined,
           vhuNumber: vhuNumber || undefined,
           bankInfo: { bankName, accountHolder, iban, bic, ribUrl: uploadedDocuments.ribUrl },
         }),
@@ -613,7 +628,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             <button
               type="submit"
               disabled={loading}
-              className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
+              className="btn btn-primary disabled:opacity-50 gap-2"
             >
               {loading && <Spinner />}
               {loading ? t('register.validating') : t('register.continue')}
@@ -724,14 +739,14 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.kbisNumber')}</label>
+            <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.siret')}</label>
             <input
               required
               type="text"
-              value={kbisNumber}
-              onChange={e => setKbisNumber(e.target.value)}
+              value={siret}
+              onChange={e => setSiret(e.target.value)}
               className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
-              placeholder={t('register.kbisNumberPlaceholder')}
+              placeholder={t('register.siretPlaceholder')}
             />
           </div>
 
@@ -780,6 +795,19 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               onChange={e => handleFileSelection(e, 'cinVerso')}
               selectedLabel={t('register.selected')}
             />
+
+            {/* Tampon de l'entreprise — facultatif */}
+            <div>
+              <DocumentUploadRow
+                label={t('register.stampLabel')}
+                accept="image/*"
+                file={stampFile}
+                existingUrl={stampUrl}
+                onChange={e => handleFileSelection(e, 'stamp')}
+                selectedLabel={t('register.selected')}
+              />
+              <div className="text-[12px] text-[#5a5e66] mt-2">{t('register.stampHint')}</div>
+            </div>
           </div>
 
           <div className="pt-6 border-t border-[#efece3] flex justify-between items-center">
@@ -793,8 +821,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
             <button
               type="submit"
-              disabled={loading || uploading !== null || !kbisNumber || !hasKbisDocument || !hasCinRectoDocument || !hasCinVersoDocument || !street || !city || !postalCode}
-              className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
+              disabled={loading || uploading !== null || !siret || !hasKbisDocument || !hasCinRectoDocument || !hasCinVersoDocument || !street || !city || !postalCode}
+              className="btn btn-primary disabled:opacity-50 gap-2"
             >
               {(uploading || loading) && role !== 'vendeur' && <Spinner />}
               {role === 'vendeur' ? t('register.continue') : (uploading ? t('register.uploadingDocuments') : loading ? t('register.submitting2') : t('register.finishRegistration'))}
@@ -896,7 +924,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             <button
               type="submit"
               disabled={loading || uploading !== null || !hasRibDocument || !bankName || !accountHolder || !iban || !bic}
-              className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2"
+              className="btn btn-primary disabled:opacity-50 gap-2"
             >
               {(uploading || loading) && <Spinner />}
               {uploading ? t('register.uploadingDocuments') : loading ? t('register.submitting2') : t('register.finishRegistration')}

@@ -79,9 +79,9 @@ export default function ForgotPasswordPage() {
         </button>
 
         <div className="text-center mt-6">
-          <Link href={localizedPath('/login', language)} className="text-[13px] font-semibold text-[#d9704f] hover:underline">
-            {t('forgotPassword.backToLogin')}
-          </Link>
+            <Link href={localizedPath('/login', language)} className="btn-back mt-4">
+              {t('forgotPassword.backToLogin')}
+            </Link>
         </div>
       </form>
     </div>

@@ -19,7 +19,7 @@ export function DraftPendingNotice({ onResume }: DraftPendingNoticeProps) {
       <button
         type="button"
         onClick={onResume}
-        className="h-12 px-8 bg-[#13243c] hover:bg-slate-800 text-white font-bold rounded-[9px] uppercase tracking-[0.03em] transition select-none cursor-pointer"
+        className="btn btn-primary"
       >
         {t('notice.draftResume')}
       </button>
@@ -81,6 +81,87 @@ export function RejectionReasonsBox({ title, intro, rejection, footer }: Rejecti
         </div>
       )}
       {footer && <p className="text-xs text-red-700 mt-4">{footer}</p>}
+    </div>
+  );
+}
+
+import Link from 'next/link';
+import { useUser } from './LayoutWrapper';
+import PendingCommissionCheckout from './PendingCommissionCheckout';
+import { formatEuros } from '../lib/format';
+import { localizedPath } from '../i18n';
+
+export function SuspendedNotice() {
+  const { user } = useUser();
+  const { language } = useLanguage();
+  const [checkoutOpen, setCheckoutOpen] = React.useState(false);
+
+  const supportPath = localizedPath(
+    user?.role === 'vendeur' ? '/vendeur/tableau-de-bord/support' : '/acheteur/tableau-de-bord/support',
+    language
+  );
+
+  return (
+    <div className="flex-1 w-full p-6 sm:p-12 font-sans bg-white">
+      <div className="max-w-2xl mx-auto rounded-[16px] border border-red-200 bg-red-50 p-6 sm:p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-[48px] h-[48px] rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl font-bold shrink-0">
+            ⚠️
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-red-800 uppercase tracking-wider font-heading">
+              Compte suspendu
+            </h2>
+            <p className="text-xs text-red-600">
+              L'accès à la plateforme est temporairement restreint.
+            </p>
+          </div>
+        </div>
+
+        {user?.pendingCommission ? (
+          <div className="space-y-4">
+            <p className="text-sm text-red-800 leading-relaxed">
+              Votre compte a été suspendu suite au dépassement du délai de procédure. Pour réactiver votre compte et débloquer vos accès, vous devez régler les frais de dossier d'un montant de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.
+            </p>
+
+            {checkoutOpen ? (
+              <div className="mt-4 bg-white p-4 rounded-xl border border-red-200 text-left">
+                <PendingCommissionCheckout onCancel={() => setCheckoutOpen(false)} />
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCheckoutOpen(true)}
+                  className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] cursor-pointer"
+                >
+                  💳 Régler les frais et réactiver
+                </button>
+                <Link
+                  href={supportPath}
+                  className="btn bg-white text-red-800 border-red-300 hover:bg-red-100 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] text-center"
+                >
+                  💬 Contacter le Support
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-red-800 leading-relaxed">
+              Votre compte a été suspendu par l'administration. Vos accès aux enchères et fonctionnalités sont actuellement bloqués.
+            </p>
+            <div className="pt-2">
+              <Link
+                href={supportPath}
+                className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] inline-flex items-center gap-2"
+              >
+                💬 Accéder au Support & Ouvrir une requête
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

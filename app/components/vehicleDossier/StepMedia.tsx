@@ -322,7 +322,7 @@ export default function StepMedia({
                   <button
                     type="button"
                     onClick={removeCoverPhoto}
-                    className="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 rounded-md text-[12px] font-semibold"
+                    className="btn btn-danger-solid"
                   >
                     Suppr.
                   </button>

@@ -167,7 +167,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
         <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Immatriculation</label>
         <div className="flex flex-col sm:flex-row gap-3">
           <input required readOnly={checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
-          <button type="button" onClick={lookupRegistration} disabled={searching} className="h-12 px-6 rounded-[9px] bg-[#13243c] text-white font-bold text-sm uppercase disabled:opacity-50 flex items-center justify-center gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>
+          <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>
         </div>
         {lookupError && <Alert variant="error" className="mt-3">{lookupError}</Alert>}
 
@@ -236,7 +236,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Description du choc</h2>
-        <div className="flex items-center justify-between mb-2"><label className="font-semibold text-[11px] uppercase text-[#4c5058]">Description du choc</label><button type="button" onClick={makeSelectionBold} className="px-3 py-1.5 border border-[#dcd7cb] rounded-md font-bold text-sm">B</button></div>
+        <div className="flex items-center justify-between mb-2"><label className="font-semibold text-[11px] uppercase text-[#4c5058]">Description du choc</label><button type="button" onClick={makeSelectionBold} className="btn btn-secondary">B</button></div>
         <textarea required ref={descriptionRef} rows={7} value={values.description || ''} onChange={(e) => onChange({ description: e.target.value })} placeholder={'Décrivez le choc…\nLes retours à la ligne seront conservés.'} className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm leading-6 resize-y whitespace-pre-wrap" />
         <p className="text-xs text-[#5a5e66] mt-1">Sélectionnez du texte puis cliquez sur B pour le mettre en gras. Les retours à la ligne sont conservés.</p>
       </section>

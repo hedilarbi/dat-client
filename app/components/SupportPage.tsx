@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
-import { useUser } from '../components/LayoutWrapper';
-import { localizedPath, useLanguage } from '../i18n';
-import Alert from '../components/Alert';
-import ConfirmModal from '../components/ConfirmModal';
-import Spinner from '../components/Spinner';
-import SkeletonRows from '../components/SkeletonRows';
-import { Badge, getTicketStatusBadge } from '../components/StatusBadge';
+import { useUser } from './LayoutWrapper';
+import { getRoleSupportPath, localizedPath, useLanguage } from '../i18n';
+import Alert from './Alert';
+import ConfirmModal from './ConfirmModal';
+import Spinner from './Spinner';
+import SkeletonRows from './SkeletonRows';
+import { Badge, getTicketStatusBadge } from './StatusBadge';
 import { getCategoryLabel } from '../lib/categoryLabels';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
@@ -41,6 +41,7 @@ interface Ticket {
 
 export default function SupportPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading: userLoading } = useUser();
   const { language, t } = useLanguage();
 
@@ -100,7 +101,7 @@ export default function SupportPage() {
   // plutôt que de rester sur une page support sans utilisateur identifié.
   useEffect(() => {
     if (!userLoading && !user) {
-      router.replace(localizedPath(`/login?next=${encodeURIComponent('/support')}`, language));
+      router.replace(localizedPath(`/login?next=${encodeURIComponent(pathname || getRoleSupportPath('acheteur'))}`, language));
     }
   }, [userLoading, user, router, language]);
 
@@ -250,7 +251,7 @@ export default function SupportPage() {
   const isDetailOpen = Boolean(selectedTicket) || isOpeningForm;
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row h-full min-h-0 bg-white font-sans text-black">
+    <div className="flex-1 flex flex-col lg:flex-row h-full min-h-[calc(100vh-64px)] bg-white font-sans text-black">
       {/* Left Tickets Panel */}
       <div className={`${isDetailOpen ? 'hidden lg:flex' : 'flex'} w-full lg:w-[360px] border-r border-[#eceadf] flex-col shrink-0 select-none`}>
         <div className="p-[22px_20px_16px]">
@@ -359,7 +360,7 @@ export default function SupportPage() {
             <button
               type="button"
               onClick={() => setIsOpeningForm(false)}
-              className="lg:hidden text-[13px] font-semibold text-[#4c5058] hover:underline"
+              className="lg:hidden btn-back mb-4"
             >
               {t('support.backToList')}
             </button>
@@ -442,7 +443,7 @@ export default function SupportPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedTicket(null)}
-                  className="lg:hidden text-[13px] font-semibold text-[#4c5058] hover:underline mb-1.5 block"
+                  className="btn-back"
                 >
                   {t('support.backToList')}
                 </button>
@@ -518,7 +519,7 @@ export default function SupportPage() {
                 <button
                   type="submit"
                   disabled={!replyContent || uploading}
-                  className="w-auto px-4 sm:w-[130px] h-[52px] rounded-[9px] bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[13px] uppercase tracking-[0.03em] select-none cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shrink-0"
+                  className="btn btn-primary w-auto sm:w-[130px] gap-2 disabled:opacity-50 shrink-0"
                 >
                   {uploading && <Spinner />}
                   {uploading ? t('shared.uploading') : t('support.send')}

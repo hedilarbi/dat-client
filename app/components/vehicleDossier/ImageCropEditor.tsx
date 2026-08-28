@@ -289,14 +289,14 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
           <button
             type="button"
             onClick={onClose}
-            className="h-11 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold text-[13px] hover:bg-gray-50 transition"
+            className="btn btn-secondary"
           >
             Annuler
           </button>
           <button
             type="button"
             onClick={handleConfirmCrop}
-            className="h-11 px-6 bg-[#13243c] hover:bg-slate-800 text-white font-bold text-[13px] rounded-[9px] uppercase tracking-[0.03em] transition shadow-sm"
+            className="btn btn-primary"
           >
             Valider le recadrage
           </button>

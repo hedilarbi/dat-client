@@ -62,7 +62,7 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
     // `auth.*`. Une API tierce peut aussi renvoyer 401/403 (par exemple la recherche de plaque),
     // sans que la session de l'utilisateur soit expirée.
     if (
-      (response.status === 401 || response.status === 403) &&
+      ((response.status === 401) || (response.status === 403 && data.error !== 'auth.account_suspended')) &&
       isAuthenticationError &&
       path !== '/auth/me' &&
       typeof window !== 'undefined'

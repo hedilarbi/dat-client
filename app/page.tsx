@@ -40,14 +40,12 @@ function SupportIcon() {
 export default function Home() {
   const { language, t } = useLanguage();
   const router = useRouter();
-  const { vehicles, sessions, loading: salesLoading, error: salesError } = useCurrentSales();
+  // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
+  // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
+  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8 });
   const currentSession = sessions[0];
   const currentSessionName = currentSession?.name || (language === 'fr' ? 'Aucune session ouverte' : 'No open session');
   const closingIn = formatTimeLeft(currentSession?.endDate);
-  const brands = Object.entries(vehicles.reduce<Record<string, number>>((counts, vehicle) => {
-    if (vehicle.brand) counts[vehicle.brand] = (counts[vehicle.brand] || 0) + 1;
-    return counts;
-  }, {})).map(([name, count]) => ({ name, count }));
 
   // Le français reste sur "/" (langue par défaut) ; l'anglais choisi précédemment
   // redirige automatiquement vers "/en" pour rester cohérent avec le reste du site.
@@ -122,7 +120,7 @@ export default function Home() {
             {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}
           </div>
           <div className="font-bold text-2xl sm:text-[28px] uppercase text-[#13243c] font-heading">
-            {t('home.lotsCount', { count: String(vehicles.length) })}
+            {t('home.lotsCount', { count: String(total) })}
           </div>
         </div>
         <Link href={localizedPath('/ventes-en-cours', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
@@ -134,23 +132,34 @@ export default function Home() {
         {salesLoading && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Chargement des véhicules…</div>}
         {!salesLoading && salesError && <div className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{salesError}</div>}
         {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Aucun véhicule dans une session en cours.</div>}
-        {vehicles.slice(0, 8).map((lot) => (
-          <div key={lot.id} className="border border-[#eceadf] rounded-[14px] overflow-hidden flex flex-col shadow-[0_2px_10px_rgba(19,36,60,.05)]">
+        {vehicles.map((lot) => (
+          <Link
+            key={lot.id}
+            href={localizedPath(`/vehicule/${lot.id}`, language)}
+            className="group border border-[#eceadf] rounded-[14px] overflow-hidden flex flex-col shadow-[0_2px_10px_rgba(19,36,60,.05)] transition hover:shadow-[0_10px_26px_rgba(19,36,60,.14)]"
+          >
             <div className="relative aspect-[4/3] bg-[#eef1f5] overflow-hidden">
-              {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="absolute inset-0 w-full h-full object-cover" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
+              {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
               <span className="absolute top-2.5 right-2.5 font-bold text-[11px] text-white bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 rounded-[7px] font-mono">
                 {formatTimeLeft(lot.session?.endDate)}
               </span>
             </div>
             <div className="p-4 pb-[18px] flex flex-col flex-1">
+              {lot.lotNumber && (
+                <div className="mb-1.5">
+                  <span className="rounded-[5px] bg-[#faf1e4] px-2 py-0.5 font-mono text-[11px] font-bold text-[#b3893f]">
+                    {t('vehicle.lot', { number: String(lot.lotNumber) })}
+                  </span>
+                </div>
+              )}
               <div className="font-bold text-[17px] uppercase text-[#13243c] mb-4 font-heading">{[lot.brand, lot.model].filter(Boolean).join(' ')}</div>
               <div className="mt-auto">
-                <button type="button" className="w-full font-bold text-xs text-white bg-[#13243c] hover:bg-slate-800 py-[11px] px-4 rounded-[8px] uppercase tracking-[0.02em] transition cursor-pointer">
+                <span className="block w-full text-center font-bold text-xs text-white bg-[#13243c] group-hover:bg-slate-800 py-[11px] px-4 rounded-[8px] uppercase tracking-[0.02em] transition">
                   {t('home.bidButton')}
-                </button>
+                </span>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -194,7 +203,7 @@ export default function Home() {
           </div>
           <Link
             href={localizedPath('/vendre-avec-nous', language)}
-            className="font-bold text-sm text-[#13243c] bg-white hover:bg-gray-100 px-8 py-4 rounded-[9px] uppercase tracking-[0.03em] whitespace-nowrap transition shrink-0"
+            className="btn btn-secondary whitespace-nowrap shrink-0"
           >
             {t('home.sellerCta')}
           </Link>

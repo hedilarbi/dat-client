@@ -63,8 +63,8 @@ export default function DossierVehiculeDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href={localizedPath('/vendeur/dossiers', language)}
-          className="inline-flex items-center gap-1.5 font-semibold text-[12px] text-[#4c5058] hover:text-[#13243c] mb-3 transition-colors"
+          href={localizedPath('/vendeur/tableau-de-bord/dossiers', language)}
+          className="btn-back mb-3"
         >
           <span>←</span>
           <span className="uppercase">Mes dossiers · {vehicleLabel}</span>
