@@ -38,7 +38,7 @@ interface SellerSaleDetail {
   handover: { declarationUrl: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
-  vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null } | null;
+  vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null; registrationCardAvailable: boolean | null; } | null;
   session: { id: string; name: string; endDate: string } | null;
   /** Révélé par le serveur une fois la commission réglée */
   buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
@@ -74,6 +74,8 @@ export default function SellerSaleDetailPage() {
   const [message, setMessage] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [formulaNumberInput, setFormulaNumberInput] = useState('');
+  const [motifAbsenceInput, setMotifAbsenceInput] = useState('');
   // Étape 4 : validation du certificat signé déposé par l'acheteur
   const [validateOpen, setValidateOpen] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -127,6 +129,35 @@ export default function SellerSaleDetailPage() {
     setError('');
     try {
       const res = await apiRequest(`/sales/${sale.id}/transfer-received`, { method: 'POST' });
+      setSale(res.sale);
+      setMessage(res.message || '');
+      setConfirmOpen(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleProcessRegistrationCard = async () => {
+    if (!sale) return;
+    setConfirming(true);
+    setError('');
+    try {
+      const payload: { formulaNumber?: string; registrationCardMissingMotif?: string } = {};
+      if (sale.vehicle?.registrationCardAvailable === true) {
+        payload.formulaNumber = `20${formulaNumberInput.trim()}`;
+      } else if (sale.vehicle?.registrationCardAvailable === false) {
+        payload.registrationCardMissingMotif = motifAbsenceInput.trim();
+      } else {
+        setError("La disponibilité de la carte grise n'est pas renseignée dans le dossier du véhicule.");
+        return;
+      }
+
+      const res = await apiRequest(`/sales/${sale.id}/registration-card`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
       setSale(res.sale);
       setMessage(res.message || '');
       setConfirmOpen(false);
@@ -396,7 +427,11 @@ export default function SellerSaleDetailPage() {
                 {renderStepNumber === 2 && (
                   <>
                     <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical ? "Vous avez confirmé la réception du virement bancaire." : t('sellerSale.step2Waiting')}
+                      {isHistorical
+                        ? "Vous avez confirmé la réception du virement bancaire."
+                        : sale.transferConfirmedAt
+                          ? 'Étape 2,5 — Virement confirmé. Renseignez maintenant les données de la carte grise avant la génération des documents.'
+                          : t('sellerSale.step2Waiting')}
                     </p>
 
                     {sale.amount != null && (
@@ -410,15 +445,15 @@ export default function SellerSaleDetailPage() {
                     {!isHistorical && (
                       <>
                         <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                          {t('sellerSale.step2Note')}
+                          {sale.transferConfirmedAt ? 'La vente restera à cette étape tant que le traitement de la carte grise et la génération des documents ne seront pas terminés.' : t('sellerSale.step2Note')}
                         </p>
                         <button
                           type="button"
-                          onClick={() => setConfirmOpen(true)}
+                          onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : handleConfirmTransfer}
                           disabled={confirming}
                           className="h-12 w-full rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10 cursor-pointer"
                         >
-                          {confirming ? t('sellerSale.confirming') : t('sellerSale.confirmTransfer')}
+                          {confirming ? t('sellerSale.confirming') : sale.transferConfirmedAt ? 'Continuer le traitement carte grise' : t('sellerSale.confirmTransfer')}
                         </button>
                         <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
                       </>
@@ -750,12 +785,66 @@ export default function SellerSaleDetailPage() {
 
       <ConfirmModal
         open={confirmOpen}
-        title={t('sellerSale.confirmTransfer')}
-        message={t('sellerSale.confirmWarning')}
-        confirmLabel={t('sellerSale.confirmTransfer')}
+        title="Traitement de la carte grise"
+        message={
+          <div className="flex flex-col gap-4">
+            {sale?.vehicle?.registrationCardAvailable === true && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]">
+                  Numéro de formule de la carte grise
+                </label>
+                <div className="flex items-center">
+                  <span className="flex items-center justify-center h-10 px-3 bg-gray-100 border border-r-0 border-[#dcd7cb] rounded-l-[8px] text-sm text-gray-500 font-mono">
+                    20
+                  </span>
+                  <input
+                    type="text"
+                    value={formulaNumberInput}
+                    onChange={(e) => setFormulaNumberInput(e.target.value)}
+                    placeholder="Saisissez la suite du numéro..."
+                    className="h-10 flex-1 rounded-r-[8px] border border-[#dcd7cb] bg-white px-3 text-sm focus:border-[#13243c] focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            {sale?.vehicle?.registrationCardAvailable === false && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]">
+                  Motif d&apos;absence de carte grise
+                </label>
+                <input
+                  type="text"
+                  value={motifAbsenceInput}
+                  onChange={(e) => setMotifAbsenceInput(e.target.value)}
+                  placeholder="Ex: Déclaration de perte..."
+                  className="h-10 w-full rounded-[8px] border border-[#dcd7cb] bg-white px-3 text-sm focus:border-[#13243c] focus:outline-none"
+                />
+              </div>
+            )}
+            {sale?.vehicle?.registrationCardAvailable == null && (
+              <p className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-red-700">
+                La disponibilité de la carte grise n&apos;est pas renseignée dans le dossier du véhicule. La confirmation est bloquée.
+              </p>
+            )}
+          </div>
+        }
+        confirmLabel="Enregistrer et générer les documents"
         loading={confirming}
-        onConfirm={handleConfirmTransfer}
-        onCancel={() => { if (!confirming) setConfirmOpen(false); }}
+        confirmDisabled={
+          sale?.vehicle?.registrationCardAvailable === true
+            ? !formulaNumberInput.trim()
+            : sale?.vehicle?.registrationCardAvailable === false
+              ? !motifAbsenceInput.trim()
+              : true
+        }
+        onConfirm={handleProcessRegistrationCard}
+        onCancel={() => {
+          if (!confirming) {
+            setConfirmOpen(false);
+            setFormulaNumberInput('');
+            setMotifAbsenceInput('');
+          }
+        }}
       />
 
       <ConfirmModal
