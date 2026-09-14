@@ -11,6 +11,7 @@ import Alert from '../../../components/Alert';
 import ConfirmModal from '../../../components/ConfirmModal';
 import VerticalStep from '../../../components/VerticalStep';
 import { formatEuros } from '../../../lib/format';
+import Spinner from '../../../components/Spinner';
 
 interface SellerSaleDetail {
   id: string;
@@ -35,6 +36,9 @@ interface SellerSaleDetail {
     lastRejection: { reason: string; comment?: string; rejectedAt?: string; rejectedBy?: string; url?: string; createdAt?: string } | null;
     rejectionCount: number;
   };
+  purchaseDeclaration: { url: string | null; generatedAt: string | null };
+  bonEnlevement: { url: string | null; generatedAt: string | null } | null;
+  esignature: { status: string | null; sellerUrl: string | null; buyerUrl: string | null; initiatedAt: string | null; signedDocumentUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
   handover: { declarationUrl: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
@@ -43,6 +47,22 @@ interface SellerSaleDetail {
   /** Révélé par le serveur une fois la commission réglée */
   buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
 }
+
+/**
+ * Étapes dont le libellé diffère côté vendeur : ce qui est un « paiement de la commission »
+ * pour l'acheteur est, vu du vendeur, la vérification de son acheteur avant que la procédure
+ * ne s'engage. Les autres étapes gardent le libellé commun `sales.step.<clé>`.
+ */
+const SELLER_STEP_LABELS: Record<string, string> = {
+  commission: 'sellerSale.step.commission',
+  virement_carte_grise: 'sellerSale.step.virement_carte_grise',
+  signature_electronique: 'sellerSale.step.signature_electronique',
+  tampon_vendeur: 'sellerSale.step.tampon_vendeur',
+  validation_acheteur: 'sellerSale.step.validation_acheteur',
+  tampon_acheteur: 'sellerSale.step.tampon_acheteur',
+  validation_vendeur: 'sellerSale.step.validation_vendeur',
+  enlevement: 'sellerSale.step.enlevement',
+};
 
 // Miroir de CERTIFICATE_REJECTION_REASONS (server/models/sale.model.js)
 const REJECTION_REASONS = [
@@ -84,8 +104,8 @@ export default function SellerSaleDetailPage() {
   const [rejectComment, setRejectComment] = useState('');
   const [rejecting, setRejecting] = useState(false);
   // Étape 5 : saisie du code de remise communiqué par l'acheteur
-  const [otp, setOtp] = useState('');
-  const [submittingOtp, setSubmittingOtp] = useState(false);
+  
+  const [submittingHandover, setSubmittingHandover] = useState(false);
   const [, setClock] = useState(0);
 
   // Vue historique
@@ -194,7 +214,7 @@ export default function SellerSaleDetailPage() {
     setSubmittingCertificate(true);
     setError('');
     try {
-      const url = await uploadFile(signedFile, 'ventes/certificats');
+      const url = await uploadFile(signedFile, 'ventes/documents');
       const res = await apiRequest(`/sales/${sale.id}/certificate/seller`, {
         method: 'POST',
         body: JSON.stringify({ url, filename: signedFile.name }),
@@ -237,26 +257,20 @@ export default function SellerSaleDetailPage() {
 
   const handleConfirmHandover = async () => {
     if (!sale) return;
-    if (otp.trim().length !== 6) {
-      setError(t('sellerSale.otpRequired'));
-      return;
-    }
 
-    setSubmittingOtp(true);
+    setSubmittingHandover(true);
     setError('');
     try {
       const res = await apiRequest(`/sales/${sale.id}/handover`, {
         method: 'POST',
-        body: JSON.stringify({ otp: otp.trim() }),
       });
       setSale(res.sale);
       setMessage(res.message || '');
-      setOtp('');
       setViewedStepIndex(null);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
-      setSubmittingOtp(false);
+      setSubmittingHandover(false);
     }
   };
 
@@ -265,7 +279,7 @@ export default function SellerSaleDetailPage() {
   </Link>;
 
   if (userLoading || !user || !loaded) {
-    return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('sellerSale.loading')}</div>;
+    return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
   if (!sale) {
@@ -318,6 +332,34 @@ export default function SellerSaleDetailPage() {
           </div>
         )}
       </div>
+
+      {sale.currentStep >= 3 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
+        <section className="mb-6 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
+          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
+            Documents de vente
+          </h2>
+          <p className="mb-4 text-[13px] text-[#5a5e66]">
+            Les tampons enregistrés du vendeur et de l’acheteur sont automatiquement apposés sur ces documents.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
+              <a href={sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
+                <span>{sale.esignature?.signedDocumentUrl ? 'Dossier de vente signé' : 'Certificat de cession'}</span><span aria-hidden="true">↓</span>
+              </a>
+            )}
+            {sale.purchaseDeclaration.url && (
+              <a href={sale.purchaseDeclaration.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
+                <span>Déclaration d’achat</span><span aria-hidden="true">↓</span>
+              </a>
+            )}
+            {sale.esignature?.auditUrl && (
+              <a href={sale.esignature.auditUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
+                <span>Piste d’audit de signature</span><span aria-hidden="true">↓</span>
+              </a>
+            )}
+          </div>
+        </section>
+      )}
 
       {sale.buyer && (
         <div className="mb-6 overflow-hidden rounded-[14px] border border-[#eceadf] bg-white">
@@ -403,7 +445,7 @@ export default function SellerSaleDetailPage() {
                   <VerticalStep
                     key={stepKey}
                     stepNumber={stepNumber}
-                    title={t(`sales.step.${stepKey}`)}
+                    title={SELLER_STEP_LABELS[stepKey] ? t(SELLER_STEP_LABELS[stepKey]) : t(`sales.step.${stepKey}`)}
                     isActive={isActive}
                     isCompleted={isCompleted}
                     isLast={isLast}
@@ -420,7 +462,7 @@ export default function SellerSaleDetailPage() {
 
                 {renderStepNumber === 1 && (
                   <p className="text-sm leading-6 text-[#5a5e66]">
-                    {isHistorical ? "L'acheteur a réglé sa commission avec succès." : t('sellerSale.step1Waiting')}
+                    {isHistorical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
                   </p>
                 )}
 
@@ -461,7 +503,7 @@ export default function SellerSaleDetailPage() {
                   </>
                 )}
 
-                {renderStepNumber === 3 && (
+                {(renderStepNumber === 3 || renderStepNumber === 4) && (
                   <>
                     {!isHistorical && sale.transferConfirmedAt && (
                       <p className="mb-3 rounded-[10px] border-l-4 border-[#2f6f4f] bg-[#e9f4ee] p-3.5 text-sm leading-6 text-[#2f6f4f]">
@@ -484,94 +526,119 @@ export default function SellerSaleDetailPage() {
                         )}
                       </div>
                     )}
-<h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">Certificat de cession</h3>
-                    <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical 
-                        ? "Vous avez généré, signé et tamponné le certificat de cession. Les documents de cette étape sont disponibles ci-dessous." 
-                        : "Vous devez télécharger, signer et tamponner le certificat de cession généré, puis le redéposer ci-dessous. Il sera ensuite transmis à l'acheteur."}
-                    </p>
-                    
-                    {sale.certificate.url && (
-                      <a
-                        href={sale.certificate.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat généré {isHistorical ? '(avant signature)' : ''}</span>
-                        {sale.certificate.generatedAt && (
-                          <span className="text-[11px] text-[#5a5e66]">
-                            Généré le {formatDate(sale.certificate.generatedAt)}
-                          </span>
-                        )}
-                      </a>
-                    )}
-
-                    {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'buyer' && sale.certificate.lastRejection.url && (
-                      <a
-                        href={sale.certificate.lastRejection.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-red-300 bg-white px-4 py-3 transition hover:bg-[#fdece4] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#b91c1c]">↓ Télécharger le certificat refusé</span>
-                        <span className="text-[11px] text-[#b91c1c]">
-                          Refusé le {sale.certificate.lastRejection.createdAt && formatDate(sale.certificate.lastRejection.createdAt)}
-                        </span>
-                      </a>
-                    )}
-
-                    {isHistorical && sale.certificate.sellerSignedUrl && (
-                      <a
-                        href={sale.certificate.sellerSignedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#2f6f4f] bg-[#e9f4ee] px-4 py-3 transition hover:bg-[#d1e8da] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#2f6f4f]">↓ Télécharger votre certificat signé</span>
-                        {sale.certificate.sellerSignedAt && (
-                          <span className="text-[11px] text-[#2f6f4f]">
-                            Déposé le {formatDate(sale.certificate.sellerSignedAt)}
-                          </span>
-                        )}
-                      </a>
-                    )}
-
-                    {!isHistorical && (
+<h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{renderStepNumber === 3 ? 'Signature électronique des documents' : 'Tampon du vendeur'}</h3>
+                    {renderStepNumber === 3 ? (
                       <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
                         <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-                          Déposer le document complété
+                          Signature électronique
                         </div>
-                        <p className="mb-3 text-[12px] text-[#5a5e66]">Format PDF ou image lisible (JPG, PNG).</p>
-
-                        <label className="mb-3 flex cursor-pointer flex-col gap-2 sm:flex-row sm:items-center">
-                          <span className="inline-flex h-10 items-center rounded-[8px] border border-[#dcd7cb] bg-white px-4 text-[12px] font-bold uppercase text-[#13243c] transition hover:bg-[#f1efe8]">
-                            Choisir un fichier
-                          </span>
-                          <input
-                            type="file"
-                            accept="application/pdf,image/*"
-                            className="hidden"
-                            onChange={(event) => setSignedFile(event.target.files?.[0] || null)}
-                          />
-                          <span className="truncate text-[13px] text-[#5a5e66]">{signedFile?.name || '—'}</span>
-                        </label>
-
-                        <button
-                          type="button"
-                          onClick={handleSubmitSellerCertificate}
-                          disabled={submittingCertificate || !signedFile}
-                          className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-                        >
-                          {submittingCertificate ? 'Envoi...' : 'Envoyer le certificat'}
-                        </button>
+                        <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
+                          {isHistorical 
+                            ? "Vous avez signé les documents avec succès."
+                            : "Veuillez cliquer sur le bouton ci-dessous pour signer le certificat de cession et le bon d'enlèvement électroniquement sur notre plateforme partenaire."}
+                        </p>
+                        {!isHistorical && (
+                          <a
+                            href={sale.esignature?.sellerUrl || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
+                          >
+                            Signer les documents
+                          </a>
+                        )}
                       </div>
+                    ) : (
+                      <>
+                        <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
+                          {isHistorical 
+                            ? "Vous avez généré, signé et tamponné le certificat de cession. Les documents de cette étape sont disponibles ci-dessous." 
+                            : "Vous devez télécharger, signer et tamponner le certificat de cession généré, puis le redéposer ci-dessous. Il sera ensuite transmis à l'acheteur."}
+                        </p>
+                        
+                        {sale.certificate.url && (
+                          <a
+                            href={sale.certificate.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat généré {isHistorical ? '(avant signature)' : ''}</span>
+                            {sale.certificate.generatedAt && (
+                              <span className="text-[11px] text-[#5a5e66]">
+                                Généré le {formatDate(sale.certificate.generatedAt)}
+                              </span>
+                            )}
+                          </a>
+                        )}
+
+                        {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'buyer' && sale.certificate.lastRejection.url && (
+                          <a
+                            href={sale.certificate.lastRejection.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-red-300 bg-white px-4 py-3 transition hover:bg-[#fdece4] sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span className="text-sm font-bold text-[#b91c1c]">↓ Télécharger le certificat refusé</span>
+                            <span className="text-[11px] text-[#b91c1c]">
+                              Refusé le {sale.certificate.lastRejection.createdAt && formatDate(sale.certificate.lastRejection.createdAt)}
+                            </span>
+                          </a>
+                        )}
+
+                        {isHistorical && sale.certificate.sellerSignedUrl && (
+                          <a
+                            href={sale.certificate.sellerSignedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#2f6f4f] bg-[#e9f4ee] px-4 py-3 transition hover:bg-[#d1e8da] sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span className="text-sm font-bold text-[#2f6f4f]">↓ Télécharger votre certificat signé</span>
+                            {sale.certificate.sellerSignedAt && (
+                              <span className="text-[11px] text-[#2f6f4f]">
+                                Déposé le {formatDate(sale.certificate.sellerSignedAt)}
+                              </span>
+                            )}
+                          </a>
+                        )}
+
+                        {!isHistorical && (
+                          <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
+                            <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
+                              Déposer le dossier signé et tamponné
+                            </div>
+                            <p className="mb-3 text-[12px] text-[#5a5e66]">Format PDF ou image lisible (JPG, PNG).</p>
+
+                            <label className="mb-3 flex cursor-pointer flex-col gap-2 sm:flex-row sm:items-center">
+                              <span className="inline-flex h-10 items-center rounded-[8px] border border-[#dcd7cb] bg-white px-4 text-[12px] font-bold uppercase text-[#13243c] transition hover:bg-[#f1efe8]">
+                                Choisir un fichier
+                              </span>
+                              <input
+                                type="file"
+                                accept="application/pdf,image/*"
+                                className="hidden"
+                                onChange={(event) => setSignedFile(event.target.files?.[0] || null)}
+                              />
+                              <span className="truncate text-[13px] text-[#5a5e66]">{signedFile?.name || '—'}</span>
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={handleSubmitSellerCertificate}
+                              disabled={submittingCertificate || !signedFile}
+                              className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
+                            >
+                              {submittingCertificate ? 'Envoi...' : 'Envoyer le certificat'}
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
 
                 
-                {renderStepNumber === 4 && (
+                {renderStepNumber === 5 && (
                   <>
                     <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
                       {isHistorical ? "L'acheteur a validé votre certificat de cession." : t('sellerSale.stepValidationWaiting')}
@@ -588,7 +655,7 @@ export default function SellerSaleDetailPage() {
                   </>
                 )}
 
-{renderStepNumber === 5 && (
+{renderStepNumber === 6 && (
                   <>
                     <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
                       {isHistorical ? "L'acheteur a signé et redéposé le certificat de cession." : t('sellerSale.step3Waiting')}
@@ -619,7 +686,7 @@ export default function SellerSaleDetailPage() {
                   </>
                 )}
 
-                {renderStepNumber === 6 && (
+                {renderStepNumber === 7 && (
                   <>
                     <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
                       {isHistorical ? "Vous avez validé le document de l'acheteur." : t('sellerSale.step4Waiting')}
@@ -720,7 +787,7 @@ export default function SellerSaleDetailPage() {
                   </>
                 )}
 
-                {renderStepNumber === 7 && (
+                {renderStepNumber === 8 && (
                   <>
                     {!isHistorical && sale.certificate.validatedAt && (
                       <p className="mb-3 rounded-[10px] border-l-4 border-[#2f6f4f] bg-[#e9f4ee] p-3.5 text-sm leading-6 text-[#2f6f4f]">
@@ -745,34 +812,29 @@ export default function SellerSaleDetailPage() {
                       </p>
                     )}
 
-                    {!isHistorical && (
-                      <>
-                        <label className="mb-3 block max-w-[320px]">
-                          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#7a756a]">
-                            {t('sellerSale.otpLabel')}
-                          </span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            maxLength={6}
-                            value={otp}
-                            onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
-                            placeholder="000000"
-                            className="h-14 w-full rounded-[10px] border border-[#dcd7cb] bg-white px-4 text-center font-mono text-[28px] font-bold tracking-[0.3em] text-[#13243c] outline-none focus:border-[#13243c]"
-                          />
-                        </label>
+                        <div className="flex flex-col gap-4">
+                          {sale.bonEnlevement?.url && (
+                            <a 
+                              href={sale.bonEnlevement.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="btn bg-[#e9f4ee] border-[#2f6f4f] text-[#2f6f4f] w-full sm:w-auto hover:bg-[#cbe3d5]"
+                            >
+                              Télécharger le bon d'enlèvement
+                            </a>
+                          )}
 
-                        <button
-                          type="button"
-                          onClick={handleConfirmHandover}
-                          disabled={submittingOtp || otp.length !== 6}
-                          className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-                        >
-                          {submittingOtp ? t('sellerSale.otpSubmitting') : t('sellerSale.otpSubmit')}
-                        </button>
-                      </>
-                    )}
+                          {!isHistorical && (
+                            <button
+                              type="button"
+                              onClick={handleConfirmHandover}
+                              disabled={submittingHandover}
+                              className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
+                            >
+                              {submittingHandover ? 'Validation...' : 'Confirmer la remise du véhicule'}
+                            </button>
+                          )}
+                        </div>
                   </>
                 )}
                   </VerticalStep>
@@ -828,7 +890,7 @@ export default function SellerSaleDetailPage() {
             )}
           </div>
         }
-        confirmLabel="Enregistrer et générer les documents"
+        confirmLabel="Enregistrer"
         loading={confirming}
         confirmDisabled={
           sale?.vehicle?.registrationCardAvailable === true

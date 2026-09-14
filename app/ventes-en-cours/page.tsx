@@ -10,6 +10,7 @@ import SalesAccessBanner from '../components/SalesAccessBanner';
 import SalesAccessModal from '../components/SalesAccessModal';
 import vehicleCatalog from '../lib/vehicleCatalog.json';
 import { ENERGY_OPTIONS, GEARBOX_OPTIONS, PROCEDURE_OPTIONS } from '../lib/vehicleLabels';
+import Spinner from '../components/Spinner';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const CURRENT_YEAR = new Date().getFullYear();
@@ -174,7 +175,7 @@ export default function CurrentSalesPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-5 px-4 pb-12 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
-        {loading && <p className="col-span-full py-12 text-center text-sm text-[#5a5e66]">Chargement des véhicules…</p>}
+        {loading && <div className="col-span-full flex justify-center py-12"><Spinner className="h-8 w-8 text-[#13243c]" /></div>}
         {!loading && error && <p className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>}
         {!loading && !error && lots.length === 0 && <p className="col-span-full py-12 text-center text-sm text-[#5a5e66]">{fr ? 'Aucun véhicule dans une session en cours.' : 'No vehicles in an active session.'}</p>}
         {!loading && lots.map((lot) => (
@@ -218,9 +219,7 @@ export default function CurrentSalesPage() {
         {/* Chargement progressif : la sentinelle déclenche la page suivante en approchant du bas */}
         {mayLoadMore && hasMore && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
 
-        {loadingMore && (
-          <p className="py-6 text-center text-sm text-[#5a5e66]">{t('sales.loadingMore')}</p>
-        )}
+        {loadingMore && <div className="flex justify-center py-6"><Spinner className="h-6 w-6 text-[#13243c]" /></div>}
 
         {!loading && !error && !mayLoadMore && hasMore && (
           <>

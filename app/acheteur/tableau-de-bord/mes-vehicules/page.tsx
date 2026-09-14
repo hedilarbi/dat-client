@@ -9,14 +9,12 @@ import { getRoleHomePath, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../components/RegistrationStatusNotices';
 import { formatEuros } from '../../../lib/format';
-
-// Miroir de PURCHASE_STEPS (server/models/sale.model.js)
-const STEP_KEYS = ['commission', 'virement', 'certificats', 'validation_vendeur', 'enlevement'] as const;
+import Spinner from '../../../components/Spinner';
 
 interface WonSale {
   id: string;
   amount: number | null;
-  status: 'en_cours' | 'cloturee' | 'en_attente_confirmation';
+  status: 'en_cours' | 'cloturee';
   currentStep: number;
   stepKey: string | null;
   stepCount: number;
@@ -85,7 +83,7 @@ export default function WonSalesPage() {
   }, [fetchSales, user]);
 
   if (userLoading || !user) {
-    return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('sales.wonLoading')}</div>;
+    return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
   if (user.status !== 'valide' && user.status !== 'suspendu') {
@@ -131,7 +129,7 @@ export default function WonSalesPage() {
       </div>
 
       {!loaded ? (
-        <p className="py-10 text-sm text-[#5a5e66]">{t('sales.wonLoading')}</p>
+        <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : sales.length === 0 ? (
         <p className="rounded-[12px] bg-[#f8f7f2] p-8 text-center text-sm text-[#5a5e66]">
           {filter === 'ongoing' ? t('sales.emptyOngoing') : t('sales.emptyClosed')}
@@ -237,26 +235,6 @@ function SaleCard({
           </Link>
         </div>
       </div>
-
-      {/* Bandeau d'invitation pour les réattributions en attente de réponse */}
-      {sale.status === ('en_attente_confirmation' as any) && (
-        <div className="border-t border-[#f7d6cb] bg-[#fff5f2] px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#d9704f] flex items-center gap-1.5">
-              <span>🎉</span> Nouveau véhicule attribué suite à désistement !
-            </div>
-            <div className="text-[12px] text-gray-700 font-medium">
-              Souhaitez-vous acquérir ce véhicule pour <strong>{sale.amount != null ? formatEuros(sale.amount, language) : '—'}</strong> ? (Sans pénalité en cas de refus)
-            </div>
-          </div>
-          <Link
-            href={localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${sale.id}`, language)}
-            className="inline-flex h-9 items-center justify-center rounded-[8px] bg-[#d9704f] hover:bg-[#b04a2c] text-white text-[11px] font-bold uppercase px-4 transition shrink-0 shadow-xs"
-          >
-            Répondre à l'offre →
-          </Link>
-        </div>
-      )}
 
       {/* Bandeau d'avancement de l'étape et décompte pour les ventes en cours */}
       {sale.status === 'en_cours' && (

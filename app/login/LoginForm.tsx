@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
@@ -34,10 +34,11 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const loginInProgressRef = useRef(false);
 
   // Déjà connecté : renvoi hors de la page de connexion
   useEffect(() => {
-    if (!user) return;
+    if (!user || loginInProgressRef.current) return;
     const nextPath = user.status === 'brouillon' && user.emailVerified
       ? localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language)
       : getReturnPath() || localizedPath(getRoleHomePath(user.role), language);
@@ -58,6 +59,7 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
 
       setMessage(t('login.successMessage'));
       localStorage.setItem('userRole', res.user.role);
+      loginInProgressRef.current = true;
 
       // Refresh context profile
       await refreshProfile();

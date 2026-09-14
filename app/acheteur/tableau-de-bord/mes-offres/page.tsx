@@ -12,6 +12,7 @@ import ConfirmModal from '../../../components/ConfirmModal';
 import { UnderReviewNotice, SuspendedNotice } from '../../../components/RegistrationStatusNotices';
 import { formatTimeLeft } from '../../../lib/currentSales';
 import { formatEuros } from '../../../lib/format';
+import Spinner from '../../../components/Spinner';
 
 interface BuyerOffer {
   id: string;
@@ -104,7 +105,7 @@ export default function MyOffersPage() {
   };
 
   if (userLoading || !user || user.status === 'suspendu') {
-    return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('offers.loading')}</div>;
+    return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
   if (user.status !== 'valide') {
@@ -126,7 +127,7 @@ export default function MyOffersPage() {
       {message && <Alert variant="success" className="mb-5">{message}</Alert>}
 
       {!loaded ? (
-        <p className="py-10 text-sm text-[#5a5e66]">{t('offers.loading')}</p>
+        <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : (
         <div>
           {/* Un seul jeu d'offres à la fois : les deux tableaux empilés obligeaient à

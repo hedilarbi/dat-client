@@ -15,6 +15,7 @@ import IdentityFieldsSection from '../../components/IdentityFieldsSection';
 import DocumentUploadRow from '../../components/DocumentUploadRow';
 import StampReminderBanner from '../../components/StampReminderBanner';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, type Rejection } from '../../components/RegistrationStatusNotices';
+import AuctionPriceTags from '../../components/AuctionPriceTags';
 import { formatEuros } from '../../lib/format';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
 
@@ -25,6 +26,9 @@ interface DashboardSale {
   status: SellerSaleStatus;
   amount: number | null;
   offerCount: number;
+  /** Repères d'enchère, renseignés pour les véhicules encore en session (cf. listSellerSales). */
+  reservePrice?: number | null;
+  bestOffer?: number | null;
   /** Renseignés par le serveur pour les ventes en cours uniquement (cf. listSellerSales). */
   currentStep?: number | null;
   stepCount?: number | null;
@@ -326,6 +330,14 @@ export default function VendeurTableauDeBordPage() {
     }
   };
 
+  if (userLoading || (user?.status === 'valide' && (!salesLoaded || !dossiersLoaded))) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Spinner className="h-10 w-10 border-[#13243c]" />
+      </div>
+    );
+  }
+
   if (!user || user.role !== 'vendeur') return null;
 
   const isRefused = user.status === 'refuse';
@@ -467,8 +479,9 @@ export default function VendeurTableauDeBordPage() {
 
   /** Ce que le vendeur doit faire, selon l'étape où la vente est bloquée. */
   const sellerActionLabel = (stepKey?: string | null) => ({
-    virement: t('vendeurDashboard.actionConfirmTransfer'),
-    certificat_vendeur: t('vendeurDashboard.actionUploadCertificate'),
+    virement_carte_grise: t('vendeurDashboard.actionConfirmTransfer'),
+    signature_electronique: t('sellerSale.step.signature_electronique'),
+    tampon_vendeur: t('vendeurDashboard.actionUploadCertificate'),
     validation_vendeur: t('vendeurDashboard.actionValidateCertificate'),
     enlevement: t('vendeurDashboard.actionEnterCode'),
   }[stepKey || ''] || null);
@@ -577,7 +590,57 @@ export default function VendeurTableauDeBordPage() {
         </div>
       )}
 
-      {/* 2. Dossiers renvoyés par l'administration : action attendue du vendeur également. */}
+      {/* 2. Enchères en cours : véhicules publiés dans une session encore ouverte. Le vendeur
+             y suit la meilleure offre reçue face au prix de réserve qu'il a fixé. */}
+      {sales.inSession.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[16px] font-bold text-[#2563eb] uppercase tracking-[0.06em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#2563eb] animate-pulse"></span>
+              {t('vendeurDashboard.liveAuctions')}
+            </h2>
+            <Link href={localizedPath('/vendeur/en-vente', language)} className="text-[12px] font-bold text-[#d9704f] hover:underline">
+              {t('profil.viewAll')}
+            </Link>
+          </div>
+
+          <div className="grid gap-4">
+            {sales.inSession.map((sale) => (
+              <div key={sale.id} className="flex flex-col sm:flex-row items-center gap-4 bg-white border-2 border-[#eceadf] shadow-sm rounded-[12px] p-4 transition-transform hover:-translate-y-1">
+                {sale.vehicle?.photoUrl && (
+                  <div className="h-[56px] w-[72px] shrink-0 overflow-hidden rounded-[7px] bg-[#13243c] hidden sm:block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sale.vehicle.photoUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
+                  <div className="font-bold text-[16px] text-[#13243c]">
+                    {[sale.vehicle?.brand, sale.vehicle?.model].filter(Boolean).join(' ') || t('profil.vehicle')}
+                  </div>
+                  <div className="text-[13px] text-[#5a5e66] mt-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <span>{sale.session?.name || '—'}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span>{t('sellerSales.offersReceived', { count: String(sale.offerCount) })}</span>
+                  </div>
+                </div>
+                <AuctionPriceTags
+                  bestOffer={sale.bestOffer}
+                  reservePrice={sale.reservePrice}
+                  className="justify-center sm:justify-end"
+                />
+                <Link
+                  href={localizedPath(`/vendeur/dossiers/${sale.vehicle?.id}`, language)}
+                  className="btn bg-[#13243c] text-white hover:bg-[#1c3050] w-full sm:w-auto justify-center"
+                >
+                  {t('sellerSales.viewDossier')}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Dossiers renvoyés par l'administration : action attendue du vendeur également. */}
       {needsAttentionDossiers.length > 0 && (
         <div className="mb-8">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -634,7 +697,7 @@ export default function VendeurTableauDeBordPage() {
         </div>
       )}
 
-      {/* 3. Véhicules avec 3 tentatives ou plus. */}
+      {/* 4. Véhicules avec 3 tentatives ou plus. */}
       {failedDossiers.length > 0 && (
         <div className="mb-8">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">

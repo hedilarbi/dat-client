@@ -10,6 +10,7 @@ import Alert from '../../components/Alert';
 import PageHeader from '../../components/PageHeader';
 import { formatTimeLeft } from '../../lib/currentSales';
 import { formatEuros } from '../../lib/format';
+import Spinner from '../../components/Spinner';
 
 /**
  * États d'un véhicule côté vendeur, calculés par le serveur (SELLER_VEHICLE_STATES).
@@ -90,7 +91,7 @@ export default function SellerSalesPage() {
   }, []);
 
   if (userLoading || !user) {
-    return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('sellerSales.loading')}</div>;
+    return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
   const total = STATE_ORDER.reduce((sum, state) => sum + counts[state], 0);
@@ -133,7 +134,7 @@ export default function SellerSalesPage() {
       </div>
 
       {!loaded ? (
-        <p className="py-10 text-sm text-[#5a5e66]">{t('sellerSales.loading')}</p>
+        <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : items.length === 0 ? (
         <p className="rounded-[12px] bg-[#f8f7f2] p-8 text-center text-sm text-[#5a5e66]">
           {filter === 'all' ? t('sellerSales.emptyAll') : t(`sellerSales.empty.${filter}`)}

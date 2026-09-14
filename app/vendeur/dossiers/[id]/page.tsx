@@ -9,6 +9,7 @@ import Alert from '../../../components/Alert';
 import { Badge, getVehicleDossierStatusBadge } from '../../../components/StatusBadge';
 import VehicleDossierWizard from '../../../components/vehicleDossier/VehicleDossierWizard';
 import type { VehicleDossier } from '../../../lib/vehicleDossier';
+import Spinner from '../../../components/Spinner';
 
 export default function DossierVehiculeDetailPage() {
   const params = useParams<{ id: string }>();
@@ -29,8 +30,8 @@ export default function DossierVehiculeDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 w-full bg-white p-8 text-[#5a5e66] font-medium text-sm">
-        Chargement du dossier...
+      <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-[#13243c]" />
       </div>
     );
   }

@@ -8,8 +8,10 @@ import { useUser } from './LayoutWrapper';
 import { getRoleHomePath, localizedPath, useLanguage } from '../i18n';
 import Alert from './Alert';
 import PageHeader from './PageHeader';
+import AuctionPriceTags from './AuctionPriceTags';
 import { formatTimeLeft } from '../lib/currentSales';
 import { formatEuros } from '../lib/format';
+import Spinner from './Spinner';
 
 /** États calculés par le serveur (SELLER_PHASES dans sale.service.js). */
 export type SellerPhase = 'depot' | 'en_vente';
@@ -45,6 +47,8 @@ interface SellerVehicleRow {
   reservePrice: number | null;
   listingCount: number;
   offerCount: number;
+  /** Meilleure offre de la session en cours, nulle tant qu'aucune offre n'a été déposée. */
+  bestOffer: number | null;
   vehicle: { id: string; brand: string; model: string; photoUrl: string | null } | null;
   session: { id: string; name: string; startDate: string; endDate: string; status: string } | null;
 }
@@ -102,7 +106,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
   }, []);
 
   if (userLoading || !user) {
-    return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66]">{t('sellerSales.loading')}</div>;
+    return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
   // Ce qui demande une action remonte : c'est la seule chose sur laquelle le vendeur peut agir.
@@ -171,7 +175,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
       </div>
 
       {!loaded ? (
-        <p className="py-10 text-sm text-[#5a5e66]">{t('sellerSales.loading')}</p>
+        <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : items.length === 0 ? (
         <p className="rounded-[12px] bg-[#f8f7f2] p-8 text-center text-sm text-[#5a5e66]">
           {filter === 'all' ? t(`sellerVehicles.empty.${phase}`) : t(`sellerVehicles.emptyState.${filter}`)}
@@ -261,15 +265,25 @@ function VehicleCard({
         </div>
 
         <div className="shrink-0 text-left sm:text-right">
-          {row.state === 'encheres_ouvertes' && (
-            <div className="text-[10px] font-bold uppercase tracking-wide text-[#7a756a]">
-              {t('sellerSales.offersReceived', { count: String(row.offerCount) })}
-            </div>
-          )}
-          {row.reservePrice != null && (
-            <div className="mt-1 text-[11px] text-[#5a5e66]">
-              {t('sellerSales.reservePrice')} : <span className="font-mono font-bold">{formatEuros(row.reservePrice, language)}</span>
-            </div>
+          {/* Session ouverte : le vendeur suit la meilleure offre face à sa réserve. Hors
+              session, seule la réserve a du sens — il n'y a pas d'enchère en cours. */}
+          {row.state === 'encheres_ouvertes' ? (
+            <>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#7a756a]">
+                {t('sellerSales.offersReceived', { count: String(row.offerCount) })}
+              </div>
+              <AuctionPriceTags
+                bestOffer={row.bestOffer}
+                reservePrice={row.reservePrice}
+                className="mt-1.5 sm:justify-end"
+              />
+            </>
+          ) : (
+            row.reservePrice != null && (
+              <div className="mt-1 text-[11px] text-[#5a5e66]">
+                {t('sellerSales.reservePrice')} : <span className="font-mono font-bold">{formatEuros(row.reservePrice, language)}</span>
+              </div>
+            )
           )}
         </div>
 

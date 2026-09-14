@@ -123,13 +123,6 @@ export default function BidModal({ vehicleId, vehicleTitle, offerId, initialAmou
     }
   };
 
-  const commissionDetail = (tier: CommissionTierSummary | null) => {
-    if (!tier) return t('bid.commissionNone');
-    return tier.type === 'percentage'
-      ? t('bid.commissionTierPercentage', { value: String(tier.value) })
-      : t('bid.commissionTierFixed');
-  };
-
   return (
     <div
       className="fixed inset-0 z-100 flex items-center justify-center bg-[rgba(8,15,27,.72)] p-4"
@@ -210,29 +203,15 @@ export default function BidModal({ vehicleId, vehicleTitle, offerId, initialAmou
                 {t('bid.feesWarning')}
               </p>
 
+              <p className="rounded-[10px] border-l-4 border-red-500 bg-red-50 p-3.5 text-sm font-semibold leading-6 text-red-700">
+                {t('bid.paymentCommitmentWarning')}
+              </p>
+
               <div>
                 <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[.08em] text-[#5a5e66]">{t('bid.recapTitle')}</h3>
                 <dl className="overflow-hidden rounded-[10px] border border-[#eceadf]">
-                  <div className="flex items-baseline justify-between gap-3 border-b border-[#f1efe8] px-4 py-3">
-                    <dt className="text-sm text-[#13243c]">{t('bid.yourPrice')}</dt>
-                    <dd className="font-mono text-sm font-bold text-[#13243c]">{formatEuros(quote.amount, language)}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3 border-b border-[#f1efe8] px-4 py-3">
-                    <dt className="text-sm text-[#13243c]">
-                      {t('bid.commission')}
-                      <span className="mt-0.5 block text-xs text-[#5a5e66]">{commissionDetail(quote.commissionTier)}</span>
-                    </dt>
-                    <dd className="font-mono text-sm font-bold text-[#13243c]">{formatEuros(quote.commission, language)}</dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3 border-b border-[#f1efe8] px-4 py-3">
-                    <dt className="text-sm text-[#13243c]">
-                      {t('bid.tax', { name: quote.taxName, rate: String(quote.taxRate) })}
-                      <span className="mt-0.5 block text-xs text-[#5a5e66]">{t('bid.taxNote')}</span>
-                    </dt>
-                    <dd className="font-mono text-sm font-bold text-[#13243c]">{formatEuros(quote.taxAmount, language)}</dd>
-                  </div>
                   <div className="flex items-baseline justify-between gap-3 bg-[#13243c] px-4 py-3.5">
-                    <dt className="text-[11px] font-bold uppercase tracking-[.06em] text-[#c3cedd]">{t('bid.total')}</dt>
+                    <dt className="text-sm font-semibold leading-5 text-[#dce4ef]">{t('bid.totalIncluded')}</dt>
                     <dd className="font-mono text-lg font-bold text-white">{formatEuros(quote.total, language)}</dd>
                   </div>
                 </dl>

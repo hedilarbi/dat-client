@@ -9,6 +9,7 @@ import StampReminderBanner from '../../components/StampReminderBanner';
 import StatCard from '../../components/StatCard';
 import { formatEuros } from '../../lib/format';
 import { UnderReviewNotice, SuspendedNotice } from '../../components/RegistrationStatusNotices';
+import Spinner from '../../components/Spinner';
 
 interface BuyerOfferPreview {
   id: string;
@@ -19,7 +20,7 @@ interface BuyerOfferPreview {
 }
 
 export default function BuyerDashboardPage() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const { language, t } = useLanguage();
   
   const [ongoingOffers, setOngoingOffers] = useState<BuyerOfferPreview[]>([]);
@@ -49,9 +50,15 @@ export default function BuyerDashboardPage() {
       .finally(() => setOffersLoaded(true));
   }, [user?._id, user?.role, user?.status]);
 
+  if (userLoading || (user?.status === 'valide' && !offersLoaded)) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 border-[#13243c]" />
+      </div>
+    );
+  }
   if (!user || user.role !== 'acheteur') return null;
   if (user.status !== 'valide' && user.status !== 'suspendu') return <UnderReviewNotice />;
-  if (!offersLoaded) return <div className="flex-1 w-full bg-white p-8 text-sm font-medium text-[#5a5e66] text-center animate-pulse">{t('common.loading') || 'Chargement...'}</div>;
 
   return (
     <div className="p-6 sm:p-8 w-full font-sans bg-white min-h-full">
@@ -174,7 +181,7 @@ export default function BuyerDashboardPage() {
 
                 <div className="divide-y divide-[#eceadf]">
                   {!offersLoaded && (
-                    <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.loading')}</div>
+                    <div className="flex justify-center p-[20px]"><Spinner className="h-6 w-6 text-[#13243c]" /></div>
                   )}
                   {offersLoaded && ongoingOffers.length === 0 && (
                     <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.emptyOngoing')}</div>

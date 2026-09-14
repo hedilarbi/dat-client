@@ -11,6 +11,7 @@ import { useUser } from '../../components/LayoutWrapper';
 import { formatTimeLeft } from '../../lib/currentSales';
 import { formatEuros } from '../../lib/format';
 import { energyLabel, gearboxLabel } from '../../lib/vehicleLabels';
+import Spinner from '../../components/Spinner';
 
 interface VehiclePhoto {
   id: string;
@@ -95,8 +96,8 @@ export default function VehicleDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white px-4 py-16 text-center text-sm text-[#5a5e66] sm:px-10">
-        {t('vehicle.loading')}
+      <main className="flex min-h-screen items-center justify-center bg-white">
+        <Spinner className="h-10 w-10 text-[#13243c]" />
       </main>
     );
   }
