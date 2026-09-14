@@ -38,7 +38,7 @@ interface SellerSaleDetail {
   };
   purchaseDeclaration: { url: string | null; generatedAt: string | null };
   bonEnlevement: { url: string | null; generatedAt: string | null } | null;
-  esignature: { status: string | null; sellerUrl: string | null; buyerUrl: string | null; initiatedAt: string | null; signedDocumentUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
+  esignature: { status: string | null; sellerUrl: string | null; buyerUrl: string | null; initiatedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
   handover: { declarationUrl: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
@@ -339,17 +339,17 @@ export default function SellerSaleDetailPage() {
             Documents de vente
           </h2>
           <p className="mb-4 text-[13px] text-[#5a5e66]">
-            Les tampons enregistrés du vendeur et de l’acheteur sont automatiquement apposés sur ces documents.
+            Le dossier original signé reste archivé sans tampon. La version proposée évolue ensuite avec le tampon vendeur, puis le tampon acheteur.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {(sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
-              <a href={sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>{sale.esignature?.signedDocumentUrl ? 'Dossier de vente signé' : 'Certificat de cession'}</span><span aria-hidden="true">↓</span>
+            {(sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
+              <a href={sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
+                <span>{sale.esignature?.buyerStampedUrl ? 'Dossier signé avec les deux tampons' : sale.esignature?.sellerStampedUrl ? 'Dossier signé avec tampon vendeur' : sale.esignature?.signedDocumentUrl ? 'Dossier signé sans tampon' : 'Certificat de cession'}</span><span aria-hidden="true">↓</span>
               </a>
             )}
             {sale.purchaseDeclaration.url && (
               <a href={sale.purchaseDeclaration.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>Déclaration d’achat</span><span aria-hidden="true">↓</span>
+                <span>Déclaration d’achat préremplie</span><span aria-hidden="true">↓</span>
               </a>
             )}
             {sale.esignature?.auditUrl && (
@@ -535,7 +535,7 @@ export default function SellerSaleDetailPage() {
                         <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
                           {isHistorical 
                             ? "Vous avez signé les documents avec succès."
-                            : "Veuillez cliquer sur le bouton ci-dessous pour signer le certificat de cession et le bon d'enlèvement électroniquement sur notre plateforme partenaire."}
+                            : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat. Aucun tampon n'est ajouté à cette étape."}
                         </p>
                         {!isHistorical && (
                           <a
