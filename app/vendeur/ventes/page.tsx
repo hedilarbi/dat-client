@@ -199,6 +199,11 @@ function VehicleRowCard({
             <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${STATE_STYLES[row.state]}`}>
               {t(`sellerSales.state.${row.state}`)}
             </span>
+            {row.state === 'vente_en_cours' && row.sale?.currentStep === 3 && (
+              <span className="rounded-full bg-[#13243c] px-2.5 py-0.5 text-[10px] font-bold uppercase text-white">
+                {t('dashboard.awaitingYourSignature')}
+              </span>
+            )}
             {row.lotNumber != null && (
               <span className="rounded-[5px] bg-[#faf1e4] px-2 py-0.5 font-mono text-[10px] font-bold text-[#b3893f]">
                 {t('vehicle.lot', { number: String(row.lotNumber) })}

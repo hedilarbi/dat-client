@@ -164,7 +164,9 @@ function SaleCard({
   }, []);
 
   const remaining = timeLeft(sale.currentStepDueAt);
-  const stepName = sale.stepKey ? t(`sales.step.${sale.stepKey}`) : '';
+  const stepName = sale.currentStep === 3
+    ? t('dashboard.awaitingYourSignature')
+    : sale.stepKey ? t(`sales.step.${sale.stepKey}`) : '';
 
   return (
     <article className={`overflow-hidden rounded-[16px] border bg-white transition-all duration-200 hover:shadow-lg ${highlighted ? 'border-[#d9704f] ring-2 ring-[#d9704f]/20 shadow-md' : 'border-[#e2ddd1] shadow-xs'}`}>
@@ -189,6 +191,11 @@ function SaleCard({
             <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sale.status === 'cloturee' ? 'bg-[#e9f4ee] text-[#2f6f4f]' : 'bg-[#fdf6f2] text-[#d9704f] border border-[#f7d6cb]'}`}>
               {sale.status === 'cloturee' ? t('sales.filterClosed') : t('sales.filterOngoing')}
             </span>
+            {sale.status === 'en_cours' && sale.currentStep === 3 && (
+              <span className="rounded-full bg-[#13243c] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                {t('dashboard.awaitingYourSignature')}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#5a5e66]">

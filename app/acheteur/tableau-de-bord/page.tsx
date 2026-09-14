@@ -98,7 +98,7 @@ export default function BuyerDashboardPage() {
           </h2>
           <div className="grid gap-4">
             {ongoingSales.map(sale => {
-              const isBuyerTurn = sale.currentStep === 1 || sale.currentStep === 4 || sale.currentStep === 5;
+              const isBuyerTurn = sale.currentStep === 1 || sale.currentStep === 3 || sale.currentStep === 5 || sale.currentStep === 6;
               return (
                 <div key={sale.id} className={`flex flex-col sm:flex-row items-center gap-4 bg-white border-2 ${isBuyerTurn ? 'border-[#d9704f] shadow-[0_4px_12px_rgba(217,112,79,0.15)]' : 'border-[#eceadf] shadow-sm'} rounded-[12px] p-4 transition-transform hover:-translate-y-1`}>
                   {sale.vehicle?.photoUrl && (
@@ -124,9 +124,9 @@ export default function BuyerDashboardPage() {
                       {isBuyerTurn && sale.stepKey ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#13243c] px-2.5 py-1 text-[11px] font-bold text-white">
                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          {t(`sales.step.${sale.stepKey}`)}
+                          {sale.currentStep === 3 ? t('dashboard.awaitingYourSignature') : t(`sales.step.${sale.stepKey}`)}
                         </span>
-                      ) : sale.currentStep === 7 ? (
+                      ) : sale.currentStep === 8 ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a] px-2.5 py-1 text-[11px] font-bold text-white">
                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                           {t('dashboard.handoverPapersReady')}

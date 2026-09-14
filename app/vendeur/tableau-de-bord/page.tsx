@@ -480,7 +480,7 @@ export default function VendeurTableauDeBordPage() {
   /** Ce que le vendeur doit faire, selon l'étape où la vente est bloquée. */
   const sellerActionLabel = (stepKey?: string | null) => ({
     virement_carte_grise: t('vendeurDashboard.actionConfirmTransfer'),
-    signature_electronique: t('sellerSale.step.signature_electronique'),
+    signature_electronique: t('dashboard.awaitingYourSignature'),
     tampon_vendeur: t('vendeurDashboard.actionUploadCertificate'),
     validation_vendeur: t('vendeurDashboard.actionValidateCertificate'),
     enlevement: t('vendeurDashboard.actionEnterCode'),
