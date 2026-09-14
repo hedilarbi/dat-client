@@ -108,6 +108,8 @@ export default function WonSaleDetailPage() {
   // renvoyé un session_id et que le serveur n'a pas tranché.
   const [confirmSettled, setConfirmSettled] = useState(false);
   const confirmStartedRef = useRef(false);
+  const stepTwoRef = useRef<HTMLDivElement>(null);
+  const scrollToStepTwoRef = useRef(false);
 
   // Étape 3 : dépôt du certificat signé et tamponné
   const [signedFile, setSignedFile] = useState<File | null>(null);
@@ -160,7 +162,15 @@ export default function WonSaleDetailPage() {
 
   // Retour de Stripe : le serveur relit la session et n'avance l'étape que si elle est payée
   useEffect(() => {
-    if (!checkoutSessionId || !loaded || !sale || sale.currentStep !== 1) return;
+    if (!checkoutSessionId || !loaded || !sale) return;
+
+    // Le webhook Stripe peut avoir déjà fait avancer la vente avant le chargement de la page.
+    if (sale.currentStep >= 2) {
+      scrollToStepTwoRef.current = true;
+      router.replace(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language), { scroll: false });
+      return;
+    }
+    if (sale.currentStep !== 1) return;
     // Un seul appel de confirmation par retour, même si l'effet est réexécuté
     if (confirmStartedRef.current) return;
     confirmStartedRef.current = true;
@@ -170,18 +180,28 @@ export default function WonSaleDetailPage() {
       body: JSON.stringify({ checkoutSessionId }),
     })
       .then((res) => {
+        scrollToStepTwoRef.current = true;
         setSale(res.sale);
+        setViewedStepIndex(null);
         setMessage(t('saleDetail.paymentSuccess'));
         setError('');
         setCheckoutOpen(false);
         // Retire session_id de l'URL pour ne pas rejouer la confirmation au rechargement
-        router.replace(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language));
+        router.replace(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language), { scroll: false });
       })
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
       })
       .finally(() => setConfirmSettled(true));
   }, [checkoutSessionId, loaded, sale, params.id, router, language, t]);
+
+  useEffect(() => {
+    if (!scrollToStepTwoRef.current || sale?.currentStep !== 2) return;
+    scrollToStepTwoRef.current = false;
+    window.requestAnimationFrame(() => {
+      stepTwoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [sale?.currentStep]);
 
   
   const handleValidateSellerCertificate = async () => {
@@ -459,15 +479,15 @@ const handleSubmitCertificate = async () => {
             const isLast = index === sale.steps.length - 1;
 
             return (
-              <VerticalStep
-                key={stepKey}
-                stepNumber={stepNumber}
-                title={t(`sales.step.${stepKey}`)}
-                isActive={isActive}
-                isCompleted={isCompleted}
-                isLast={isLast}
-                onClick={() => setViewedStepIndex(isActive ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
-              >
+              <div key={stepKey} ref={stepNumber === 2 ? stepTwoRef : undefined}>
+                <VerticalStep
+                  stepNumber={stepNumber}
+                  title={t(`sales.step.${stepKey}`)}
+                  isActive={isActive}
+                  isCompleted={isCompleted}
+                  isLast={isLast}
+                  onClick={() => setViewedStepIndex(isActive ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
+                >
                 {error && isActive && <Alert variant="error" className="mb-4">{error}</Alert>}
                 {!isHistorical && sale.currentStepDueAt && (
                   <p className={`mb-4 text-[13px] font-bold ${remaining ? 'text-red-600' : 'text-red-800'}`}>
@@ -606,6 +626,15 @@ const handleSubmitCertificate = async () => {
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
                   {isHistorical ? "Le vendeur a confirmé la réception du virement bancaire." : t('saleDetail.step2Intro')}
                 </p>
+
+                {sale.seller?.bankInfo && (
+                  <dl className="mb-4 overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
+                    <SellerRow label={t('saleDetail.sellerBank')} value={sale.seller.bankInfo.bankName} />
+                    <SellerRow label={t('saleDetail.sellerAccountHolder')} value={sale.seller.bankInfo.accountHolder} />
+                    <SellerRow label={t('saleDetail.sellerIban')} value={sale.seller.bankInfo.iban} mono />
+                    <SellerRow label={t('saleDetail.sellerBic')} value={sale.seller.bankInfo.bic} mono />
+                  </dl>
+                )}
 
                 {sale.amount != null && (
                   <div className="mb-4 flex items-baseline justify-between gap-3 rounded-[10px] bg-[#13243c] px-4 py-3.5">
@@ -942,7 +971,8 @@ const handleSubmitCertificate = async () => {
                 )}
               </>
             )}
-              </VerticalStep>
+                </VerticalStep>
+              </div>
             );
           })}
         </div>
