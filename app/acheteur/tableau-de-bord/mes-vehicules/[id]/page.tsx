@@ -954,22 +954,16 @@ const handleSubmitCertificate = async () => {
             )}
             
             {renderStepNumber === 8 && (
-              <>
-                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical ? "L'enlèvement a été confirmé avec succès par le vendeur." : t('saleDetail.step5Intro')}
-                </p>
-
-                {sale.bonEnlevement?.url && (
-                  <a
-                    href={sale.bonEnlevement.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le bon d'enlèvement (Signé)</span>
-                  </a>
-                )}
-              </>
+              sale.bonEnlevement?.url && (
+                <a
+                  href={sale.bonEnlevement.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le bon d’enlèvement</span>
+                </a>
+              )
             )}
                 </VerticalStep>
               </div>

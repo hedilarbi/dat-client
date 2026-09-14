@@ -105,7 +105,6 @@ export default function SellerSaleDetailPage() {
   const [rejecting, setRejecting] = useState(false);
   // Étape 5 : saisie du code de remise communiqué par l'acheteur
   
-  const [submittingHandover, setSubmittingHandover] = useState(false);
   const [, setClock] = useState(0);
 
   // Vue historique
@@ -252,25 +251,6 @@ export default function SellerSaleDetailPage() {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
       setRejecting(false);
-    }
-  };
-
-  const handleConfirmHandover = async () => {
-    if (!sale) return;
-
-    setSubmittingHandover(true);
-    setError('');
-    try {
-      const res = await apiRequest(`/sales/${sale.id}/handover`, {
-        method: 'POST',
-      });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setViewedStepIndex(null);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
-    } finally {
-      setSubmittingHandover(false);
     }
   };
 
@@ -788,54 +768,16 @@ export default function SellerSaleDetailPage() {
                 )}
 
                 {renderStepNumber === 8 && (
-                  <>
-                    {!isHistorical && sale.certificate.validatedAt && (
-                      <p className="mb-3 rounded-[10px] border-l-4 border-[#2f6f4f] bg-[#e9f4ee] p-3.5 text-sm leading-6 text-[#2f6f4f]">
-                        {t('sellerSale.certificateValidated', { date: formatDate(sale.certificate.validatedAt) })}
-                      </p>
-                    )}
-                    {isHistorical ? (
-                      <div className="mb-4 rounded-[10px] border border-[#cbe3d5] bg-[#e9f4ee] p-4 text-center">
-                        <h3 className="mb-2 font-heading text-[16px] font-bold uppercase text-[#2f6f4f]">Vente clôturée</h3>
-                        <p className="text-sm leading-6 text-[#2f6f4f]">
-                          L'enlèvement a été confirmé avec succès et la vente est maintenant terminée.
-                        </p>
-                        {sale.bonEnlevement?.url && (
-                          <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-[8px] bg-[#2f6f4f] px-5 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white transition hover:bg-[#1f4f37]">
-                            Télécharger le bon d’enlèvement
-                          </a>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                        {t('sellerSale.step5Intro')}
-                      </p>
-                    )}
-
-                        <div className="flex flex-col gap-4">
-                          {sale.bonEnlevement?.url && (
-                            <a 
-                              href={sale.bonEnlevement.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="btn bg-[#e9f4ee] border-[#2f6f4f] text-[#2f6f4f] w-full sm:w-auto hover:bg-[#cbe3d5]"
-                            >
-                              Télécharger le bon d'enlèvement
-                            </a>
-                          )}
-
-                          {!isHistorical && (
-                            <button
-                              type="button"
-                              onClick={handleConfirmHandover}
-                              disabled={submittingHandover}
-                              className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-                            >
-                              {submittingHandover ? 'Validation...' : 'Confirmer la remise du véhicule'}
-                            </button>
-                          )}
-                        </div>
-                  </>
+                  sale.bonEnlevement?.url && (
+                    <a
+                      href={sale.bonEnlevement.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn bg-[#e9f4ee] border-[#2f6f4f] text-[#2f6f4f] w-full sm:w-auto hover:bg-[#cbe3d5]"
+                    >
+                      Télécharger le bon d’enlèvement
+                    </a>
+                  )
                 )}
                   </VerticalStep>
                 );
