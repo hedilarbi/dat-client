@@ -364,7 +364,7 @@ const handleSubmitCertificate = async () => {
         </div>
       )}
 
-      {sale.currentStep >= 3 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
+      {sale.currentStep >= 3 && sale.currentStep < 8 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
         <section className="mb-6 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
           <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
             Documents de vente
@@ -431,14 +431,9 @@ const handleSubmitCertificate = async () => {
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            {sale.certificate.url && (
-              <a href={sale.certificate.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-[#2f6f4f] hover:underline">
-                ↓ {t('saleDetail.downloadCertificate')}
-              </a>
-            )}
-            {sale.handover.declarationUrl && (
-              <a href={sale.handover.declarationUrl} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-[#2f6f4f] hover:underline">
-                ↓ {t('saleDetail.downloadDeclaration')}
+            {sale.bonEnlevement?.url && (
+              <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-[#2f6f4f] hover:underline">
+                ↓ Télécharger le bon d’enlèvement
               </a>
             )}
           </div>
@@ -934,22 +929,6 @@ const handleSubmitCertificate = async () => {
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
                   {isHistorical ? "L'enlèvement a été confirmé avec succès par le vendeur." : t('saleDetail.step5Intro')}
                 </p>
-
-                {sale.handover.declarationUrl && (
-                  <a
-                    href={sale.handover.declarationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#13243c]">↓ {t('saleDetail.downloadDeclaration')}</span>
-                    {sale.handover.generatedAt && (
-                      <span className="text-[11px] text-[#5a5e66]">
-                        {t('saleDetail.certificateGenerated', { date: new Date(sale.handover.generatedAt).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                      </span>
-                    )}
-                  </a>
-                )}
 
                 {sale.bonEnlevement?.url && (
                   <a

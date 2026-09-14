@@ -333,7 +333,7 @@ export default function SellerSaleDetailPage() {
         )}
       </div>
 
-      {sale.currentStep >= 3 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
+      {sale.currentStep >= 3 && sale.currentStep < 8 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
         <section className="mb-6 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
           <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
             Documents de vente
@@ -392,9 +392,9 @@ export default function SellerSaleDetailPage() {
                   {t('sellerSale.handoverDone', { date: formatDate(sale.handover.confirmedAt) })}
                 </p>
               )}
-              {sale.handover.declarationUrl && (
-                <a href={sale.handover.declarationUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[13px] font-bold text-[#2f6f4f] hover:underline">
-                  {t('sellerSale.downloadDeclaration')}
+              {sale.bonEnlevement?.url && (
+                <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[13px] font-bold text-[#2f6f4f] hover:underline">
+                  Télécharger le bon d’enlèvement
                 </a>
               )}
             </section>
@@ -800,9 +800,9 @@ export default function SellerSaleDetailPage() {
                         <p className="text-sm leading-6 text-[#2f6f4f]">
                           L'enlèvement a été confirmé avec succès et la vente est maintenant terminée.
                         </p>
-                        {sale.handover?.declarationUrl && (
-                          <a href={sale.handover.declarationUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-[8px] bg-[#2f6f4f] px-5 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white transition hover:bg-[#1f4f37]">
-                            {t('sellerSale.downloadDeclaration')}
+                        {sale.bonEnlevement?.url && (
+                          <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-[8px] bg-[#2f6f4f] px-5 py-2.5 text-[13px] font-bold uppercase tracking-wide text-white transition hover:bg-[#1f4f37]">
+                            Télécharger le bon d’enlèvement
                           </a>
                         )}
                       </div>
