@@ -29,8 +29,8 @@ interface UserProfile {
     country: string;
     postalCode: string;
   };
-  /** Commission restant due après annulation d'une vente ; suspend le compte tant qu'elle n'est pas réglée. */
-  pendingCommission?: { amount: number; saleId?: string };
+  /** Dette à régler avant réactivation : commission de l'étape 1 ou pénalité de l'étape 2. */
+  pendingCommission?: { amount: number; saleId?: string; reason?: 'commission_impayee' | 'penalite_etape_2' };
   siret?: string;
   stampUrl?: string;
   kbisUrl?: string;

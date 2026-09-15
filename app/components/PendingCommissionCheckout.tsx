@@ -24,7 +24,7 @@ export default function PendingCommissionCheckout({ onCancel }: PendingCommissio
     <div className="rounded-[12px] border border-[#eceadf] bg-white p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-          Règlement de la commission
+          Règlement pour réactivation du compte
         </span>
         <button
           type="button"

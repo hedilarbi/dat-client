@@ -386,8 +386,10 @@ export default function ProfilPage() {
             Compte suspendu
           </h2>
           <p className="text-red-700 mb-6 leading-relaxed">
-            Votre compte a été suspendu suite au dépassement du délai de procédure. La vente du véhicule vous a été définitivement retirée et attribuée à l'offre suivante.
-            Pour débloquer et réactiver votre compte, vous devez régler les frais de dossier (<strong>{formatEuros(user.pendingCommission.amount, language)}</strong>).
+            La vente du véhicule vous a été retirée et attribuée à l’offre suivante.{' '}
+            {user.pendingCommission.reason === 'penalite_etape_2'
+              ? <>Le délai de virement de l’étape 2 ayant été dépassé, vous devez régler la pénalité de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong> pour réactiver votre compte.</>
+              : <>La commission de l’étape 1 n’ayant pas été réglée, vous devez payer cette commission, soit <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>, pour réactiver votre compte.</>}
           </p>
 
           <div ref={alertRef}>
