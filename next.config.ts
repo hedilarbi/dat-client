@@ -16,6 +16,30 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/fr/ventes-en-cours',
+        destination: '/fr/vehicules',
+        permanent: true,
+      },
+      {
+        source: '/en/current-sales',
+        destination: '/en/vehicles',
+        permanent: true,
+      },
+      {
+        source: '/fr/vendre-avec-nous',
+        destination: '/fr/vendre',
+        permanent: true,
+      },
+      {
+        source: '/en/sell-with-us',
+        destination: '/en/sell',
+        permanent: true,
+      }
+    ];
+  },
 };
 
 export default nextConfig;

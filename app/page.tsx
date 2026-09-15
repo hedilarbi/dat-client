@@ -6,6 +6,7 @@ import Link from "next/link";
 import { localizedPath, useLanguage } from "./i18n";
 import { formatTimeLeft, useCurrentSales } from "./lib/currentSales";
 import Spinner from "./components/Spinner";
+import JsonLd from "./components/JsonLd";
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
@@ -70,6 +71,29 @@ export default function Home() {
 
   return (
     <div className="bg-white text-black font-sans">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://dat-client.vercel.app/#organization",
+            "name": "DealAutoPro",
+            "url": "https://dat-client.vercel.app/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://dat-client.vercel.app/assets/logo-dealautopro.png"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://dat-client.vercel.app/#website",
+            "url": "https://dat-client.vercel.app/",
+            "name": "DealAutoPro",
+            "publisher": {"@id": "https://dat-client.vercel.app/#organization"},
+            "inLanguage": ["fr-FR", "en"]
+          }
+        ]
+      }} />
       {/* Hero */}
       <div className="relative h-[420px] sm:h-[600px] overflow-hidden bg-[#0c1626]">
         <img src={HERO_IMAGE} alt="" className="absolute inset-0 w-full h-full object-cover opacity-90" />

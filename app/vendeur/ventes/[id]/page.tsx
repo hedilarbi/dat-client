@@ -318,9 +318,6 @@ export default function SellerSaleDetailPage() {
           <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
             Documents de vente
           </h2>
-          <p className="mb-4 text-[13px] text-[#5a5e66]">
-            Le dossier original signé reste archivé sans tampon. La version proposée évolue ensuite avec le tampon vendeur, puis le tampon acheteur.
-          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {(sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
               <a href={sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
@@ -416,7 +413,8 @@ export default function SellerSaleDetailPage() {
               {sale.steps.map((stepKey, index) => {
                 const stepNumber = index + 1;
                 const isCompleted = stepNumber < sale.currentStep || sale.status === 'cloturee';
-                const isActive = viewedStepIndex !== null ? viewedStepIndex === index : (sale.status === 'cloturee' ? false : stepNumber === sale.currentStep);
+                const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
+                const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
                 const isHistorical = isCompleted;
                 const renderStepNumber = stepNumber;
                 const isLast = index === sale.steps.length - 1;
@@ -426,12 +424,14 @@ export default function SellerSaleDetailPage() {
                     key={stepKey}
                     stepNumber={stepNumber}
                     title={SELLER_STEP_LABELS[stepKey] ? t(SELLER_STEP_LABELS[stepKey]) : t(`sales.step.${stepKey}`)}
-                    isActive={isActive}
+                    isOpen={isOpen}
+                    isCurrent={isCurrent}
                     isCompleted={isCompleted}
                     isLast={isLast}
-                    onClick={() => setViewedStepIndex(isActive ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
+                    currentLabel={t('sales.currentStep')}
+                    onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
                   >
-                    {error && isActive && <Alert variant="error" className="mb-4">{error}</Alert>}
+                    {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
                     {!isHistorical && sale.currentStepDueAt && (
                       <p className={`mb-4 text-[13px] font-semibold ${remaining ? 'text-[#8a6a2f]' : 'text-[#b04a2c]'}`}>
                         {remaining ? t('sellerSale.deadlineLeft', { time: remaining }) : t('sellerSale.deadlineOver')}
@@ -515,7 +515,7 @@ export default function SellerSaleDetailPage() {
                         <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
                           {isHistorical 
                             ? "Vous avez signé les documents avec succès."
-                            : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat. Aucun tampon n'est ajouté à cette étape."}
+                            : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat."}
                         </p>
                         {!isHistorical && (
                           <a
@@ -672,14 +672,14 @@ export default function SellerSaleDetailPage() {
                       {isHistorical ? "Vous avez validé le document de l'acheteur." : t('sellerSale.step4Waiting')}
                     </p>
 
-                    {sale.certificate.signedUrl && (
+                    {(sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl) && (
                       <a
-                        href={sale.certificate.signedUrl}
+                        href={sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <span className="text-sm font-bold text-[#13243c]">↓ {t('sellerSale.downloadSignedCertificate')}</span>
+                        <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le dossier signé et tamponné</span>
                         {sale.certificate.signedAt && (
                           <span className="text-[11px] text-[#5a5e66]">
                             {t('sellerSale.uploadedOn', { date: formatDate(sale.certificate.signedAt) })}
@@ -688,7 +688,7 @@ export default function SellerSaleDetailPage() {
                       </a>
                     )}
 
-                    {!isHistorical && sale.certificate.signedUrl ? (
+                    {!isHistorical && (sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl) ? (
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-4 sm:flex-row">
                           <button
@@ -759,11 +759,11 @@ export default function SellerSaleDetailPage() {
                           </div>
                         )}
                       </div>
-                    ) : (
+                    ) : !isHistorical ? (
                       <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                        {t('sellerSale.certificateMissing')}
+                        Les documents signés et tamponnés par l’acheteur ne sont pas encore disponibles.
                       </p>
-                    )}
+                    ) : null}
                   </>
                 )}
 

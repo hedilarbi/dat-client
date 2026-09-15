@@ -24,9 +24,9 @@ export default function Footer() {
             {t('footer.platformTitle')}
           </div>
           <div className="flex flex-col gap-2.5 text-[13px] font-medium text-[#5a5e66]">
-            <span>{t('nav.vehicles')}</span>
-            <span>{t('nav.how')}</span>
-            <span>{t('nav.sessions')}</span>
+            <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
+            <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">Acheter un véhicule</Link>
+            <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
           </div>
         </div>
 
@@ -35,9 +35,9 @@ export default function Footer() {
             {t('footer.supportTitle')}
           </div>
           <div className="flex flex-col gap-2.5 text-[13px] font-medium text-[#5a5e66]">
-            <span>{t('nav.help')}</span>
-            <span>{t('footer.contactLink')}</span>
-            <span>{t('footer.termsLink')}</span>
+            <Link href={localizedPath('/comment-ca-marche', language)} className="hover:text-[#d9704f] transition">{t('nav.how')}</Link>
+            <Link href={localizedPath('/a-propos', language)} className="hover:text-[#d9704f] transition">{t('nav.about')}</Link>
+            <Link href={localizedPath('/securite-conformite', language)} className="hover:text-[#d9704f] transition">Sécurité & Conformité</Link>
           </div>
         </div>
 
@@ -46,6 +46,7 @@ export default function Footer() {
             {t('footer.contactTitle')}
           </div>
           <div className="flex flex-col gap-2.5 text-[13px] font-medium text-[#5a5e66]">
+            <Link href={localizedPath('/contact', language)} className="hover:text-[#d9704f] transition">{t('footer.contactLink')}</Link>
             <span>{t('footer.contactEmail')}</span>
             <span>{t('footer.contactPhone')}</span>
           </div>

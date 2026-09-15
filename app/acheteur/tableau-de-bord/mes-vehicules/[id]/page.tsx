@@ -389,9 +389,6 @@ const handleSubmitCertificate = async () => {
           <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
             Documents de vente
           </h2>
-          <p className="mb-4 text-[13px] text-[#5a5e66]">
-            Le dossier original signé reste archivé sans tampon. La version proposée évolue ensuite avec le tampon vendeur, puis le tampon acheteur.
-          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {(sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
               <a href={sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
@@ -473,7 +470,8 @@ const handleSubmitCertificate = async () => {
           {sale.steps.map((stepKey, index) => {
             const stepNumber = index + 1;
             const isCompleted = stepNumber < sale.currentStep || sale.status === 'cloturee';
-            const isActive = viewedStepIndex !== null ? viewedStepIndex === index : (sale.status === 'cloturee' ? false : stepNumber === sale.currentStep);
+            const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
+            const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
             const isHistorical = isCompleted;
             const renderStepNumber = stepNumber;
             const isLast = index === sale.steps.length - 1;
@@ -483,12 +481,14 @@ const handleSubmitCertificate = async () => {
                 <VerticalStep
                   stepNumber={stepNumber}
                   title={t(`sales.step.${stepKey}`)}
-                  isActive={isActive}
+                  isOpen={isOpen}
+                  isCurrent={isCurrent}
                   isCompleted={isCompleted}
                   isLast={isLast}
-                  onClick={() => setViewedStepIndex(isActive ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
+                  currentLabel={t('sales.currentStep')}
+                  onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
                 >
-                {error && isActive && <Alert variant="error" className="mb-4">{error}</Alert>}
+                {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
                 {!isHistorical && sale.currentStepDueAt && (
                   <p className={`mb-4 text-[13px] font-bold ${remaining ? 'text-red-600' : 'text-red-800'}`}>
                     {remaining
@@ -665,7 +665,7 @@ const handleSubmitCertificate = async () => {
                     <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
                       {isHistorical 
                         ? "Vous avez signé les documents avec succès."
-                        : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat. Aucun tampon n'est ajouté à cette étape."}
+                        : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat."}
                     </p>
                     {!isHistorical && (
                       <a

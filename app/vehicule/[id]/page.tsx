@@ -12,6 +12,7 @@ import { formatTimeLeft } from '../../lib/currentSales';
 import { formatEuros } from '../../lib/format';
 import { energyLabel, gearboxLabel } from '../../lib/vehicleLabels';
 import Spinner from '../../components/Spinner';
+import JsonLd from '../../components/JsonLd';
 
 interface VehiclePhoto {
   id: string;
@@ -145,6 +146,35 @@ export default function VehicleDetailPage() {
 
   return (
     <main className="min-h-screen bg-white font-sans text-black">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": ["Product", "Vehicle"],
+        "name": title,
+        "description": vehicle.description || vehicle.conditionDetails || title,
+        "image": vehicle.photos.map(p => p.url),
+        "brand": {
+          "@type": "Brand",
+          "name": vehicle.brand
+        },
+        "model": vehicle.model,
+        "vehicleConfiguration": vehicle.bodyType,
+        "vehicleEngine": {
+          "@type": "EngineSpecification",
+          "engineType": vehicle.engine,
+          "fuelType": vehicle.fuelType
+        },
+        "mileageFromOdometer": {
+          "@type": "QuantitativeValue",
+          "value": vehicle.mileage,
+          "unitCode": "KMT"
+        },
+        "offers": {
+          "@type": "Offer",
+          "availability": "https://schema.org/InStock",
+          "priceCurrency": "EUR",
+          "url": `https://dat-client.vercel.app/fr/vehicule/${vehicle.id}`
+        }
+      }} />
       <div className="px-4 pt-6 sm:px-10">{backLink}</div>
 
       <section className="grid grid-cols-1 gap-6 px-4 pt-4 pb-8 sm:px-10 lg:grid-cols-[1.25fr_1fr] lg:gap-10">

@@ -25,8 +25,25 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://dat-client.vercel.app'),
   title: "DealAutoPro",
   description: "Plateforme B2B dédiée aux professionnels de l'automobile",
+  alternates: {
+    canonical: '/',
+    languages: {
+      'fr-FR': '/fr',
+      'en': '/en',
+      'x-default': '/fr',
+    },
+  },
+  openGraph: {
+    title: "DealAutoPro",
+    description: "Plateforme B2B dédiée aux professionnels de l'automobile",
+    url: '/',
+    siteName: "DealAutoPro",
+    locale: 'fr_FR',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

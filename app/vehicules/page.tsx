@@ -11,6 +11,7 @@ import SalesAccessModal from '../components/SalesAccessModal';
 import vehicleCatalog from '../lib/vehicleCatalog.json';
 import { ENERGY_OPTIONS, GEARBOX_OPTIONS, PROCEDURE_OPTIONS } from '../lib/vehicleLabels';
 import Spinner from '../components/Spinner';
+import JsonLd from '../components/JsonLd';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const CURRENT_YEAR = new Date().getFullYear();
@@ -114,6 +115,13 @@ export default function CurrentSalesPage() {
 
   return (
     <main className="min-h-screen bg-white font-sans text-black">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Véhicules accidentés et sinistrés disponibles",
+        "description": "Consultez les véhicules accidentés, sinistrés ou non roulants disponibles.",
+        "url": "https://dat-client.vercel.app/fr/vehicules"
+      }} />
       <section className="relative h-[430px] sm:h-[460px] overflow-hidden bg-[#0b1423]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={HERO_IMAGE} alt="Véhicule proposé aux enchères" className="absolute inset-0 h-full w-full object-cover" />

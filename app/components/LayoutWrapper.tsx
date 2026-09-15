@@ -123,82 +123,6 @@ export function useUser() {
   return context;
 }
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  createdAt: string;
-  read: boolean;
-}
-
-function NotificationBell() {
-  const { t } = useLanguage();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  useEffect(() => {
-    setNotifications([
-      { id: '1', title: t('notifications.newOfferTitle'), message: t('notifications.newOfferMessage'), createdAt: t('notifications.time5min'), read: false },
-      { id: '2', title: t('notifications.fileValidatedTitle'), message: t('notifications.fileValidatedMessage'), createdAt: t('notifications.timeYesterday'), read: false },
-      { id: '3', title: t('notifications.sessionEndingTitle'), message: t('notifications.sessionEndingMessage'), createdAt: t('notifications.time2days'), read: true },
-    ]);
-  }, [t]);
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  return (
-    <DropdownMenu
-      panelClassName="w-[320px] max-w-[calc(100vw-2rem)] bg-white rounded-[10px] shadow-[0_10px_40px_rgba(0,0,0,0.18)] border border-[#efece3] overflow-hidden text-left"
-      trigger={({ onClick }) => (
-        <button
-          onClick={onClick}
-          className="relative w-9 h-9 flex items-center justify-center rounded-full bg-[#1c3050] border border-[#2c4266] hover:bg-slate-800 transition"
-          aria-label="Notifications"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-[3px] rounded-full bg-[#d9704f] text-white text-[10px] font-bold flex items-center justify-center border-2 border-[#13243c]">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      )}
-    >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#efece3]">
-        <span className="text-[13px] font-bold text-[#13243c] uppercase tracking-wide">{t('notifications.title')}</span>
-        {unreadCount > 0 && (
-          <button onClick={markAllAsRead} className="text-[11px] font-semibold text-[#d9704f] hover:underline">
-            {t('notifications.markAllRead')}
-          </button>
-        )}
-      </div>
-      <div className="max-h-[320px] overflow-y-auto">
-        {notifications.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[13px] text-[#5a5e66]">{t('notifications.empty')}</div>
-        ) : (
-          notifications.map(n => (
-            <div key={n.id} className={`px-4 py-3 border-b border-[#f3f1ea] last:border-b-0 ${n.read ? 'bg-white' : 'bg-[#fbfaf7]'}`}>
-              <div className="flex items-start gap-2">
-                {!n.read && <span className="mt-[6px] w-[6px] h-[6px] rounded-full bg-[#d9704f] shrink-0" />}
-                <div className={n.read ? 'ml-[14px]' : ''}>
-                  <div className="text-[13px] font-semibold text-[#13243c]">{n.title}</div>
-                  <div className="text-[12px] text-[#5a5e66] leading-[1.4] mt-[2px]">{n.message}</div>
-                  <div className="text-[11px] text-[#5a5e66] mt-[4px]">{n.createdAt}</div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </DropdownMenu>
-  );
-}
-
 function UserMenu({ displayName, initials, triggerClassName = 'hidden sm:flex' }: { displayName: string; initials: string; triggerClassName?: string }) {
   const { user, logout } = useUser();
   const { language, t } = useLanguage();
@@ -509,7 +433,6 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <div className="hidden lg:flex">
               <LanguageSelector compact onLanguageChange={persistLanguage} />
             </div>
-            <NotificationBell />
             <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden lg:flex" />
             <MobileMenu
               breakpointClass="lg:hidden"
@@ -591,10 +514,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
           <div className="hidden md:flex items-center gap-[22px] text-[13px] font-bold text-white shrink-0">
             <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
-            <Link href={localizedPath('/ventes-en-cours', language)} className="hover:text-[#d9704f] transition">{t('nav.currentSales')}</Link>
-            <Link href={`${homePath}#a-propos`} className="hover:text-[#d9704f] transition">{t('nav.about')}</Link>
-            <Link href={`${homePath}#contact`} className="hover:text-[#d9704f] transition">{t('nav.contact')}</Link>
-            <Link href={localizedPath('/vendre-avec-nous', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
+            <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
+            <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">Acheter</Link>
+            <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
@@ -617,10 +539,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
               onLanguageChange={persistLanguage}
               navLinks={[
                 { href: homePath, label: t('nav.home'), active: currentPath === '/' },
-                { href: localizedPath('/ventes-en-cours', language), label: t('nav.currentSales'), active: currentPath === '/ventes-en-cours' },
-                { href: `${homePath}#a-propos`, label: t('nav.about') },
-                { href: `${homePath}#contact`, label: t('nav.contact') },
-                { href: localizedPath('/vendre-avec-nous', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre-avec-nous' },
+                { href: localizedPath('/vehicules', language), label: t('nav.vehicles'), active: currentPath === '/vehicules' },
+                { href: localizedPath('/acheter', language), label: 'Acheter', active: currentPath === '/acheter' },
+                { href: localizedPath('/vendre', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre' },
               ]}
             />
           </div>

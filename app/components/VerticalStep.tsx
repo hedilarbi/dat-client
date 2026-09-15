@@ -3,9 +3,11 @@ import React from 'react';
 interface VerticalStepProps {
   stepNumber: number;
   title: string;
-  isActive: boolean;
+  isOpen: boolean;
+  isCurrent: boolean;
   isCompleted: boolean;
   isLast: boolean;
+  currentLabel: string;
   onClick?: () => void;
   children?: React.ReactNode;
 }
@@ -13,21 +15,23 @@ interface VerticalStepProps {
 export default function VerticalStep({
   stepNumber,
   title,
-  isActive,
+  isOpen,
+  isCurrent,
   isCompleted,
   isLast,
+  currentLabel,
   onClick,
   children,
 }: VerticalStepProps) {
   // Styling for the circle indicator
-  const circleBg = isActive ? '#d9704f' : isCompleted ? '#2f6f4f' : '#fff';
-  const circleColor = isActive || isCompleted ? '#fff' : '#9a917d';
-  const circleBorder = isActive ? '#d9704f' : isCompleted ? '#2f6f4f' : '#dcd7cb';
+  const circleBg = isCurrent ? '#d9704f' : isCompleted ? '#2f6f4f' : '#fff';
+  const circleColor = isCurrent || isCompleted ? '#fff' : '#9a917d';
+  const circleBorder = isCurrent ? '#d9704f' : isCompleted ? '#2f6f4f' : '#dcd7cb';
   const connectorColor = isCompleted ? '#2f6f4f' : '#dcd7cb';
-  const textColor = isActive ? '#13243c' : '#5a5e66';
+  const textColor = isCurrent ? '#d9704f' : isOpen ? '#13243c' : '#5a5e66';
   
   // Decide if this step can be clicked to open (completed or current active)
-  const isClickable = onClick && (isCompleted || isActive);
+  const isClickable = onClick && (isCompleted || isCurrent);
 
   return (
     <div className="flex w-full">
@@ -44,10 +48,10 @@ export default function VerticalStep({
             background: circleBg,
             color: circleColor,
             border: `2px solid ${circleBorder}`,
-            outlineColor: isActive ? '#d9704f' : '#2f6f4f'
+            outlineColor: isCurrent ? '#d9704f' : '#2f6f4f'
           }}
         >
-          {isCompleted && !isActive ? '✓' : stepNumber}
+          {isCompleted && !isCurrent ? '✓' : stepNumber}
         </button>
         {!isLast && (
           <div
@@ -76,7 +80,12 @@ export default function VerticalStep({
             {title}
           </h3>
           <div className="flex items-center gap-3">
-            {isCompleted && !isActive && (
+            {isCurrent && (
+              <span className="inline-flex rounded-full bg-[#fdf3ec] px-2 py-0.5 text-[10px] font-bold uppercase text-[#d9704f]">
+                {currentLabel}
+              </span>
+            )}
+            {isCompleted && !isCurrent && (
               <span className="hidden sm:inline-flex rounded-full bg-[#e9f4ee] px-2 py-0.5 text-[10px] font-bold uppercase text-[#2f6f4f]">
                 Étape complétée
               </span>
@@ -84,7 +93,7 @@ export default function VerticalStep({
             {isClickable && (
               <svg 
                 width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                className={`transition-transform duration-300 ${isActive ? 'rotate-180 text-[#d9704f]' : 'text-[#9a917d]'}`}
+                className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#d9704f]' : 'text-[#9a917d]'}`}
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -92,7 +101,7 @@ export default function VerticalStep({
           </div>
         </button>
 
-        {isActive && children && (
+        {isOpen && children && (
           <div className="mt-4 animate-in slide-in-from-top-2 fade-in duration-300">
             {children}
           </div>

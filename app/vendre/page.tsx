@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { getRoleLoginPath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
+import JsonLd from '../components/JsonLd';
 
 const benefits = [1, 2, 3] as const;
 
@@ -10,6 +11,12 @@ export default function SellWithUsPage() {
 
   return (
     <div className="flex-1 bg-[#f8f7f2] pb-16 text-[#13243c] sm:pb-24">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Vendre un véhicule accidenté à des pros | DealAutoPro",
+        "description": "Présentez vos véhicules accidentés, sinistrés ou de flotte à des acheteurs professionnels validés et suivez la vente jusqu’à l’enlèvement."
+      }} />
       <section className="relative overflow-hidden bg-[#0c1626] px-4 py-16 sm:px-10 sm:py-24">
         <div className="absolute -right-28 -top-36 h-[420px] w-[420px] rounded-full bg-[#d9704f]/20 blur-3xl" />
         <div className="relative mx-auto max-w-[1120px]">
