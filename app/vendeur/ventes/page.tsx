@@ -8,9 +8,9 @@ import { useUser } from '../../components/LayoutWrapper';
 import { getRoleHomePath, localizedPath, useLanguage } from '../../i18n';
 import Alert from '../../components/Alert';
 import PageHeader from '../../components/PageHeader';
-import { formatTimeLeft } from '../../lib/currentSales';
 import { formatEuros } from '../../lib/format';
 import Spinner from '../../components/Spinner';
+import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from '../../components/SellerListFilters';
 
 /**
  * États d'un véhicule côté vendeur, calculés par le serveur (SELLER_VEHICLE_STATES).
@@ -52,6 +52,7 @@ export default function SellerSalesPage() {
   const [rows, setRows] = useState<SellerVehicleRow[]>([]);
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
   const [filter, setFilter] = useState<VehicleState | 'all'>('all');
+  const [listFilters, setListFilters] = useState<SellerListFilterValues>(EMPTY_SELLER_LIST_FILTERS);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [, setClock] = useState(0);
@@ -95,7 +96,13 @@ export default function SellerSalesPage() {
   }
 
   const total = STATE_ORDER.reduce((sum, state) => sum + counts[state], 0);
-  const items = filter === 'all' ? rows : rows.filter((row) => row.state === filter);
+  const statusItems = filter === 'all' ? rows : rows.filter((row) => row.state === filter);
+  const items = statusItems.filter((row) => matchesSellerListFilters(listFilters, {
+    model: row.vehicle?.model,
+    registrationNumber: row.vehicle?.registrationNumber,
+    date: row.sale?.closedAt || row.sale?.wonAt || row.session?.endDate,
+    price: row.sale?.amount ?? row.reservePrice,
+  }));
 
   const filters: Array<{ value: VehicleState | 'all'; label: string; count: number }> = [
     { value: 'all', label: t('sellerSales.filterAll'), count: total },
@@ -111,6 +118,15 @@ export default function SellerSalesPage() {
       <PageHeader title={t('sellerSales.title')} />
 
       {error && <Alert variant="error" className="mb-5">{error}</Alert>}
+
+      <SellerListFilters
+        value={listFilters}
+        onChange={setListFilters}
+        onReset={() => setListFilters(EMPTY_SELLER_LIST_FILTERS)}
+        resultCount={items.length}
+        totalCount={rows.length}
+        t={t}
+      />
 
       {/* Filter Pills */}
       <div className="flex items-center gap-2.5 mb-6 overflow-x-auto pb-1">

@@ -12,6 +12,7 @@ import AuctionPriceTags from './AuctionPriceTags';
 import { formatTimeLeft } from '../lib/currentSales';
 import { formatEuros } from '../lib/format';
 import Spinner from './Spinner';
+import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from './SellerListFilters';
 
 /** États calculés par le serveur (SELLER_PHASES dans sale.service.js). */
 export type SellerPhase = 'depot' | 'en_vente';
@@ -49,7 +50,8 @@ interface SellerVehicleRow {
   offerCount: number;
   /** Meilleure offre de la session en cours, nulle tant qu'aucune offre n'a été déposée. */
   bestOffer: number | null;
-  vehicle: { id: string; brand: string; model: string; photoUrl: string | null } | null;
+  updatedAt: string | null;
+  vehicle: { id: string; brand: string; model: string; registrationNumber: string | null; photoUrl: string | null } | null;
   session: { id: string; name: string; startDate: string; endDate: string; status: string } | null;
 }
 
@@ -67,6 +69,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
   const [rows, setRows] = useState<SellerVehicleRow[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<VehicleState | 'all'>('all');
+  const [listFilters, setListFilters] = useState<SellerListFilterValues>(EMPTY_SELLER_LIST_FILTERS);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [, setClock] = useState(0);
@@ -114,7 +117,13 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
     const rank = (row: SellerVehicleRow) => states.indexOf(row.state);
     return rank(a) - rank(b);
   });
-  const items = filter === 'all' ? sorted : sorted.filter((row) => row.state === filter);
+  const statusItems = filter === 'all' ? sorted : sorted.filter((row) => row.state === filter);
+  const items = statusItems.filter((row) => matchesSellerListFilters(listFilters, {
+    model: row.vehicle?.model,
+    registrationNumber: row.vehicle?.registrationNumber,
+    date: row.session?.startDate || row.updatedAt,
+    price: row.state === 'encheres_ouvertes' ? (row.bestOffer ?? row.reservePrice) : row.reservePrice,
+  }));
   const actionable = rows.filter((row) => ACTIONABLE_STATES.includes(row.state)).length;
 
   const filters: Array<{ value: VehicleState | 'all'; label: string; count: number }> = [
@@ -142,6 +151,15 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
       </p>
 
       {error && <Alert variant="error" className="mb-5">{error}</Alert>}
+
+      <SellerListFilters
+        value={listFilters}
+        onChange={setListFilters}
+        onReset={() => setListFilters(EMPTY_SELLER_LIST_FILTERS)}
+        resultCount={items.length}
+        totalCount={rows.length}
+        t={t}
+      />
 
       {/* N'apparaît que s'il y a réellement quelque chose à faire : zéro action, zéro bruit. */}
       {phase === 'depot' && actionable > 0 && (
