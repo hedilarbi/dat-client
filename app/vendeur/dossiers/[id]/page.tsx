@@ -53,6 +53,8 @@ export default function DossierVehiculeDetailPage() {
   const badge = getVehicleDossierStatusBadge(dossier.status, t);
   const vehicleLabel = [dossier.brand, dossier.model].filter(Boolean).join(' ') || 'Sans nom';
   const lastRefusal = dossier.refusals?.[dossier.refusals.length - 1];
+  const backPath = dossier.status === 'valide' ? '/vendeur/en-vente' : '/vendeur/dossiers';
+  const backLabel = dossier.status === 'valide' ? 'Mes véhicules en vente' : 'Mes dossiers';
 
   if (isEditable) {
     return <VehicleDossierWizard initialDossier={dossier} />;
@@ -64,11 +66,11 @@ export default function DossierVehiculeDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href={localizedPath('/vendeur/tableau-de-bord/dossiers', language)}
+          href={localizedPath(backPath, language)}
           className="btn-back mb-3"
         >
           <span>←</span>
-          <span className="uppercase">Mes dossiers · {vehicleLabel}</span>
+          <span className="uppercase">{backLabel} · {vehicleLabel}</span>
         </Link>
 
         <div className="flex justify-between items-start gap-4">

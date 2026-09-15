@@ -651,7 +651,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           )}
         </main>
 
-        {!isBuyerDashboardPage && <Footer />}
+        {!isBuyerDashboardPage && !isRegisterPage && !isLoginPage && <Footer />}
       </div>
     </div>
   );
