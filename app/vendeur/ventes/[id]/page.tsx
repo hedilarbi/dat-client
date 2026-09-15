@@ -254,7 +254,7 @@ export default function SellerSaleDetailPage() {
     }
   };
 
-  const backLink = <Link href={localizedPath('/vendeur/tableau-de-bord/ventes', language)} className="btn-back mb-6">
+  const backLink = <Link href={localizedPath('/vendeur/ventes', language)} className="btn-back mb-6">
     {t('sellerSale.backToList')}
   </Link>;
 

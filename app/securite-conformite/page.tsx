@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import JsonLd from '../components/JsonLd';
+import LocalizedLink from '../components/LocalizedLink';
 
 export const metadata: Metadata = {
   title: 'Sécurité et conformité des transactions | DealAutoPro',
@@ -68,7 +68,7 @@ export default function SecuriteConformitePage() {
           <div className="space-y-5 leading-relaxed text-[#5a5e66]">
             <p>Chaque utilisateur accède à un espace lié à son rôle. Les informations de vente sont présentées aux personnes concernées par le dossier et aux équipes habilitées à assurer son traitement.</p>
             <p>Il vous appartient de maintenir vos coordonnées à jour, de protéger vos identifiants et de signaler rapidement tout accès ou comportement inhabituel. Pour toute question concernant vos données ou les conditions applicables à votre utilisation de la plateforme, contactez notre équipe.</p>
-            <Link href="/contact" className="inline-flex pt-2 font-bold text-[#d9704f] hover:underline">Poser une question à notre équipe →</Link>
+            <LocalizedLink href="/contact" className="inline-flex pt-2 font-bold text-[#d9704f] hover:underline">Poser une question à notre équipe →</LocalizedLink>
           </div>
         </div>
       </section>
@@ -76,7 +76,7 @@ export default function SecuriteConformitePage() {
       <section className="px-4 pb-20 sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-3xl border border-[#e5e1d7] bg-[#f8f7f2] p-7 sm:p-10 lg:flex-row lg:items-center">
           <div><h2 className="font-heading text-3xl font-extrabold uppercase text-[#13243c]">Vous avez identifié un problème ?</h2><p className="mt-2 text-[#5a5e66]">Contactez notre équipe avant de poursuivre ou de valider l’étape concernée.</p></div>
-          <Link href="/contact" className="rounded-lg bg-[#d9704f] px-6 py-3 text-sm font-bold uppercase text-white">Contacter le support</Link>
+          <LocalizedLink href="/contact" className="rounded-lg bg-[#d9704f] px-6 py-3 text-sm font-bold uppercase text-white">Contacter le support</LocalizedLink>
         </div>
       </section>
     </main>

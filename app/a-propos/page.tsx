@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import JsonLd from '../components/JsonLd';
+import LocalizedLink from '../components/LocalizedLink';
 
 export const metadata: Metadata = {
   title: 'À propos de DealAutoPro | Plateforme B2B Automobile',
@@ -51,12 +51,12 @@ export default function AProposPage() {
           <article className="rounded-3xl border border-[#e5e1d7] p-7 sm:p-9">
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#d9704f]">Pour les vendeurs</p><h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c]">Mieux présenter et mieux suivre</h2>
             <p className="mt-4 leading-relaxed text-[#5a5e66]">Créez un dossier complet, publiez le véhicule dans une session, suivez les offres puis pilotez les étapes documentaires et la remise depuis votre espace.</p>
-            <Link href="/vendre" className="mt-7 inline-flex font-bold text-[#d9704f] hover:underline">Découvrir l’espace vendeur →</Link>
+            <LocalizedLink href="/vendre" className="mt-7 inline-flex font-bold text-[#d9704f] hover:underline">Découvrir l’espace vendeur →</LocalizedLink>
           </article>
           <article className="rounded-3xl border border-[#e5e1d7] p-7 sm:p-9">
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#d9704f]">Pour les acheteurs</p><h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c]">Décider avec les bonnes informations</h2>
             <p className="mt-4 leading-relaxed text-[#5a5e66]">Consultez les dossiers disponibles, transmettez une offre confidentielle et suivez votre achat jusqu’à la mise à disposition du bon d’enlèvement.</p>
-            <Link href="/acheter" className="mt-7 inline-flex font-bold text-[#d9704f] hover:underline">Découvrir l’espace acheteur →</Link>
+            <LocalizedLink href="/acheter" className="mt-7 inline-flex font-bold text-[#d9704f] hover:underline">Découvrir l’espace acheteur →</LocalizedLink>
           </article>
         </div>
       </section>
@@ -64,7 +64,7 @@ export default function AProposPage() {
       <section className="bg-[#13243c] px-4 py-16 text-white sm:px-10">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-7 lg:flex-row lg:items-center">
           <div><h2 className="font-heading text-3xl font-extrabold uppercase">Une question sur DealAutoPro ?</h2><p className="mt-2 text-white/70">Notre équipe vous accompagne dans la prise en main de la plateforme.</p></div>
-          <Link href="/contact" className="rounded-lg bg-[#d9704f] px-6 py-3 text-sm font-bold uppercase text-white">Nous contacter</Link>
+          <LocalizedLink href="/contact" className="rounded-lg bg-[#d9704f] px-6 py-3 text-sm font-bold uppercase text-white">Nous contacter</LocalizedLink>
         </div>
       </section>
     </main>

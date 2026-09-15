@@ -148,7 +148,7 @@ export default function Home() {
             {t('home.lotsCount', { count: String(total) })}
           </div>
         </div>
-        <Link href={localizedPath('/ventes-en-cours', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
+        <Link href={localizedPath('/vehicules', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
           {t('home.viewAllVehicles')}
         </Link>
       </div>
@@ -227,7 +227,7 @@ export default function Home() {
             <div className="text-sm leading-[1.6] text-[#c3cedd]">{t('home.sellerText')}</div>
           </div>
           <Link
-            href={localizedPath('/vendre-avec-nous', language)}
+            href={localizedPath('/vendre', language)}
             className="btn btn-secondary whitespace-nowrap shrink-0"
           >
             {t('home.sellerCta')}

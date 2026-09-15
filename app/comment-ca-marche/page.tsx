@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import JsonLd from '../components/JsonLd';
+import LocalizedLink from '../components/LocalizedLink';
 
 export const metadata: Metadata = {
   title: 'Comment fonctionne la vente aux enchères B2B | DealAutoPro',
@@ -63,7 +63,7 @@ export default function CommentCaMarchePage() {
             <h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c]">Vendez avec un dossier structuré</h2>
             <p className="mt-4 leading-relaxed text-[#5a5e66]">Centralisez les informations du véhicule, recevez des offres professionnelles et suivez la finalisation de la vente depuis votre tableau de bord.</p>
             <AudienceSteps steps={sellerSteps} />
-            <Link href="/register/vendeur" className="mt-9 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#d9704f] px-6 text-sm font-bold uppercase text-white transition hover:bg-[#c45f40]">Créer un compte vendeur</Link>
+            <LocalizedLink href="/register/vendeur" className="mt-9 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#d9704f] px-6 text-sm font-bold uppercase text-white transition hover:bg-[#c45f40]">Créer un compte vendeur</LocalizedLink>
           </article>
 
           <article className="rounded-3xl border border-[#d8dee7] bg-white p-6 sm:p-10">
@@ -71,7 +71,7 @@ export default function CommentCaMarchePage() {
             <h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c]">Achetez en connaissance du dossier</h2>
             <p className="mt-4 leading-relaxed text-[#5a5e66]">Consultez les véhicules proposés, déposez vos offres confidentielles et retrouvez toutes les étapes administratives au même endroit.</p>
             <AudienceSteps steps={buyerSteps} />
-            <Link href="/register/acheteur" className="mt-9 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#13243c] px-6 text-sm font-bold uppercase text-white transition hover:bg-[#1d3555]">Créer un compte acheteur</Link>
+            <LocalizedLink href="/register/acheteur" className="mt-9 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#13243c] px-6 text-sm font-bold uppercase text-white transition hover:bg-[#1d3555]">Créer un compte acheteur</LocalizedLink>
           </article>
         </div>
       </section>
@@ -90,7 +90,7 @@ export default function CommentCaMarchePage() {
       <section className="px-4 py-16 sm:px-10 sm:py-20">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 rounded-3xl bg-[#13243c] p-7 text-white sm:p-10 lg:flex-row lg:items-center">
           <div><h2 className="font-heading text-3xl font-extrabold uppercase">Prêt à commencer ?</h2><p className="mt-2 max-w-2xl text-white/70">Choisissez votre espace professionnel. Votre compte et vos justificatifs seront vérifiés avant l’accès complet à la plateforme.</p></div>
-          <div className="flex flex-wrap gap-3"><Link href="/vendre" className="rounded-lg bg-[#d9704f] px-5 py-3 text-sm font-bold uppercase text-white">Je veux vendre</Link><Link href="/acheter" className="rounded-lg border border-white/35 px-5 py-3 text-sm font-bold uppercase text-white">Je veux acheter</Link></div>
+          <div className="flex flex-wrap gap-3"><LocalizedLink href="/vendre" className="rounded-lg bg-[#d9704f] px-5 py-3 text-sm font-bold uppercase text-white">Je veux vendre</LocalizedLink><LocalizedLink href="/acheter" className="rounded-lg border border-white/35 px-5 py-3 text-sm font-bold uppercase text-white">Je veux acheter</LocalizedLink></div>
         </div>
       </section>
     </main>

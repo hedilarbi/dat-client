@@ -152,7 +152,7 @@ export default function MyOffersPage() {
             ongoing.length === 0 ? (
               <div className="rounded-[12px] bg-[#f8f7f2] p-8 text-center">
                 <p className="mb-4 text-sm text-[#5a5e66]">{t('offers.emptyOngoing')}</p>
-                <Link href={localizedPath('/ventes-en-cours', language)} className="btn btn-primary">
+                <Link href={localizedPath('/vehicules', language)} className="btn btn-primary">
                   {t('offers.browseSales')}
                 </Link>
               </div>

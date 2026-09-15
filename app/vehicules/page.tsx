@@ -234,7 +234,7 @@ export default function CurrentSalesPage() {
             <div ref={gateRef} aria-hidden="true" className="h-px" />
             <SalesAccessBanner
               reason={lockedReason}
-              returnPath={localizedPath('/ventes-en-cours', language)}
+              returnPath={localizedPath('/vehicules', language)}
             />
           </>
         )}
@@ -247,7 +247,7 @@ export default function CurrentSalesPage() {
       <SalesAccessModal
         open={accessModalOpen}
         reason={lockedReason}
-        returnPath={localizedPath('/ventes-en-cours', language)}
+        returnPath={localizedPath('/vehicules', language)}
         onClose={() => setAccessModalOpen(false)}
       />
     </main>

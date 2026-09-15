@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import JsonLd from '../components/JsonLd';
-import Link from 'next/link';
+import LocalizedLink from '../components/LocalizedLink';
 
 export const metadata: Metadata = {
   title: 'Acheter des véhicules accidentés entre pros | DealAutoPro',
@@ -24,12 +24,12 @@ export default function AcheterPage() {
           DealAutoPro permet aux professionnels autorisés de consulter des véhicules à réparer, à démonter, à exporter ou à remettre en circulation selon leur statut et la réglementation applicable. Chaque offre est déposée à pli fermé : vous ne voyez pas le montant proposé par les autres acheteurs.
         </p>
         <div className="flex gap-4">
-          <Link href="/vehicules" className="px-6 py-3 bg-[#13243c] text-white font-bold rounded-lg uppercase tracking-wide hover:bg-slate-800 transition">
+          <LocalizedLink href="/vehicules" className="px-6 py-3 bg-[#13243c] text-white font-bold rounded-lg uppercase tracking-wide hover:bg-slate-800 transition">
             Voir le catalogue
-          </Link>
-          <Link href="/register/acheteur" className="px-6 py-3 bg-gray-200 text-[#13243c] font-bold rounded-lg uppercase tracking-wide hover:bg-gray-300 transition">
+          </LocalizedLink>
+          <LocalizedLink href="/register/acheteur" className="px-6 py-3 bg-gray-200 text-[#13243c] font-bold rounded-lg uppercase tracking-wide hover:bg-gray-300 transition">
             Créer un compte acheteur
-          </Link>
+          </LocalizedLink>
         </div>
       </div>
     </div>
