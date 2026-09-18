@@ -668,14 +668,28 @@ const handleSubmitCertificate = async () => {
                         : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat."}
                     </p>
                     {!isHistorical && (
-                      <a
-                        href={sale.esignature.buyerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
-                      >
-                        Signer les documents
-                      </a>
+                      user?.stampUrl ? (
+                        <a
+                          href={sale.esignature.buyerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
+                        >
+                          Signer les documents
+                        </a>
+                      ) : (
+                        <div className="rounded-[10px] border border-[#e2a175] bg-[#fdf3ec] p-4" role="alert">
+                          <p className="mb-3 text-[13px] font-semibold leading-6 text-[#8a4b24]">
+                            Vous devez déposer votre tampon d’entreprise avant de signer les documents.
+                          </p>
+                          <Link
+                            href={`${localizedPath('/acheteur/tableau-de-bord/tampon', language)}?returnTo=${encodeURIComponent(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language))}`}
+                            className="inline-flex min-h-11 items-center justify-center rounded-[9px] bg-[#13243c] px-5 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
+                          >
+                            Déposer mon tampon
+                          </Link>
+                        </div>
+                      )
                     )}
                   </div>
                 ) : (

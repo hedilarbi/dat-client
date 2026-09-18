@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { apiRequest } from '../api';
@@ -18,6 +18,7 @@ import getCroppedImg from '../lib/cropImage';
 export default function StampPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, loading: userLoading, refreshProfile } = useUser();
   const { language, t } = useLanguage();
 
@@ -170,6 +171,11 @@ export default function StampPage() {
       setFile(null);
       setMessage(data.backgroundRemoved === false ? t('stamp.savedWithoutRemoval') : t('stamp.saved'));
       await refreshProfile();
+      const returnTo = searchParams.get('returnTo');
+      if (user?.role === 'acheteur' && returnTo?.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes('\\')) {
+        router.replace(returnTo);
+        return;
+      }
     } catch (submitError: any) {
       setError(submitError.message || t('stamp.uploadError'));
     } finally {
