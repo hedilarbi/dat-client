@@ -13,6 +13,7 @@ export interface CurrentSaleSession {
 
 export interface CurrentSaleVehicle {
   id: string;
+  hasActiveOffer: boolean;
   brand: string;
   model: string;
   year: number | null;
