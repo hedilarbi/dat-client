@@ -24,7 +24,7 @@ const isValidSiret = (value: string) => SIRET_REGEX.test(value.replace(/\s/g, ''
 export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, refreshProfile } = useUser();
+  const { user, loading: loadingProfile, refreshProfile } = useUser();
   const { language, t } = useLanguage();
   const otherRole = role === 'acheteur' ? 'vendeur' : 'acheteur';
 
@@ -102,8 +102,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   }, [searchParams]);
 
   useEffect(() => {
-    const requestedStep = searchParams.get('step');
-    if (requestedStep !== 'documents' || !user || !user.emailVerified || user.role !== role) return;
+    if (!user || user.status !== 'brouillon' || !user.emailVerified || user.role !== role) return;
 
     setActivityType(user.activityType || (role === 'vendeur' ? 'Centre VHU' : 'Garagiste'));
     setEmail(user.email || '');
@@ -125,20 +124,16 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setIban(user.bankInfo?.iban || '');
     setBic(user.bankInfo?.bic || '');
     setRibUrl(user.bankInfo?.ribUrl || '');
-    // Same idempotency concern as the OTP-resume effect above: never regress a further step
-    // (4, bank info) back down to 3 if this effect re-fires.
-    setStep(prev => (prev < 3 ? 3 : prev));
-  }, [searchParams, user, role]);
+    const savedStep = role === 'vendeur' && sessionStorage.getItem(`registerStep:${user._id}`) === '4' ? 4 : 3;
+    setStep(prev => (prev < savedStep ? savedStep : prev));
+  }, [user, role]);
 
-  // Déjà connecté avec une inscription déjà complétée : renvoi hors de la page d'inscription
-  // (un utilisateur en brouillon, ou repris via ?step=otp / ?step=documents, reste sur place)
+  // Un compte soumis à validation quitte le formulaire ; un brouillon reprend son inscription.
   useEffect(() => {
     if (!user) return;
-    const requestedStep = searchParams.get('step');
-    if (requestedStep === 'otp' || requestedStep === 'documents') return;
     if (user.status === 'brouillon') return;
     router.replace(localizedPath(getRoleHomePath(user.role), language));
-  }, [user, searchParams, router, language]);
+  }, [user, router, language]);
 
   // Handle OTP countdown timer
   useEffect(() => {
@@ -357,6 +352,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
     if (role === 'vendeur') {
       // Vendeur continues to step 4 (Bank Info)
+      if (user) sessionStorage.setItem(`registerStep:${user._id}`, '4');
       setStep(4);
       return;
     }
@@ -416,6 +412,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       });
 
       setMessage(t('register.completeSeller'));
+      if (user) sessionStorage.removeItem(`registerStep:${user._id}`);
       await refreshProfile();
       setTimeout(() => {
         router.push(localizedPath('/vendeur/tableau-de-bord', language));
@@ -437,6 +434,10 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const hasCinRectoDocument = Boolean(cinRectoFile || cinRectoUrl);
   const hasCinVersoDocument = Boolean(cinVersoFile || cinVersoUrl);
   const hasRibDocument = Boolean(ribFile || ribUrl);
+
+  if (loadingProfile || (user?.status === 'brouillon' && user.emailVerified && user.role === role && step < 3)) {
+    return <div className="max-w-[1240px] w-full min-h-[600px] bg-white rounded-[10px] flex items-center justify-center"><Spinner /></div>;
+  }
 
   return (
     <div className="max-w-[1240px] w-full bg-white rounded-[10px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.14)] font-sans text-black flex flex-col">
@@ -785,13 +786,15 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
           </div>
 
           <div className="pt-6 border-t border-[#efece3] flex justify-between items-center">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"
-            >
-              {t('register.back')}
-            </button>
+            {!(user?.status === 'brouillon' && user.emailVerified) && (
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"
+              >
+                {t('register.back')}
+              </button>
+            )}
 
             <button
               type="submit"
@@ -889,7 +892,10 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
           <div className="pt-6 border-t border-[#efece3] flex justify-between items-center">
             <button
               type="button"
-              onClick={() => setStep(3)}
+              onClick={() => {
+                if (user) sessionStorage.removeItem(`registerStep:${user._id}`);
+                setStep(3);
+              }}
               className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"
             >
               {t('register.back')}
