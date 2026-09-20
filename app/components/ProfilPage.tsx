@@ -58,6 +58,12 @@ export default function ProfilPage() {
   const [kbisUrl, setKbisUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
+  const [iban, setIban] = useState('');
+  const [bic, setBic] = useState('');
+  const [ribUrl, setRibUrl] = useState('');
+  const [ribFile, setRibFile] = useState<File | null>(null);
   const [kbisFile, setKbisFile] = useState<File | null>(null);
   const [cinRectoFile, setCinRectoFile] = useState<File | null>(null);
   const [cinVersoFile, setCinVersoFile] = useState<File | null>(null);
@@ -88,8 +94,7 @@ export default function ProfilPage() {
   const actionParam = searchParams.get('action');
   const confirming = Boolean(checkoutSessionId) && actionParam === 'pending_commission' && !confirmSettled;
 
-  // Le formulaire de correction est long : sans ce scroll, une erreur affichée en haut
-  // du formulaire passe inaperçue si l'utilisateur est descendu vers les champs du bas.
+  // Afficher les retours de soumission à côté du bouton, même après un long formulaire.
   useEffect(() => {
     if (error || message) {
       alertRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -113,6 +118,11 @@ export default function ProfilPage() {
       setKbisUrl(user.kbisUrl || '');
       setCinRectoUrl(user.cinRectoUrl || '');
       setCinVersoUrl(user.cinVersoUrl || '');
+      setBankName(user.bankInfo?.bankName || '');
+      setAccountHolder(user.bankInfo?.accountHolder || '');
+      setIban(user.bankInfo?.iban || '');
+      setBic(user.bankInfo?.bic || '');
+      setRibUrl(user.bankInfo?.ribUrl || '');
 
       initialValuesRef.current = {
         firstName: user.firstName || '',
@@ -128,6 +138,11 @@ export default function ProfilPage() {
         kbisUrl: user.kbisUrl || '',
         cinRectoUrl: user.cinRectoUrl || '',
         cinVersoUrl: user.cinVersoUrl || '',
+        bankName: user.bankInfo?.bankName || '',
+        accountHolder: user.bankInfo?.accountHolder || '',
+        iban: user.bankInfo?.iban || '',
+        bic: user.bankInfo?.bic || '',
+        ribUrl: user.bankInfo?.ribUrl || '',
       };
     }
   }, [user]);
@@ -192,7 +207,7 @@ export default function ProfilPage() {
     return data.url as string;
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: 'kbis' | 'cinRecto' | 'cinVerso') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: 'kbis' | 'cinRecto' | 'cinVerso' | 'rib') => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
 
@@ -211,6 +226,7 @@ export default function ProfilPage() {
     if (docType === 'kbis') setKbisFile(file);
     if (docType === 'cinRecto') setCinRectoFile(file);
     if (docType === 'cinVerso') setCinVersoFile(file);
+    if (docType === 'rib') setRibFile(file);
 
     setUploading(docType);
     try {
@@ -218,6 +234,7 @@ export default function ProfilPage() {
       if (docType === 'kbis') setKbisUrl(url);
       if (docType === 'cinRecto') setCinRectoUrl(url);
       if (docType === 'cinVerso') setCinVersoUrl(url);
+      if (docType === 'rib') setRibUrl(url);
     } catch (err: any) {
       setError(err.message || t('profil.resubmitError'));
     } finally {
@@ -240,7 +257,14 @@ export default function ProfilPage() {
       siret !== initial.siret ||
       kbisUrl !== initial.kbisUrl ||
       cinRectoUrl !== initial.cinRectoUrl ||
-      cinVersoUrl !== initial.cinVersoUrl
+      cinVersoUrl !== initial.cinVersoUrl ||
+      (user?.role === 'vendeur' && (
+        bankName !== initial.bankName ||
+        accountHolder !== initial.accountHolder ||
+        iban !== initial.iban ||
+        bic !== initial.bic ||
+        ribUrl !== initial.ribUrl
+      ))
     );
   })();
 
@@ -279,7 +303,10 @@ export default function ProfilPage() {
           siret,
           kbisUrl,
           cinRectoUrl,
-          cinVersoUrl
+          cinVersoUrl,
+          ...(user?.role === 'vendeur' ? {
+            bankInfo: { bankName, accountHolder, iban, bic, ribUrl }
+          } : {})
         })
       });
 
@@ -329,11 +356,6 @@ export default function ProfilPage() {
         <form id="correction-form" onSubmit={handleResubmitSubmit} className="border-t border-[#eceadf] p-6 space-y-6 scroll-mt-6">
           <h4 className="font-bold text-lg text-[#13243c] uppercase font-heading">{t('profil.correctionSpace')}</h4>
 
-          <div ref={alertRef}>
-            {error && <Alert variant="error">{error}</Alert>}
-            {message && <Alert variant="success">{message}</Alert>}
-          </div>
-
           <IdentityFieldsSection
             firstName={firstName} onFirstNameChange={setFirstName}
             lastName={lastName} onLastNameChange={setLastName}
@@ -364,6 +386,33 @@ export default function ProfilPage() {
             <DocumentUploadRow label={t('profil.cinVerso')} accept="image/*,.pdf,application/pdf" file={cinVersoFile} existingUrl={cinVersoUrl} onChange={e => handleFileUpload(e, 'cinVerso')} selectedLabel={t('register.selected')} />
           </div>
 
+          {user.role === 'vendeur' && (
+            <div className="space-y-4 border-t border-[#efece3] pt-4">
+              <h5 className="font-bold text-xs text-[#111827] uppercase tracking-wider">{t('register.bankInfo')}</h5>
+              <label className="block text-sm text-[#13243c]">{t('register.bankName')}
+                <input required type="text" value={bankName} onChange={e => setBankName(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+              </label>
+              <label className="block text-sm text-[#13243c]">{t('register.accountHolder')}
+                <input required type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="block text-sm text-[#13243c]">{t('register.iban')}
+                  <input required type="text" value={iban} onChange={e => setIban(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+                </label>
+                <label className="block text-sm text-[#13243c]">{t('register.bic')}
+                  <input required type="text" value={bic} onChange={e => setBic(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+                </label>
+              </div>
+              <DocumentUploadRow label={t('register.ribLabel')} accept=".pdf" file={ribFile} existingUrl={ribUrl} onChange={e => handleFileUpload(e, 'rib')} />
+            </div>
+          )}
+
+          <div ref={alertRef}>
+            {error && <Alert variant="error">{error}</Alert>}
+            {message && <Alert variant="success">{message}</Alert>}
+          </div>
+          {!hasChanges && <p className="text-xs text-gray-400 text-center">{t('profil.noChanges')}</p>}
+
           <button
             type="submit"
             disabled={loading || uploading !== null || !siret || !kbisUrl || !cinRectoUrl || !cinVersoUrl || !hasChanges}
@@ -372,7 +421,6 @@ export default function ProfilPage() {
             {loading && <Spinner />}
             {loading ? t('profil.resubmitting') : t('profil.resubmit')}
           </button>
-          {!hasChanges && <p className="text-xs text-gray-400 text-center -mt-2">{t('profil.noChanges')}</p>}
         </form>
       </div>
     );
