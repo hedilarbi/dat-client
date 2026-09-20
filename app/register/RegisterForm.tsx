@@ -15,7 +15,7 @@ import DocumentUploadRow from '../components/DocumentUploadRow';
 import { countries } from '../lib/countries';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
-type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib' | 'stamp';
+type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib';
 
 // SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
 const SIRET_REGEX = /^\d{14}$/;
@@ -52,8 +52,6 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const [postalCode, setPostalCode] = useState('');
   const [siret, setSiret] = useState('');
   const [kbisUrl, setKbisUrl] = useState('');
-  const [stampFile, setStampFile] = useState<File | null>(null);
-  const [stampUrl, setStampUrl] = useState('');
   const [cinRectoUrl, setCinRectoUrl] = useState('');
   const [cinVersoUrl, setCinVersoUrl] = useState('');
   const [kbisFile, setKbisFile] = useState<File | null>(null);
@@ -119,7 +117,6 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setPostalCode(user.address?.postalCode || '');
     setSiret(user.siret || '');
     setKbisUrl(user.kbisUrl || '');
-    setStampUrl(user.stampUrl || '');
     setCinRectoUrl(user.cinRectoUrl || '');
     setCinVersoUrl(user.cinVersoUrl || '');
     setVhuNumber(user.vhuNumber || '');
@@ -282,19 +279,13 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       setRibFile(file);
       setRibUrl('');
     }
-    if (docType === 'stamp') {
-      setStampFile(file);
-      setStampUrl('');
-    }
   };
 
   const uploadFile = async (file: File, docType: DocumentType) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Le tampon passe par un endpoint dédié : le serveur détoure la photo pour en faire
-    // un PNG à fond transparent avant de la stocker.
-    const res = await fetch(docType === 'stamp' ? '/api/upload/stamp' : '/api/upload', {
+    const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -330,26 +321,23 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setUploading('documents');
 
     try {
-      const [nextKbisUrl, nextCinRectoUrl, nextCinVersoUrl, nextRibUrl, nextStampUrl] = await Promise.all([
+      const [nextKbisUrl, nextCinRectoUrl, nextCinVersoUrl, nextRibUrl] = await Promise.all([
         kbisFile ? uploadFile(kbisFile, 'kbis') : Promise.resolve(kbisUrl),
         cinRectoFile ? uploadFile(cinRectoFile, 'cinRecto') : Promise.resolve(cinRectoUrl),
         cinVersoFile ? uploadFile(cinVersoFile, 'cinVerso') : Promise.resolve(cinVersoUrl),
         includeRib && ribFile ? uploadFile(ribFile, 'rib') : Promise.resolve(ribUrl),
-        stampFile ? uploadFile(stampFile, 'stamp') : Promise.resolve(stampUrl),
       ]);
 
       setKbisUrl(nextKbisUrl);
       setCinRectoUrl(nextCinRectoUrl);
       setCinVersoUrl(nextCinVersoUrl);
       if (includeRib) setRibUrl(nextRibUrl);
-      setStampUrl(nextStampUrl);
 
       return {
         kbisUrl: nextKbisUrl,
         cinRectoUrl: nextCinRectoUrl,
         cinVersoUrl: nextCinVersoUrl,
         ribUrl: nextRibUrl,
-        stampUrl: nextStampUrl,
       };
     } finally {
       setUploading(null);
@@ -389,7 +377,6 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
-          stampUrl: uploadedDocuments.stampUrl || undefined,
         }),
       });
 
@@ -423,7 +410,6 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
           kbisUrl: uploadedDocuments.kbisUrl,
           cinRectoUrl: uploadedDocuments.cinRectoUrl,
           cinVersoUrl: uploadedDocuments.cinVersoUrl,
-          stampUrl: uploadedDocuments.stampUrl || undefined,
           vhuNumber: vhuNumber || undefined,
           bankInfo: { bankName, accountHolder, iban, bic, ribUrl: uploadedDocuments.ribUrl },
         }),
@@ -796,18 +782,6 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               selectedLabel={t('register.selected')}
             />
 
-            {/* Tampon de l'entreprise — facultatif */}
-            <div>
-              <DocumentUploadRow
-                label={t('register.stampLabel')}
-                accept="image/*"
-                file={stampFile}
-                existingUrl={stampUrl}
-                onChange={e => handleFileSelection(e, 'stamp')}
-                selectedLabel={t('register.selected')}
-              />
-              <div className="text-[12px] text-[#5a5e66] mt-2">{t('register.stampHint')}</div>
-            </div>
           </div>
 
           <div className="pt-6 border-t border-[#efece3] flex justify-between items-center">
