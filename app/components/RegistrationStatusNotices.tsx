@@ -151,7 +151,7 @@ export function SuspendedNotice() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-red-800 leading-relaxed">
-              Votre compte a été suspendu par l'administration. Vos accès aux enchères et fonctionnalités sont actuellement bloqués.
+              Votre compte a été suspendu par l'administration. Vos accès aux ventes et fonctionnalités sont actuellement bloqués.
             </p>
             <div className="pt-2">
               <Link

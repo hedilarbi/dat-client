@@ -1,13 +1,33 @@
 'use client';
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiRequest } from '../api';
 import Link from 'next/link';
-import { Language, LanguageSelector, getRoleLoginPath, getRoleProfilePath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
+import { Language, LanguageSelector, getRoleHomePath, getRoleLoginPath, getRoleProfilePath, getRoleRegisterPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
 import DropdownMenu from './DropdownMenu';
 import Footer from './Footer';
+
+/**
+ * Page d'origine transmise via `/login?next=...`, à privilégier sur le tableau de bord par
+ * défaut une fois connecté. Reprend telle quelle la logique qui vivait dans LoginForm : ce
+ * composant ne navigue plus lui-même après une connexion (voir redirectsAuthenticatedUser
+ * ci-dessous), pour éviter que les deux ne se disputent la navigation et fassent bondir
+ * l'écran entre /login et le tableau de bord.
+ */
+function getLoginReturnPath(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const candidate = new URLSearchParams(window.location.search).get('next');
+  if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) return null;
+
+  const candidatePathname = candidate.split(/[?#]/, 1)[0];
+  const canonicalCandidate = canonicalPathFromPathname(candidatePathname);
+  if (canonicalCandidate.startsWith('/login') || canonicalCandidate.startsWith('/register')) return null;
+
+  return candidate;
+}
 
 interface UserProfile {
   _id: string;
@@ -67,9 +87,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // fetchProfile est relancé à chaque changement de page (voir plus bas), sans jamais annuler
+  // l'appel précédent : deux requêtes /auth/me peuvent donc être en vol en même temps, et rien
+  // ne garantit qu'elles se résolvent dans leur ordre de départ. Sans garde, une réponse plus
+  // ancienne qui arrive après une plus récente écrasait `user` avec une valeur périmée (parfois
+  // `null`), ce qui faisait rebondir l'écran entre /login et le tableau de bord juste après une
+  // connexion. Ce compteur ne laisse jamais une réponse obsolète appliquer son résultat.
+  const fetchRequestIdRef = useRef(0);
+
   const fetchProfile = async () => {
+    const requestId = ++fetchRequestIdRef.current;
     try {
       const res = await apiRequest('/auth/me');
+      if (requestId !== fetchRequestIdRef.current) return;
       // Le client n'accepte que les comptes acheteur/vendeur : une session admin
       // (ex. cookie partagé avec le panneau admin en local) ne doit pas être traitée
       // comme un utilisateur connecté ici.
@@ -81,14 +111,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(res.user);
       localStorage.setItem('userRole', res.user.role);
     } catch (err) {
+      if (requestId !== fetchRequestIdRef.current) return;
       setUser(null);
       localStorage.removeItem('userRole');
     } finally {
-      setLoading(false);
+      if (requestId === fetchRequestIdRef.current) setLoading(false);
     }
   };
 
   const logout = async () => {
+    const wasSeller = user?.role === 'vendeur';
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
     } catch (e) {
@@ -96,7 +128,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('userRole');
-      router.push(localizedPath(getRoleLoginPath(user?.role || 'acheteur'), getLocaleFromPath(pathname) || 'fr'));
+      const locale = getLocaleFromPath(pathname) || 'fr';
+      // Un vendeur déconnecté retombe sur l'accueil public plutôt que sur /login/vendeur :
+      // il quitte son espace privé, il ne s'apprête pas forcément à s'y reconnecter aussitôt.
+      router.push(wasSeller ? localizedPath('/', locale) : localizedPath(getRoleLoginPath(user?.role || 'acheteur'), locale));
     }
   };
 
@@ -148,13 +183,23 @@ function UserMenu({ displayName, initials, triggerClassName = 'hidden sm:flex' }
     >
       {({ close }) => (
         <>
-          {(isBuyer || isSeller) && (
+          {isBuyer && (
             <Link
-              href={localizedPath(isBuyer ? '/acheteur/tableau-de-bord' : '/vendeur/tableau-de-bord', language)}
+              href={localizedPath('/acheteur/tableau-de-bord', language)}
               onClick={close}
               className="block px-4 py-3 text-[13px] font-semibold text-[#13243c] hover:bg-[#efece3] transition border-t border-[#f3f1ea]"
             >
-              Tableau de bord
+              {t('nav.dashboard')}
+            </Link>
+          )}
+
+          {isSeller && (
+            <Link
+              href={localizedPath('/vendeur/tableau-de-bord', language)}
+              onClick={close}
+              className="block px-4 py-3 text-[13px] font-semibold text-[#13243c] hover:bg-[#efece3] transition border-t border-[#f3f1ea]"
+            >
+              {t('login.sellerSpace')}
             </Link>
           )}
 
@@ -164,6 +209,72 @@ function UserMenu({ displayName, initials, triggerClassName = 'hidden sm:flex' }
           >
             {t('nav.logout')}
           </button>
+        </>
+      )}
+    </DropdownMenu>
+  );
+}
+
+interface SellerNotification {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  readAt: string | null;
+  createdAt: string;
+  metadata?: { dossierId?: string; saleId?: string };
+}
+
+function SellerNotificationsBell() {
+  const [notifications, setNotifications] = useState<SellerNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const router = useRouter();
+  const { language, t } = useLanguage();
+
+  const refresh = async () => {
+    try {
+      const result = await apiRequest('/notifications');
+      setNotifications(result.notifications || []);
+      setUnreadCount(result.unreadCount || 0);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const destination = (notification: SellerNotification) => {
+    if (notification.metadata?.saleId) return `/vendeur/ventes/${notification.metadata.saleId}`;
+    if (notification.metadata?.dossierId) return `/vendeur/dossiers/${notification.metadata.dossierId}`;
+    return '/vendeur/tableau-de-bord';
+  };
+
+  return (
+    <DropdownMenu
+      panelClassName="w-[min(380px,calc(100vw-24px))] bg-white border border-[#dcd7cb] shadow-[0_14px_35px_rgba(0,0,0,0.16)] text-left"
+      trigger={({ onClick }) => (
+        <button type="button" onClick={onClick} className="relative h-10 w-10 rounded-[8px] border border-[#2c4266] bg-[#1c3050] text-white flex items-center justify-center hover:bg-slate-800 transition" aria-label={t('notifications.title')}>
+          <svg viewBox="0 0 24 24" className="h-[19px] w-[19px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+          {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#d9704f] text-[10px] font-bold flex items-center justify-center">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
+          <div className="p-4 border-b border-[#efece3] flex items-center justify-between">
+            <strong className="text-[#13243c] text-[13px] uppercase">{t('notifications.title')}</strong>
+            <button type="button" className="text-[11px] font-semibold text-[#d9704f] hover:underline" onClick={async () => { await apiRequest('/notifications/read-all', { method: 'PUT' }); await refresh(); }}>{t('notifications.markAllRead')}</button>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto">
+            {notifications.length === 0 ? <div className="p-5 text-center text-sm text-[#5a5e66]">{t('notifications.empty')}</div> : notifications.slice(0, 5).map(notification => (
+              <button key={notification._id} type="button" onClick={async () => { await apiRequest(`/notifications/${notification._id}/read`, { method: 'PUT' }); close(); router.push(localizedPath(destination(notification), language)); }} className={`w-full p-4 text-left border-b border-[#efece3] hover:bg-[#fbfaf7] ${notification.readAt ? 'bg-white' : 'bg-[#fff7f1]'}`}>
+                <div className="flex justify-between gap-3"><strong className="text-[13px] text-[#13243c]">{notification.title}</strong>{!notification.readAt && <span className="w-2 h-2 rounded-full bg-[#d9704f] shrink-0 mt-1.5" />}</div>
+                <div className="text-[12px] text-[#5a5e66] mt-1">{notification.message}</div>
+                <div className="text-[11px] text-[#777] mt-2">{new Date(notification.createdAt).toLocaleString(language === 'en' ? 'en-GB' : 'fr-FR')}</div>
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => { close(); router.push(localizedPath('/vendeur/notifications', language)); }} className="w-full h-11 text-[12px] font-bold text-[#13243c] uppercase hover:bg-[#f8f7f2]">{t('notifications.viewAll')}</button>
         </>
       )}
     </DropdownMenu>
@@ -345,12 +456,41 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const roleSpacePrefix = user?.role === 'vendeur' ? '/vendeur/' : '/acheteur/';
   const isOwnSpacePage = currentPath.startsWith(roleSpacePrefix);
   const isBuyerDashboardPage = currentPath.startsWith('/acheteur/tableau-de-bord');
+  const buyerInSellerSpace = Boolean(user?.role === 'acheteur' && currentPath.startsWith('/vendeur/'));
+
+  // Une session déjà connue prend la priorité sur les pages d'authentification. Cette garde
+  // vit dans le layout (avant le montage des formulaires) afin d'éviter que LoginForm,
+  // RegisterForm et la revalidation de /auth/me lancent plusieurs redirections concurrentes.
+  const redirectsAuthenticatedUser = Boolean(
+    user && (isLoginPage || (isRegisterPage && user.status !== 'brouillon'))
+  );
 
   useEffect(() => {
     if (user?.language) {
       setLanguage(user.language);
     }
   }, [setLanguage, user?.language]);
+
+  useEffect(() => {
+    if (!user || !redirectsAuthenticatedUser) return;
+
+    if (user.status === 'brouillon' && user.emailVerified) {
+      router.replace(localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language));
+      return;
+    }
+
+    // Sur /login, une page d'origine (?next=...) prend le pas sur le tableau de bord par
+    // défaut : c'est la seule redirection qui s'exécute après une connexion (LoginForm ne
+    // navigue plus lui-même), donc elle doit rester fidèle à ce qu'affichait auparavant son
+    // propre effet, next compris.
+    const returnPath = isLoginPage ? getLoginReturnPath() : null;
+    router.replace(returnPath || localizedPath(getRoleHomePath(user.role), language));
+  }, [user, redirectsAuthenticatedUser, isLoginPage, language, router]);
+
+  useEffect(() => {
+    if (!buyerInSellerSpace) return;
+    router.replace(localizedPath('/acheteur/tableau-de-bord', language));
+  }, [buyerInSellerSpace, language, router]);
 
   useEffect(() => {
     if (!user || user.role === 'admin' || user.status === 'valide' || user.status === 'suspendu') return;
@@ -388,6 +528,17 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
     return fullName || user.companyName || user.email;
   };
+
+  // Sur connexion/inscription, ne jamais afficher le formulaire avant de savoir si une session
+  // existe. Si elle existe, conserver ce même écran neutre jusqu'à la fin du router.replace :
+  // aucune page intermédiaire ne peut ainsi flasher à l'écran.
+  if ((isLoginPage || isRegisterPage) && (loading || redirectsAuthenticatedUser)) {
+    return <div className="min-h-screen bg-[#fbfaf7]" aria-busy="true" />;
+  }
+
+  if (buyerInSellerSpace) {
+    return <div className="min-h-screen bg-[#fbfaf7]" aria-busy="true" />;
+  }
 
   if (loading && !isAuthPage && !isHomePage) {
     return (
@@ -433,6 +584,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <div className="hidden lg:flex">
               <LanguageSelector compact onLanguageChange={persistLanguage} />
             </div>
+            <SellerNotificationsBell />
             <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden lg:flex" />
             <MobileMenu
               breakpointClass="lg:hidden"
@@ -443,6 +595,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                   { href: localizedPath('/vendeur/dossiers', language), label: t('nav.deposits'), active: currentPath === '/vendeur/dossiers' },
                   { href: localizedPath('/vendeur/en-vente', language), label: t('nav.forSale'), active: currentPath === '/vendeur/en-vente' },
                   { href: localizedPath('/vendeur/ventes', language), label: t('nav.sales'), active: currentPath === '/vendeur/ventes' },
+                  // Un compte suspendu ne peut plus déposer d'offres : ses achats en cours restent suivis
+                  ...(user?.status !== 'suspendu' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
+                  { href: localizedPath('/vendeur/mes-achats', language), label: t('nav.myPurchases'), active: currentPath.startsWith('/vendeur/mes-achats') },
                 ] : []),
                 { href: localizedPath('/vendeur/tableau-de-bord/profil', language), label: t('nav.profile'), active: currentPath === '/vendeur/tableau-de-bord/profil' },
                 { href: localizedPath('/vendeur/tableau-de-bord/support', language), label: t('nav.support'), active: currentPath === '/vendeur/tableau-de-bord/support' },
@@ -477,6 +632,14 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
                   <Link href={localizedPath('/vendeur/ventes', language)} className={`mt-3 flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/ventes' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                     {t('nav.sales')}
+                  </Link>
+                  {user?.status !== 'suspendu' && (
+                  <Link href={localizedPath('/vendeur/mes-offres', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/mes-offres' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
+                    {t('nav.myOffers')}
+                  </Link>
+                  )}
+                  <Link href={localizedPath('/vendeur/mes-achats', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath.startsWith('/vendeur/mes-achats') ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
+                    {t('nav.myPurchases')}
                   </Link>
                 </>
               )}

@@ -1,6 +1,7 @@
 'use client';
 
 export interface SellerListFilterValues {
+  brand: string;
   model: string;
   registrationNumber: string;
   dateFrom: string;
@@ -10,6 +11,7 @@ export interface SellerListFilterValues {
 }
 
 export const EMPTY_SELLER_LIST_FILTERS: SellerListFilterValues = {
+  brand: '',
   model: '',
   registrationNumber: '',
   dateFrom: '',
@@ -50,7 +52,11 @@ export default function SellerListFilters({ value, onChange, onReset, resultCoun
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+        <label className="space-y-1">
+          <span className="text-[11px] font-semibold text-[#5a5e66]">{t('sellerFilters.brand')}</span>
+          <input value={value.brand} onChange={(e) => update('brand', e.target.value)} placeholder={t('sellerFilters.brandPlaceholder')} className={inputClass} />
+        </label>
         <label className="space-y-1">
           <span className="text-[11px] font-semibold text-[#5a5e66]">{t('sellerFilters.model')}</span>
           <input value={value.model} onChange={(e) => update('model', e.target.value)} placeholder={t('sellerFilters.modelPlaceholder')} className={inputClass} />
@@ -82,9 +88,10 @@ export default function SellerListFilters({ value, onChange, onReset, resultCoun
 
 export function matchesSellerListFilters(
   filters: SellerListFilterValues,
-  row: { model?: string | null; registrationNumber?: string | null; date?: string | null; price?: number | null },
+  row: { brand?: string | null; model?: string | null; registrationNumber?: string | null; date?: string | null; price?: number | null },
 ) {
-  const normalize = (text: string) => text.trim().toLocaleLowerCase().replace(/[\s-]/g, '');
+  const normalize = (text: string) => text.trim().toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s-]/g, '');
+  if (filters.brand && !normalize(row.brand || '').includes(normalize(filters.brand))) return false;
   if (filters.model && !normalize(row.model || '').includes(normalize(filters.model))) return false;
   if (filters.registrationNumber && !normalize(row.registrationNumber || '').includes(normalize(filters.registrationNumber))) return false;
 

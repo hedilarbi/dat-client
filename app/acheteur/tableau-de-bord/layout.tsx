@@ -14,7 +14,7 @@ export default function BuyerDashboardLayout({ children }: { children: React.Rea
   const canonicalPath = canonicalPathFromPathname(pathname);
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'acheteur')) {
+    if (!loading && !user) {
       router.replace(localizedPath(`/login?next=${encodeURIComponent(canonicalPath)}`, language));
     }
   }, [loading, user, router, language, canonicalPath]);

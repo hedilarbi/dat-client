@@ -15,24 +15,27 @@ import IdentityFieldsSection from '../../components/IdentityFieldsSection';
 import DocumentUploadRow from '../../components/DocumentUploadRow';
 import StampReminderBanner from '../../components/StampReminderBanner';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, type Rejection } from '../../components/RegistrationStatusNotices';
-import AuctionPriceTags from '../../components/AuctionPriceTags';
+import TopOffers from '../../components/TopOffers';
 import { formatEuros } from '../../lib/format';
+import { formatTimeLeft } from '../../lib/currentSales';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
 
-type SellerSaleStatus = 'en_session' | 'en_cours' | 'cloturee' | 'sans_gagnant';
+type SellerSaleStatus = 'en_session' | 'en_cours' | 'suspendue' | 'cloturee' | 'sans_gagnant';
 
 interface DashboardSale {
   id: string;
   status: SellerSaleStatus;
   amount: number | null;
   offerCount: number;
-  /** Repères d'enchère, renseignés pour les véhicules encore en session (cf. listSellerSales). */
+  /** Repères d'offres, renseignés pour les véhicules encore en session (cf. listSellerSales). */
   reservePrice?: number | null;
   bestOffer?: number | null;
+  topOffers?: number[];
   /** Renseignés par le serveur pour les ventes en cours uniquement (cf. listSellerSales). */
   currentStep?: number | null;
   stepCount?: number | null;
   stepKey?: string | null;
+  sellerDecisionDueAt?: string | null;
   /** Vrai quand la vente attend une action du vendeur (cf. SELLER_ACTION_STEPS côté serveur). */
   awaitingSeller?: boolean;
   vehicle: { id: string; brand: string; model: string; photoUrl?: string | null } | null;
@@ -54,6 +57,10 @@ export default function VendeurTableauDeBordPage() {
   // Suivi commercial : aperçu sur le tableau de bord, détail complet sur /vendeur/ventes
   const [sales, setSales] = useState(EMPTY_SALES);
   const [salesLoaded, setSalesLoaded] = useState(false);
+  const [ongoingPurchases, setOngoingPurchases] = useState<any[]>([]);
+  const [myOngoingOffers, setMyOngoingOffers] = useState<any[]>([]);
+  const [relistingSaleId, setRelistingSaleId] = useState<string | null>(null);
+  const [, setClock] = useState(0);
 
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [dossiersLoaded, setDossiersLoaded] = useState(false);
@@ -173,9 +180,21 @@ export default function VendeurTableauDeBordPage() {
       apiRequest('/sales/seller'),
       // Limite haute explicite : l'endpoint pagine désormais à 20, or ce tableau de bord
       // compte les dossiers par statut — une page tronquée fausserait ses compteurs.
-      apiRequest('/vehicle-dossiers?limit=100')
+      // Réservé aux vendeurs validés côté serveur (vendeurValideOnly) : un compte suspendu
+      // n'y a pas accès, et cet échec ne doit pas empêcher d'afficher ses ventes en cours.
+      user.status === 'valide'
+        ? apiRequest('/vehicle-dossiers?limit=100').catch(() => ({ dossiers: [] }))
+        : Promise.resolve({ dossiers: [] }),
+      // Achats du vendeur en tant qu'acheteur : leur échec ne doit pas masquer le reste du tableau
+      apiRequest('/sales/mine').catch(() => ({ ongoing: [] })),
+      // Offres déposées par le vendeur sur les véhicules des autres (interdit si suspendu)
+      user.status === 'valide'
+        ? apiRequest('/offers/mine').catch(() => ({ ongoing: [] }))
+        : Promise.resolve({ ongoing: [] }),
     ])
-      .then(([salesRes, dossiersRes]) => {
+      .then(([salesRes, dossiersRes, purchasesRes, offersRes]) => {
+        setOngoingPurchases(purchasesRes.ongoing || []);
+        setMyOngoingOffers(offersRes.ongoing || []);
         setSales({
           inSession: salesRes.inSession || [],
           ongoing: salesRes.ongoing || [],
@@ -197,6 +216,26 @@ export default function VendeurTableauDeBordPage() {
       router.replace(localizedPath(getRoleHomePath(user.role), language));
     }
   }, [user, router, language]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const handleRelistSale = async (saleId: string) => {
+    setRelistingSaleId(saleId);
+    try {
+      await apiRequest(`/sales/seller/${saleId}/relist`, { method: 'POST' });
+      setSales((current) => ({
+        ...current,
+        unsold: current.unsold.filter((sale) => sale.id !== saleId),
+      }));
+    } catch (requestError) {
+      console.error(requestError);
+    } finally {
+      setRelistingSaleId(null);
+    }
+  };
 
   const uploadFile = async (file: File): Promise<string> => {
     const formData = new FormData();
@@ -462,6 +501,7 @@ export default function VendeurTableauDeBordPage() {
     if (Boolean(b.awaitingSeller) !== Boolean(a.awaitingSeller)) return Number(b.awaitingSeller) - Number(a.awaitingSeller);
     return (b.currentStep || 0) - (a.currentStep || 0);
   });
+  const pendingOfferDecisions = sales.unsold.filter((sale) => sale.status === 'suspendue');
   const awaitingCount = sales.ongoing.filter((sale) => sale.awaitingSeller).length;
 
   // Dossiers renvoyés par l'administration pour correction. Les dossiers refusés en sont
@@ -503,19 +543,100 @@ export default function VendeurTableauDeBordPage() {
             href={localizedPath('/vendeur/dossiers/nouveau', language)}
             className="h-11 flex items-center justify-center rounded-[9px] bg-[#d9704f] px-6 text-[13px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#c26040]"
           >
-            {t('vehicleDossier.createButton')}
+            + {t('vehicleDossier.createButton')}
           </Link>
         )}
       </div>
 
       {!user.stampUrl && <StampReminderBanner />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label={t('vendeurDashboard.publishedInSession')} value={sales.inSession.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
-        <StatCard label={t('dashboard.ongoingSales')} value={sales.ongoing.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
-        <StatCard label={t('vendeurDashboard.pendingValidation')} value={pendingDossiers.length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
-        <StatCard label={t('profil.salesFinalized')} value={sales.closed.length} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <StatCard href={localizedPath('/vendeur/en-vente', language)} label={t('vendeurDashboard.publishedInSession')} value={sales.inSession.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
+        <StatCard href={localizedPath('/vendeur/ventes', language)} label={t('dashboard.ongoingSales')} value={sales.ongoing.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
+        <StatCard href={localizedPath('/vendeur/dossiers', language)} label={t('vendeurDashboard.pendingValidation')} value={pendingDossiers.length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
+        <StatCard href={localizedPath('/vendeur/ventes', language)} label={t('profil.salesFinalized')} value={sales.closed.length} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
+        <StatCard href={localizedPath('/vendeur/mes-achats', language)} label={t('dashboard.ongoingPurchases')} value={ongoingPurchases.length} bg="#0d9488" labelColor="#99f6e4" valueColor="#ffffff" />
+        {user.status !== 'suspendu' && (
+          <StatCard href={localizedPath('/vendeur/mes-offres', language)} label={t('vendeurDashboard.myOngoingOffers')} value={myOngoingOffers.length} bg="#475569" labelColor="#cbd5e1" valueColor="#ffffff" />
+        )}
       </div>
+
+      {pendingOfferDecisions.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[16px] font-bold text-[#d9704f] uppercase tracking-[0.06em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#d9704f] animate-pulse"></span>
+              {t('vendeurDashboard.offerDecisions')}
+            </h2>
+            <Link href={localizedPath('/vendeur/en-vente', language)} className="text-[12px] font-bold text-[#d9704f] hover:underline">
+              {t('profil.viewAll')}
+            </Link>
+          </div>
+
+          <div className="grid gap-4">
+            {pendingOfferDecisions.map((sale) => (
+              <div key={sale.id} className="flex flex-col items-center gap-4 rounded-[12px] border-2 border-[#d9704f] bg-[#fffaf5] p-4 shadow-[0_4px_12px_rgba(217,112,79,0.14)] sm:flex-row">
+                {sale.vehicle?.photoUrl && (
+                  <div className="hidden h-[56px] w-[72px] shrink-0 overflow-hidden rounded-[7px] bg-[#13243c] sm:block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sale.vehicle.photoUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <div className="w-full flex-1 text-center sm:w-auto sm:text-left">
+                  <div className="font-bold text-[16px] text-[#13243c]">
+                    {[sale.vehicle?.brand, sale.vehicle?.model].filter(Boolean).join(' ') || t('profil.vehicle')}
+                  </div>
+                  <div className="mt-1 flex flex-col gap-1 text-[13px] text-[#5a5e66] sm:flex-row sm:items-center sm:gap-2">
+                    <span>{sale.session?.name || '—'}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span>{t('sellerSales.offersReceived', { count: String(sale.offerCount) })}</span>
+                  </div>
+                  <p className="mt-2 text-[12px] font-semibold text-[#b04a2c]">
+                    {t('vendeurDashboard.offerDecisionText')}
+                  </p>
+                  {sale.sellerDecisionDueAt && (
+                    <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.04em] text-[#b04a2c]">
+                      {t('vendeurDashboard.decisionTimeLeft', { time: formatTimeLeft(sale.sellerDecisionDueAt) })}
+                    </p>
+                  )}
+                </div>
+                <TopOffers
+                  offers={sale.topOffers}
+                  reservePrice={sale.reservePrice}
+                  language={language}
+                  label={t('sellerSales.topOffers')}
+                  emptyLabel={t('sellerSales.noOffersYet')}
+                  className="w-full sm:w-[270px] sm:shrink-0"
+                />
+                <div className="w-full rounded-[8px] border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1.5 text-center sm:w-auto sm:shrink-0 sm:text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.05em] text-[#1d4ed8]">
+                    {t('sellerSales.reservePrice')}
+                  </div>
+                  <div className="font-mono text-[15px] font-bold text-[#2563eb]">
+                    {sale.reservePrice != null ? formatEuros(sale.reservePrice, language) : '—'}
+                  </div>
+                </div>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0">
+                  <Link
+                    href={localizedPath(`/vendeur/ventes/${sale.id}`, language)}
+                    className="btn bg-[#13243c] text-white hover:bg-[#1c3050] justify-center"
+                  >
+                    {t('vendeurDashboard.chooseOffer')}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => handleRelistSale(sale.id)}
+                    disabled={relistingSaleId !== null}
+                    className="btn btn-secondary justify-center disabled:opacity-50"
+                  >
+                    {relistingSaleId === sale.id && <Spinner />} {t('sellerSale.relist')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 1. Ventes en cours — d'abord celles bloquées côté vendeur : ce sont les seules
              sur lesquelles il peut agir immédiatement. */}
@@ -590,7 +711,78 @@ export default function VendeurTableauDeBordPage() {
         </div>
       )}
 
-      {/* 2. Enchères en cours : véhicules publiés dans une session encore ouverte. Le vendeur
+      {/* Achats en cours : le vendeur suit ici les véhicules qu'il a remportés, à chaque étape. */}
+      {ongoingPurchases.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[16px] font-bold text-[#d9704f] uppercase tracking-[0.06em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#d9704f] animate-pulse"></span>
+              {t('dashboard.ongoingPurchases')}
+            </h2>
+            <Link href={localizedPath('/vendeur/mes-achats', language)} className="text-[12px] font-bold text-[#d9704f] hover:underline">
+              {t('profil.viewAll')}
+            </Link>
+          </div>
+          <div className="grid gap-4">
+            {ongoingPurchases.map((purchase) => {
+              const isBuyerTurn = [1, 3, 5, 6].includes(Number(purchase.currentStep));
+              return (
+                <div key={purchase.id} className={`flex flex-col sm:flex-row items-center gap-4 bg-white border-2 ${isBuyerTurn ? 'border-[#d9704f] shadow-[0_4px_12px_rgba(217,112,79,0.15)]' : 'border-[#eceadf] shadow-sm'} rounded-[12px] p-4 transition-transform hover:-translate-y-1`}>
+                  {purchase.vehicle?.photoUrl && (
+                    <div className="h-[56px] w-[72px] shrink-0 overflow-hidden rounded-[7px] bg-[#13243c] hidden sm:block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={purchase.vehicle.photoUrl} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
+                    <div className="font-bold text-[16px] text-[#13243c]">
+                      {[purchase.vehicle?.brand, purchase.vehicle?.model].filter(Boolean).join(' ') || t('profil.vehicle')}
+                    </div>
+                    <div className="text-[13px] text-[#5a5e66] mt-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                      <span>{purchase.session?.name || '—'}</span>
+                      {purchase.currentStep != null && purchase.stepCount != null && (
+                        <span className="hidden sm:inline">•</span>
+                      )}
+                      {purchase.currentStep != null && purchase.stepCount != null && (
+                        <span>{t('dashboard.step', { current: String(purchase.currentStep), total: String(purchase.stepCount) })}</span>
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      {isBuyerTurn && purchase.stepKey ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#13243c] px-2.5 py-1 text-[11px] font-bold text-white">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                          {purchase.currentStep === 3 ? t('dashboard.awaitingYourSignature') : t(`sales.step.${purchase.stepKey}`)}
+                        </span>
+                      ) : purchase.currentStep === 8 ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a] px-2.5 py-1 text-[11px] font-bold text-white">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                          {t('dashboard.handoverPapersReady')}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-[#8a8270]">{t('dashboard.awaitingSeller')}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-center sm:text-right">
+                    <div className="text-[11px] text-[#7a756a] font-bold uppercase">{t('dashboard.amountWon')}</div>
+                    <div className="font-mono text-[20px] font-bold text-[#13243c]">
+                      {purchase.amount != null ? formatEuros(purchase.amount, language) : '—'}
+                    </div>
+                  </div>
+                  <Link
+                    href={localizedPath(`/vendeur/mes-achats/${purchase.id}`, language)}
+                    className="btn bg-[#13243c] text-white hover:bg-[#1c3050] w-full sm:w-auto justify-center"
+                  >
+                    {t('dashboard.continuePurchase')}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Offres en cours : véhicules publiés dans une session encore ouverte. Le vendeur
              y suit la meilleure offre reçue face au prix de réserve qu'il a fixé. */}
       {sales.inSession.length > 0 && (
         <div className="mb-8">
@@ -623,16 +815,74 @@ export default function VendeurTableauDeBordPage() {
                     <span>{t('sellerSales.offersReceived', { count: String(sale.offerCount) })}</span>
                   </div>
                 </div>
-                <AuctionPriceTags
-                  bestOffer={sale.bestOffer}
+                <TopOffers
+                  offers={sale.topOffers}
                   reservePrice={sale.reservePrice}
-                  className="justify-center sm:justify-end"
+                  language={language}
+                  label={t('sellerSales.topOffers')}
+                  emptyLabel={t('sellerSales.noOffersYet')}
+                  className="w-full sm:w-[270px] sm:shrink-0"
                 />
+                <div className="w-full rounded-[8px] border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1.5 text-center sm:w-auto sm:shrink-0 sm:text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.05em] text-[#1d4ed8]">
+                    {t('sellerSales.reservePrice')}
+                  </div>
+                  <div className="font-mono text-[15px] font-bold text-[#2563eb]">
+                    {sale.reservePrice != null ? formatEuros(sale.reservePrice, language) : '—'}
+                  </div>
+                </div>
                 <Link
                   href={localizedPath(`/vendeur/dossiers/${sale.vehicle?.id}`, language)}
                   className="btn bg-[#13243c] text-white hover:bg-[#1c3050] w-full sm:w-auto justify-center"
                 >
                   {t('sellerSales.viewDossier')}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Offres déposées par le vendeur en tant qu'acheteur, sur les véhicules d'autres vendeurs. */}
+      {myOngoingOffers.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[16px] font-bold text-[#2563eb] uppercase tracking-[0.06em] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#2563eb] animate-pulse"></span>
+              {t('vendeurDashboard.myOngoingOffers')}
+            </h2>
+            <Link href={localizedPath('/vendeur/mes-offres', language)} className="text-[12px] font-bold text-[#d9704f] hover:underline">
+              {t('profil.viewAll')}
+            </Link>
+          </div>
+          <div className="grid gap-4">
+            {myOngoingOffers.slice(0, 5).map((offer) => (
+              <div key={offer.id} className="flex flex-col sm:flex-row items-center gap-4 bg-white border-2 border-[#eceadf] shadow-sm rounded-[12px] p-4 transition-transform hover:-translate-y-1">
+                {offer.vehicle?.photoUrl && (
+                  <div className="h-[56px] w-[72px] shrink-0 overflow-hidden rounded-[7px] bg-[#13243c] hidden sm:block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={offer.vehicle.photoUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 w-full sm:w-auto text-center sm:text-left">
+                  <div className="font-bold text-[16px] text-[#13243c]">
+                    {[offer.vehicle?.brand, offer.vehicle?.model].filter(Boolean).join(' ') || t('profil.vehicle')}
+                  </div>
+                  <div className="text-[13px] text-[#5a5e66] mt-1">{offer.session?.name || '—'}</div>
+                </div>
+                <div className="text-center sm:text-right">
+                  <div className="text-[11px] text-[#7a756a] font-bold uppercase">{t('profil.amountOffered')}</div>
+                  <div className="font-mono text-[20px] font-bold text-[#13243c]">{formatEuros(offer.amount, language)}</div>
+                </div>
+                <div className="text-center sm:text-right">
+                  <div className="text-[11px] text-[#7a756a] font-bold uppercase">{t('offers.totalIfWon')}</div>
+                  <div className="font-mono text-[16px] font-bold text-[#4c5058]">{formatEuros(offer.fees.total, language)}</div>
+                </div>
+                <Link
+                  href={localizedPath('/vendeur/mes-offres', language)}
+                  className="btn btn-primary w-full sm:w-auto justify-center"
+                >
+                  {t('profil.view')}
                 </Link>
               </div>
             ))}

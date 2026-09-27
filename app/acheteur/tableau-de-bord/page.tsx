@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { apiRequest } from '../../api';
 import { useUser } from '../../components/LayoutWrapper';
-import { localizedPath, useLanguage } from '../../i18n';
+import { getBuyingPaths, localizedPath, useLanguage } from '../../i18n';
 import StampReminderBanner from '../../components/StampReminderBanner';
 import StatCard from '../../components/StatCard';
 import { formatEuros } from '../../lib/format';
@@ -15,12 +15,13 @@ interface BuyerOfferPreview {
   id: string;
   amount: number;
   fees: { total: number };
-  vehicle: { id: string; brand: string; model: string } | null;
+  vehicle: { id: string; brand: string; model: string; photoUrl?: string | null } | null;
   session: { name: string } | null;
 }
 
 export default function BuyerDashboardPage() {
   const { user, loading: userLoading } = useUser();
+  const paths = getBuyingPaths(user?.role);
   const { language, t } = useLanguage();
   
   const [ongoingOffers, setOngoingOffers] = useState<BuyerOfferPreview[]>([]);
@@ -30,7 +31,7 @@ export default function BuyerDashboardPage() {
   const [offersLoaded, setOffersLoaded] = useState(false);
 
   useEffect(() => {
-    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     
     const promises: Promise<any>[] = [
       user.status === 'valide'
@@ -57,7 +58,7 @@ export default function BuyerDashboardPage() {
       </div>
     );
   }
-  if (!user || user.role !== 'acheteur') return null;
+  if (!user) return null;
   if (user.status !== 'valide' && user.status !== 'suspendu') return <UnderReviewNotice />;
 
   return (
@@ -83,11 +84,11 @@ export default function BuyerDashboardPage() {
       {/* Vibrant KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {user.status !== 'suspendu' && (
-          <StatCard label={t('profil.offersInProgress')} value={ongoingOffers.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
+          <StatCard href={localizedPath(paths.offers, language)} label={t('profil.offersInProgress')} value={ongoingOffers.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
         )}
-        <StatCard label={t('profil.offersWon')} value={ongoingSales.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
-        <StatCard label={t('profil.commissionDue')} value={ongoingSales.filter(s => s.currentStep === 1).length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
-        <StatCard label={t('profil.salesFinalized')} value={closedSalesCount} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
+        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.offersWon')} value={ongoingSales.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
+        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.commissionDue')} value={ongoingSales.filter(s => s.currentStep === 1).length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
+        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.salesFinalized')} value={closedSalesCount} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
       </div>
 
       {ongoingSales.length > 0 && (
@@ -143,7 +144,7 @@ export default function BuyerDashboardPage() {
                     </div>
                   </div>
                   <Link 
-                    href={localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${sale.id}`, language)} 
+                    href={localizedPath(`${paths.purchases}/${sale.id}`, language)} 
                     className="btn bg-[#13243c] text-white hover:bg-[#1c3050] w-full sm:w-auto justify-center"
                   >
                     {t('dashboard.continuePurchase')}
@@ -171,7 +172,8 @@ export default function BuyerDashboardPage() {
           <div className="border border-[#eceadf] rounded-[12px] bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <div className="min-w-[640px]">
-                <div className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] bg-[#f8f9fa] border-b border-[#eceadf] text-[12px] font-bold uppercase tracking-[0.05em] text-[#111827]">
+                <div className="grid grid-cols-[84px_2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] bg-[#f8f9fa] border-b border-[#eceadf] text-[12px] font-bold uppercase tracking-[0.05em] text-[#111827]">
+                  <div>{t('vehicleDossier.colPhoto')}</div>
                   <div>{t('profil.vehicle')}</div>
                   <div>{t('profil.session')}</div>
                   <div>{t('profil.amountOffered')}</div>
@@ -187,7 +189,13 @@ export default function BuyerDashboardPage() {
                     <div className="p-[20px] text-[13px] text-[#5a5e66]">{t('offers.emptyOngoing')}</div>
                   )}
                   {ongoingOffers.slice(0, 3).map((row) => (
-                    <div key={row.id} className="grid grid-cols-[2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] items-center text-[13px] text-[#111827] hover:bg-[#f8f9fa] transition-colors">
+                    <div key={row.id} className="grid grid-cols-[84px_2fr_1.2fr_1fr_1.2fr_110px] p-[16px_20px] items-center text-[13px] text-[#111827] hover:bg-[#f8f9fa] transition-colors">
+                      <div className="h-[48px] w-[64px] shrink-0 overflow-hidden rounded-[7px] bg-[#13243c]">
+                        {row.vehicle?.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={row.vehicle.photoUrl} alt="" className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
                       <div className="font-bold text-[14px] text-[#13243c]">
                         {[row.vehicle?.brand, row.vehicle?.model].filter(Boolean).join(' ') || '—'}
                       </div>
@@ -196,7 +204,7 @@ export default function BuyerDashboardPage() {
                       <div className="text-[#4c5058] font-semibold">{formatEuros(row.fees.total, language)}</div>
                       <div className="text-right">
                         <Link 
-                          href={localizedPath('/acheteur/tableau-de-bord/mes-offres', language)} 
+                          href={localizedPath(paths.offers, language)} 
                           className="btn btn-primary"
                         >
                           {t('profil.view')}

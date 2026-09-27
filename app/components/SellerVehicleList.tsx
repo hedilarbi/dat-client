@@ -8,21 +8,22 @@ import { useUser } from './LayoutWrapper';
 import { getRoleHomePath, localizedPath, useLanguage } from '../i18n';
 import Alert from './Alert';
 import PageHeader from './PageHeader';
-import AuctionPriceTags from './AuctionPriceTags';
+import TopOffers from './TopOffers';
 import { formatTimeLeft } from '../lib/currentSales';
 import { formatEuros } from '../lib/format';
 import Spinner from './Spinner';
+import ConfirmModal from './ConfirmModal';
 import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from './SellerListFilters';
 
 /** États calculés par le serveur (SELLER_PHASES dans sale.service.js). */
 export type SellerPhase = 'depot' | 'en_vente';
 type VehicleState =
   | 'brouillon' | 'en_validation' | 'a_corriger' | 'refuse'
-  | 'en_attente' | 'programme' | 'encheres_ouvertes';
+  | 'en_attente' | 'programme' | 'encheres_ouvertes' | 'offres_a_decider';
 
 const PHASE_STATES: Record<SellerPhase, VehicleState[]> = {
   depot: ['a_corriger', 'brouillon', 'en_validation', 'refuse'],
-  en_vente: ['encheres_ouvertes', 'programme', 'en_attente'],
+  en_vente: ['offres_a_decider', 'encheres_ouvertes', 'programme', 'en_attente'],
 };
 
 /** Les états qui demandent une action du vendeur passent devant, et se voient en rouge. */
@@ -33,9 +34,10 @@ const STATE_STYLES: Record<VehicleState, string> = {
   en_validation: 'bg-[#eef1f5] text-[#13243c]',
   a_corriger: 'bg-[#dc2626] text-white',
   refuse: 'bg-[#f1efe8] text-[#8a8270]',
-  en_attente: 'bg-[#f1efe8] text-[#8a8270]',
-  programme: 'bg-[#eef1f5] text-[#13243c]',
-  encheres_ouvertes: 'bg-[#2563eb] text-white',
+  en_attente: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+  programme: 'bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200',
+  encheres_ouvertes: 'bg-emerald-600 text-white',
+  offres_a_decider: 'bg-amber-500 text-white',
 };
 
 interface SellerVehicleRow {
@@ -50,9 +52,12 @@ interface SellerVehicleRow {
   offerCount: number;
   /** Meilleure offre de la session en cours, nulle tant qu'aucune offre n'a été déposée. */
   bestOffer: number | null;
+  /** Trois meilleures offres de la publication, classées par montant croissant. */
+  topOffers: number[];
   updatedAt: string | null;
   vehicle: { id: string; brand: string; model: string; registrationNumber: string | null; photoUrl: string | null } | null;
   session: { id: string; name: string; startDate: string; endDate: string; status: string } | null;
+  sale: { id: string; status: string; sellerDecisionDueAt?: string | null } | null;
 }
 
 interface SellerVehicleListProps {
@@ -98,8 +103,10 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
     if (user && user.role !== 'vendeur') router.replace(localizedPath(getRoleHomePath(user.role), language));
   }, [user, router, language]);
 
+  // Un vendeur suspendu garde l'accès à /sales/seller (ses ventes en cours) : sans ce chargement,
+  // la liste restait indéfiniment sur son indicateur de chargement.
   useEffect(() => {
-    if (user?.role === 'vendeur' && user.status === 'valide') fetchVehicles();
+    if (user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu')) fetchVehicles();
   }, [fetchVehicles, user]);
 
   // Les comptes à rebours de clôture s'égrènent à la seconde
@@ -112,6 +119,11 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
     return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
+  // Le serveur réserve la création, la consultation, la modification et la suppression des
+  // dossiers aux vendeurs validés : pour un compte suspendu, ces actions sont masquées plutôt
+  // que de mener à une erreur.
+  const readOnly = user.status === 'suspendu';
+
   // Ce qui demande une action remonte : c'est la seule chose sur laquelle le vendeur peut agir.
   const sorted = [...rows].sort((a, b) => {
     const rank = (row: SellerVehicleRow) => states.indexOf(row.state);
@@ -119,6 +131,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
   });
   const statusItems = filter === 'all' ? sorted : sorted.filter((row) => row.state === filter);
   const items = statusItems.filter((row) => matchesSellerListFilters(listFilters, {
+    brand: row.vehicle?.brand,
     model: row.vehicle?.model,
     registrationNumber: row.vehicle?.registrationNumber,
     date: row.session?.startDate || row.updatedAt,
@@ -135,13 +148,13 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px]">
       <PageHeader
         title={t(`sellerVehicles.title.${phase}`)}
-        action={phase === 'depot' ? (
+        action={phase === 'depot' && !readOnly ? (
           <button
             type="button"
             onClick={() => router.push(localizedPath('/vendeur/dossiers/nouveau', language))}
             className="h-11 rounded-[9px] bg-[#d9704f] px-6 text-[13px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#c26040]"
           >
-            {t('vehicleDossier.createButton')}
+            + {t('vehicleDossier.createButton')}
           </button>
         ) : undefined}
       />
@@ -150,6 +163,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
         {t(`sellerVehicles.intro.${phase}`)}
       </p>
 
+      {readOnly && <Alert variant="error" className="mb-5">{t('sellerVehicles.suspendedNotice')}</Alert>}
       {error && <Alert variant="error" className="mb-5">{error}</Alert>}
 
       <SellerListFilters
@@ -200,7 +214,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
         </p>
       ) : (
         <div className="space-y-4">
-          {items.map((row) => <VehicleCard key={row.id} row={row} language={language} t={t} />)}
+          {items.map((row) => <VehicleCard key={row.id} row={row} language={language} t={t} onDeleted={fetchVehicles} readOnly={readOnly} />)}
         </div>
       )}
     </div>
@@ -208,17 +222,24 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
 }
 
 function VehicleCard({
-  row, language, t,
+  row, language, t, onDeleted, readOnly = false,
 }: {
   row: SellerVehicleRow;
   language: 'fr' | 'en';
   t: (key: string, params?: Record<string, string>) => string;
+  onDeleted: () => Promise<unknown>;
+  /** Compte suspendu : seules les ventes restent consultables, pas les dossiers. */
+  readOnly?: boolean;
 }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const title = [row.vehicle?.brand, row.vehicle?.model].filter(Boolean).join(' ') || '—';
   const locale = language === 'fr' ? 'fr-FR' : 'en-GB';
   const formatDate = (value?: string | null) =>
     value ? new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
   const needsAction = ACTIONABLE_STATES.includes(row.state);
+  const opensSale = ['encheres_ouvertes', 'offres_a_decider'].includes(row.state);
 
   /** Une phrase sur ce qui se passe, jamais un statut brut. */
   const contextLine = () => {
@@ -244,6 +265,7 @@ function VehicleCard({
       case 'encheres_ouvertes': return row.session
         ? t('sellerVehicles.context.encheres_ouvertes', { time: formatTimeLeft(row.session.endDate) })
         : '';
+      case 'offres_a_decider': return t('sellerVehicles.context.offres_a_decider');
     }
   };
 
@@ -277,24 +299,41 @@ function VehicleCard({
           <p className={`mt-1 text-xs ${needsAction ? 'font-semibold text-[#b91c1c]' : 'text-[#5a5e66]'}`}>
             {contextLine()}
           </p>
+          {row.state === 'offres_a_decider' && row.sale?.sellerDecisionDueAt && (
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.04em] text-[#b04a2c]">
+              {t('sellerVehicles.decisionTimeLeft', { time: formatTimeLeft(row.sale.sellerDecisionDueAt) })}
+            </p>
+          )}
           {row.refusalComment && (
             <p className="mt-1 text-[11px] italic text-[#8a8578]">« {row.refusalComment} »</p>
           )}
         </div>
 
+        {['encheres_ouvertes', 'offres_a_decider'].includes(row.state) && (
+          <TopOffers
+            offers={row.topOffers}
+            reservePrice={row.reservePrice}
+            language={language}
+            label={t('sellerSales.topOffers')}
+            emptyLabel={t('sellerSales.noOffersYet')}
+            className="w-full sm:w-[270px] sm:shrink-0"
+          />
+        )}
+
         <div className="shrink-0 text-left sm:text-right">
-          {/* Session ouverte : le vendeur suit la meilleure offre face à sa réserve. Hors
-              session, seule la réserve a du sens — il n'y a pas d'enchère en cours. */}
           {row.state === 'encheres_ouvertes' ? (
             <>
               <div className="text-[10px] font-bold uppercase tracking-wide text-[#7a756a]">
                 {t('sellerSales.offersReceived', { count: String(row.offerCount) })}
               </div>
-              <AuctionPriceTags
-                bestOffer={row.bestOffer}
-                reservePrice={row.reservePrice}
-                className="mt-1.5 sm:justify-end"
-              />
+              <div className="mt-1.5 rounded-[8px] border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-[#1d4ed8]">
+                  {t('sellerSales.reservePrice')}
+                </div>
+                <div className="font-mono text-[15px] font-bold text-[#2563eb]">
+                  {row.reservePrice != null ? formatEuros(row.reservePrice, language) : '—'}
+                </div>
+              </div>
             </>
           ) : (
             row.reservePrice != null && (
@@ -305,15 +344,68 @@ function VehicleCard({
           )}
         </div>
 
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-3">
+          {(!readOnly || opensSale) && (
           <Link
-            href={localizedPath(`/vendeur/dossiers/${row.id}`, language)}
+            href={localizedPath(
+              opensSale
+                ? `/vendeur/ventes/${row.sale?.id || row.id}`
+                : `/vendeur/dossiers/${row.id}`,
+              language,
+            )}
             className={`text-[12px] font-bold hover:underline ${needsAction ? 'text-[#b91c1c]' : 'text-[#d9704f]'}`}
           >
             {needsAction ? t('sellerVehicles.fixAction') : t('profil.view')}
           </Link>
+          )}
+          {!readOnly && row.phase !== 'en_vente' && row.state !== 'refuse' && (
+            <Link
+              href={localizedPath(`/vendeur/dossiers/${row.id}`, language)}
+              className="text-[12px] font-bold text-[#13243c] hover:underline"
+            >
+              Modifier
+            </Link>
+          )}
+          {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-[12px] font-bold text-[#b3261e] hover:underline"
+          >
+            Supprimer
+          </button>
+          )}
         </div>
       </div>
+      {deleteError && <Alert variant="error" className="mx-4 mb-4">{deleteError}</Alert>}
+      <ConfirmModal
+        open={deleteOpen}
+        title="Supprimer ce véhicule ?"
+        message={row.session
+          ? 'Ce véhicule est rattaché à une session. Si vous confirmez, il sera retiré de la session puis supprimé définitivement.'
+          : 'Ce dossier véhicule sera supprimé définitivement.'}
+        confirmLabel="Supprimer"
+        danger
+        loading={deleting}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          setDeleting(true);
+          setDeleteError('');
+          try {
+            await apiRequest(`/vehicle-dossiers/${row.id}`, {
+              method: 'DELETE',
+              body: JSON.stringify({ confirmSessionDetach: Boolean(row.session) }),
+            });
+            setDeleteOpen(false);
+            await onDeleted();
+          } catch (requestError) {
+            setDeleteError(requestError instanceof Error ? requestError.message : t('vehicleDossier.deleteError'));
+            setDeleteOpen(false);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
     </article>
   );
 }

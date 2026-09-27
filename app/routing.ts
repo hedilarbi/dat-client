@@ -32,6 +32,9 @@ const ROUTE_SLUGS: Record<string, Record<Language, string>> = {
   '/vendeur/dossiers': { fr: 'vendeur/dossiers', en: 'seller/files' },
   '/vendeur/ventes': { fr: 'vendeur/ventes', en: 'seller/sales' },
   '/vendeur/en-vente': { fr: 'vendeur/en-vente', en: 'seller/for-sale' },
+  '/vendeur/mes-offres': { fr: 'vendeur/mes-offres', en: 'seller/my-bids' },
+  '/vendeur/mes-achats': { fr: 'vendeur/mes-achats', en: 'seller/my-purchases' },
+  '/vendeur/notifications': { fr: 'vendeur/notifications', en: 'seller/notifications' },
   '/vehicule': { fr: 'vehicule', en: 'vehicle' },
   '/acheteur/tableau-de-bord': { fr: 'acheteur/tableau-de-bord', en: 'buyer/dashboard' },
   '/acheteur/tableau-de-bord/mes-offres': { fr: 'acheteur/tableau-de-bord/mes-offres', en: 'buyer/dashboard/my-bids' },
@@ -142,6 +145,29 @@ export function getRoleHomePath(role: 'acheteur' | 'vendeur' | string): string {
  * Profil et support vivent sous l'espace du rôle depuis que /profil et /support ont été
  * démantelés : ces deux chemins n'ont plus de page et renverraient une 404.
  */
+/**
+ * Chemins du parcours « acheteur » (offres déposées, achats en cours) selon le rôle : un
+ * vendeur les retrouve dans son propre espace, un acheteur dans le sien.
+ */
+export function getBuyingPaths(role?: string | null) {
+  if (role === 'vendeur') {
+    return {
+      dashboard: '/vendeur/tableau-de-bord',
+      offers: '/vendeur/mes-offres',
+      purchases: '/vendeur/mes-achats',
+      profile: '/vendeur/tableau-de-bord/profil',
+      stamp: '/vendeur/tableau-de-bord/tampon',
+    };
+  }
+  return {
+    dashboard: '/acheteur/tableau-de-bord',
+    offers: '/acheteur/tableau-de-bord/mes-offres',
+    purchases: '/acheteur/tableau-de-bord/mes-vehicules',
+    profile: '/acheteur/tableau-de-bord/profil',
+    stamp: '/acheteur/tableau-de-bord/tampon',
+  };
+}
+
 export function getRoleProfilePath(role: 'acheteur' | 'vendeur' | string): string {
   return `${getRoleHomePath(role)}/profil`;
 }

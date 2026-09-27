@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { localizedPath, useLanguage } from "./i18n";
 import { formatTimeLeft, useCurrentSales } from "./lib/currentSales";
+import { formatEuros } from "./lib/format";
+import { apiRequest } from "./api";
+import { useUser } from "./components/LayoutWrapper";
 import Spinner from "./components/Spinner";
 import JsonLd from "./components/JsonLd";
 
@@ -39,9 +42,22 @@ function SupportIcon() {
   );
 }
 
+interface HomeSaleReminder {
+  id: string;
+  amount: number | null;
+  currentStep?: number | null;
+  stepCount?: number | null;
+  stepKey?: string | null;
+  awaitingSeller?: boolean;
+  vehicle: { brand?: string; model?: string; photoUrl?: string | null } | null;
+  session: { name?: string | null } | null;
+}
+
 export default function Home() {
   const { language, t } = useLanguage();
   const router = useRouter();
+  const { user } = useUser();
+  const [saleReminders, setSaleReminders] = useState<HomeSaleReminder[]>([]);
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
   const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8 });
@@ -56,6 +72,18 @@ export default function Home() {
       router.replace('/en');
     }
   }, [language, router]);
+
+  useEffect(() => {
+    if (!user || user.status !== 'valide' || !['acheteur', 'vendeur'].includes(user.role)) {
+      setSaleReminders([]);
+      return;
+    }
+
+    const endpoint = user.role === 'vendeur' ? '/sales/seller' : '/sales/mine';
+    apiRequest(endpoint)
+      .then((res) => setSaleReminders((res.ongoing || []).slice(0, 3)))
+      .catch(() => setSaleReminders([]));
+  }, [user?._id, user?.role, user?.status]);
 
   const trustPoints = [
     { icon: <CheckIcon />, label: t('home.trustVerified') },
@@ -124,6 +152,67 @@ export default function Home() {
         </div>
       </div>
 
+      {user?.status === 'valide' && saleReminders.length > 0 && (
+        <div className="px-4 sm:px-[40px] pt-8 sm:pt-10">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="font-semibold text-[11px] tracking-[0.18em] uppercase text-[#a3987f] mb-1.5">
+                {language === 'fr' ? 'À reprendre' : 'To resume'}
+              </div>
+              <h2 className="font-bold text-[22px] sm:text-[26px] uppercase text-[#13243c] font-heading">
+                {language === 'fr' ? 'Vos ventes en cours' : 'Your ongoing sales'}
+              </h2>
+            </div>
+            <Link
+              href={localizedPath(user.role === 'vendeur' ? '/vendeur/ventes' : '/acheteur/tableau-de-bord/mes-vehicules', language)}
+              className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline"
+            >
+              {t('profil.viewAll')}
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {saleReminders.map((sale) => {
+              const title = [sale.vehicle?.brand, sale.vehicle?.model].filter(Boolean).join(' ') || t('profil.vehicle');
+              const href = user.role === 'vendeur'
+                ? `/vendeur/ventes/${sale.id}`
+                : `/acheteur/tableau-de-bord/mes-vehicules/${sale.id}`;
+              const isActionExpected = user.role === 'vendeur' ? sale.awaitingSeller : [1, 3, 5, 6].includes(Number(sale.currentStep));
+              return (
+                <Link
+                  key={sale.id}
+                  href={localizedPath(href, language)}
+                  className={`group flex items-center gap-4 rounded-[14px] border-2 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(19,36,60,.12)] ${isActionExpected ? 'border-[#d9704f]' : 'border-[#eceadf]'}`}
+                >
+                  <div className="h-[68px] w-[88px] shrink-0 overflow-hidden rounded-[9px] bg-[#13243c]">
+                    {sale.vehicle?.photoUrl ? (
+                      <img src={sale.vehicle.photoUrl} alt="" className="h-full w-full object-cover transition group-hover:scale-[1.04]" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-bold text-[15px] text-[#13243c]">{title}</div>
+                    <div className="mt-1 truncate text-[12px] text-[#5a5e66]">{sale.session?.name || '—'}</div>
+                    {sale.currentStep != null && sale.stepCount != null && (
+                      <div className="mt-2 inline-flex rounded-full bg-[#f8f7f2] px-2.5 py-1 text-[11px] font-bold text-[#13243c]">
+                        {t('dashboard.step', { current: String(sale.currentStep), total: String(sale.stepCount) })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-mono text-[15px] font-bold text-[#13243c]">
+                      {sale.amount != null ? formatEuros(sale.amount, language) : '—'}
+                    </div>
+                    <div className="mt-1 text-[11px] font-bold uppercase text-[#d9704f]">
+                      {language === 'fr' ? 'Continuer' : 'Continue'}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Brands */}
       <div className="px-4 sm:px-[40px] pt-10 sm:pt-12 pb-6">
         <div className="font-semibold text-[11px] tracking-[0.2em] uppercase text-[#a3987f] mb-2.5">{t('home.brandsEyebrow')}</div>
@@ -165,7 +254,7 @@ export default function Home() {
           >
             <div className="relative aspect-[4/3] bg-[#eef1f5] overflow-hidden">
               {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
-              {lot.hasActiveOffer && <span className="absolute left-2.5 top-2.5 rounded-[7px] bg-[#e9f4ee] px-2.5 py-1.5 text-[11px] font-bold text-[#20754c] shadow-sm">✓ {t('vehicle.offerPlaced')}</span>}
+              {lot.hasActiveOffer && <span className="absolute left-2.5 top-2.5 rounded-[7px] bg-[#e9f4ee] px-2.5 py-1.5 text-[11px] font-bold text-[#20754c] shadow-sm">✓ {t('vehicle.offerPlaced')}{lot.offerAmount != null ? ` · ${formatEuros(lot.offerAmount, language)}` : ''}</span>}
               <span className="absolute top-2.5 right-2.5 font-bold text-[11px] text-white bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 rounded-[7px] font-mono">
                 {formatTimeLeft(lot.session?.endDate)}
               </span>

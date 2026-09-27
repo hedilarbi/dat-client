@@ -15,7 +15,8 @@ import Spinner from '../../../components/Spinner';
 
 interface SellerSaleDetail {
   id: string;
-  status: 'en_cours' | 'cloturee' | 'sans_gagnant' | 'annulee';
+  status: 'en_session' | 'en_cours' | 'suspendue' | 'cloturee' | 'sans_gagnant' | 'annulee';
+  unsoldReason?: 'reserve_not_met' | 'buyer_default' | null;
   amount: number | null;
   reservePrice: number | null;
   currentStep: number;
@@ -46,6 +47,7 @@ interface SellerSaleDetail {
   session: { id: string; name: string; endDate: string } | null;
   /** Révélé par le serveur une fois la commission réglée */
   buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
+  offers?: Array<{ id: string; amount: number; selectable: boolean; buyer: { companyName: string; firstName: string; lastName: string } | null }>;
 }
 
 /**
@@ -113,6 +115,9 @@ export default function SellerSaleDetailPage() {
   // Upload certificat par le vendeur (Étape 3)
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const [submittingCertificate, setSubmittingCertificate] = useState(false);
+  const [offerActionLoading, setOfferActionLoading] = useState<string | null>(null);
+  // Offre en attente de confirmation : choisir un acheteur avant la clôture est irréversible
+  const [offerToAccept, setOfferToAccept] = useState<{ id: string; amount: number } | null>(null);
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -254,6 +259,35 @@ export default function SellerSaleDetailPage() {
     }
   };
 
+  const handleAcceptOffer = async (offerId: string) => {
+    if (!sale?.vehicle) return;
+    setOfferActionLoading(offerId);
+    setError('');
+    try {
+      const res = await apiRequest(`/sales/seller/vehicles/${sale.vehicle.id}/offers/${offerId}/accept`, { method: 'POST' });
+      setSale(res.sale);
+      setMessage(res.message || t('sellerSale.offerAccepted'));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
+    } finally {
+      setOfferActionLoading(null);
+    }
+  };
+
+  const handleRelist = async () => {
+    if (!sale || sale.status !== 'suspendue') return;
+    setOfferActionLoading('relist');
+    setError('');
+    try {
+      await apiRequest(`/sales/seller/${sale.id}/relist`, { method: 'POST' });
+      router.push(localizedPath('/vendeur/en-vente', language));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
+    } finally {
+      setOfferActionLoading(null);
+    }
+  };
+
   const backLink = <Link href={localizedPath('/vendeur/ventes', language)} className="btn-back mb-6">
     {t('sellerSale.backToList')}
   </Link>;
@@ -353,10 +387,40 @@ export default function SellerSaleDetailPage() {
         </div>
       )}
 
-      {sale.status === 'sans_gagnant' ? (
+      {['en_session', 'suspendue'].includes(sale.status) ? (
+        <section className="rounded-[14px] border border-[#ebdcc9] bg-[#faf7ef] p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-heading text-[18px] font-bold uppercase text-[#13243c]">{t('sellerSale.offersTitle')}</h2>
+              <p className="mt-1 text-sm text-[#5a5e66]">{sale.status === 'en_session' ? t('sellerSale.offersLiveText') : t('sellerSale.offersSuspendedText')}</p>
+            </div>
+            {sale.status === 'suspendue' && (
+              <button type="button" onClick={handleRelist} disabled={offerActionLoading !== null} className="btn btn-secondary disabled:opacity-50">
+                {offerActionLoading === 'relist' && <Spinner />} {t('sellerSale.relist')}
+              </button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {(sale.offers || []).map((offer) => (
+              <div key={offer.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e2ddd1] bg-white p-4">
+                <div>
+                  <div className="font-semibold text-[#13243c]">{offer.buyer?.companyName || [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ') || t('sellerSale.buyer')}</div>
+                  <div className="font-mono text-lg font-bold text-[#d9704f]">{formatEuros(offer.amount, language)}</div>
+                </div>
+                <button type="button" disabled={!offer.selectable || offerActionLoading !== null} onClick={() => (sale.status === 'en_session' ? setOfferToAccept({ id: offer.id, amount: offer.amount }) : handleAcceptOffer(offer.id))} className="btn btn-primary disabled:opacity-40">
+                  {offerActionLoading === offer.id && <Spinner />} {t('sellerSale.acceptOffer')}
+                </button>
+              </div>
+            ))}
+            {(sale.offers || []).length === 0 && <p className="text-sm text-[#5a5e66]">{t('sellerSale.noOffers')}</p>}
+          </div>
+        </section>
+      ) : sale.status === 'sans_gagnant' ? (
         <section className="rounded-[14px] border border-[#f5d5c7] bg-[#fdece4] p-5">
           <h2 className="font-heading text-[18px] font-bold uppercase text-[#b04a2c]">{t('sellerSale.unsoldTitle')}</h2>
-          <p className="mt-1 text-sm text-[#b04a2c]">{t('sellerSale.unsoldText')}</p>
+          <p className="mt-1 text-sm text-[#b04a2c]">
+            {t(sale.unsoldReason === 'buyer_default' ? 'sellerSale.unsoldBuyerDefaultText' : 'sellerSale.unsoldText')}
+          </p>
         </section>
       ) : (
         <>
@@ -849,6 +913,21 @@ export default function SellerSaleDetailPage() {
             setMotifAbsenceInput('');
           }
         }}
+      />
+
+      <ConfirmModal
+        open={offerToAccept !== null}
+        title={t('sellerSale.acceptEarlyTitle')}
+        message={offerToAccept ? t('sellerSale.acceptEarlyWarning', { amount: formatEuros(offerToAccept.amount, language) }) : ''}
+        confirmLabel={t('sellerSale.acceptEarlyConfirm')}
+        danger
+        loading={offerActionLoading !== null}
+        onConfirm={async () => {
+          if (!offerToAccept) return;
+          await handleAcceptOffer(offerToAccept.id);
+          setOfferToAccept(null);
+        }}
+        onCancel={() => { if (offerActionLoading === null) setOfferToAccept(null); }}
       />
 
       <ConfirmModal

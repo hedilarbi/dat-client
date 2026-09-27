@@ -109,6 +109,7 @@ export default function SellerSalesPage() {
   const total = STATE_ORDER.reduce((sum, state) => sum + counts[state], 0);
   const statusItems = filter === 'all' ? rows : rows.filter((row) => row.state === filter);
   const items = statusItems.filter((row) => matchesSellerListFilters(listFilters, {
+    brand: row.vehicle?.brand,
     model: row.vehicle?.model,
     registrationNumber: row.vehicle?.registrationNumber,
     date: row.sale?.closedAt || row.sale?.wonAt || row.session?.endDate,

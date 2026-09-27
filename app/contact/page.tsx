@@ -3,7 +3,7 @@ import JsonLd from '../components/JsonLd';
 
 export const metadata: Metadata = {
   title: 'Contacter l’équipe DealAutoPro | Support professionnel',
-  description: 'Une question sur une enchère en cours ou sur votre inscription ? Contactez notre équipe support dédiée aux professionnels de l’automobile.',
+  description: 'Une question sur une vente en cours ou sur votre inscription ? Contactez notre équipe support dédiée aux professionnels de l’automobile.',
 };
 
 export default function ContactPage() {

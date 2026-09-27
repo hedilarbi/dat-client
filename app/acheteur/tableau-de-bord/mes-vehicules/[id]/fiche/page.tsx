@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { apiRequest } from '../../../../../api';
-import { localizedPath, useLanguage } from '../../../../../i18n';
+import { getBuyingPaths, localizedPath, useLanguage } from '../../../../../i18n';
 import PhotoLightbox from '../../../../../components/PhotoLightbox';
 import { energyLabel, gearboxLabel } from '../../../../../lib/vehicleLabels';
 import Spinner from '../../../../../components/Spinner';

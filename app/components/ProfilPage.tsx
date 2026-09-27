@@ -157,7 +157,7 @@ export default function ProfilPage() {
   // Le composant est désormais accessible aux deux rôles (acheteur et vendeur)
 
   useEffect(() => {
-    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || !['acheteur', 'vendeur'].includes(user.role) || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     apiRequest('/offers/mine')
       .then((res) => {
         setOngoingOffers(res.ongoing || []);
@@ -314,6 +314,57 @@ export default function ProfilPage() {
       await refreshProfile();
     } catch (err: any) {
       setError(err.message || t('profil.resubmitError'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+
+    if (!hasChanges) {
+      setError(t('profil.noChanges'));
+      return;
+    }
+
+    if (!isValidPhoneNumber(phone || '')) {
+      setError(t('register.phoneInvalid'));
+      return;
+    }
+
+    if (!SIRET_REGEX.test((siret || '').replace(/\s/g, ''))) {
+      setError(t('register.siretInvalid'));
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await apiRequest('/auth/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          companyName,
+          activityType,
+          phone,
+          address: { street, city, country, postalCode },
+          siret,
+          kbisUrl,
+          cinRectoUrl,
+          cinVersoUrl,
+          ...(user?.role === 'vendeur' ? {
+            bankInfo: { bankName, accountHolder, iban, bic, ribUrl }
+          } : {})
+        })
+      });
+
+      setMessage(t('profil.updateSuccess'));
+      await refreshProfile();
+    } catch (err: any) {
+      setError(err.message || t('profil.updateError'));
     } finally {
       setLoading(false);
     }
@@ -480,87 +531,120 @@ export default function ProfilPage() {
             {t('nav.profile')}
           </h1>
         </div>
-        <Link 
+        <Link
           href={localizedPath(getRoleHomePath(user.role), language)}
           className="btn btn-primary"
         >
-          Retour au tableau de bord
+          {t('profil.backToDashboard')}
         </Link>
       </div>
 
       {!user.stampUrl && <StampReminderBanner />}
 
-      <div className="bg-[#f8f9fa] border border-[#eceadf] rounded-[12px] p-6 sm:p-8">
-        <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] mb-6 border-b border-[#eceadf] pb-2">
-          Informations du compte
+      <form onSubmit={handleProfileUpdate} className="bg-[#f8f9fa] border border-[#eceadf] rounded-[12px] p-6 sm:p-8 space-y-6">
+        <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] border-b border-[#eceadf] pb-2">
+          {t('profil.accountInfo')}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">Société</div>
-              <div className="text-[14px] font-semibold text-[#13243c]">{user.companyName}</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">Activité</div>
-              <div className="text-[14px] text-[#4c5058]">{user.activityType}</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">SIRET</div>
-              <div className="text-[14px] font-mono text-[#4c5058]">{user.siret}</div>
-            </div>
-          </div>
+        <IdentityFieldsSection
+          firstName={firstName} onFirstNameChange={setFirstName}
+          lastName={lastName} onLastNameChange={setLastName}
+          companyName={companyName} onCompanyNameChange={setCompanyName}
+          activityType={activityType} onActivityTypeChange={setActivityType}
+          activityOptions={ACTIVITY_OPTIONS}
+          phone={phone} onPhoneChange={setPhone}
+        />
 
-          <div className="space-y-4">
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">Représentant</div>
-              <div className="text-[14px] text-[#4c5058]">{user.firstName} {user.lastName}</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">Contact</div>
-              <div className="text-[14px] text-[#4c5058]">{user.email} <br />{user.phone}</div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[#111827] uppercase tracking-wider mb-1">Adresse</div>
-              <div className="text-[14px] text-[#4c5058]">
-                {user.address?.street}<br/>
-                {user.address?.postalCode} {user.address?.city}, {user.address?.country}
-              </div>
-            </div>
+        <div className="space-y-4 border-t border-[#efece3] pt-4">
+          <h5 className="font-bold text-xs text-[#111827] uppercase tracking-wider">{t('profil.address')}</h5>
+          <input required type="text" placeholder={t('profil.address')} value={street} onChange={e => setStreet(e.target.value)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <input required type="text" placeholder={t('profil.city')} className="sm:col-span-2 h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" value={city} onChange={e => setCity(e.target.value)} />
+            <input required type="text" placeholder={t('profil.postalCode')} className="h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" value={postalCode} onChange={e => setPostalCode(e.target.value)} />
           </div>
         </div>
 
-        <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] mb-6 mt-10 border-b border-[#eceadf] pb-2">
-          Documents
+        <div className="space-y-4 border-t border-[#efece3] pt-4">
+          <h5 className="font-bold text-xs text-[#111827] uppercase tracking-wider">{t('register.siret')}</h5>
+          <input required type="text" placeholder={t('register.siretPlaceholder')} value={siret} onChange={e => setSiret(e.target.value)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+        </div>
+
+        <div className="space-y-4 border-t border-[#efece3] pt-4">
+          <h5 className="font-bold text-xs text-[#111827] uppercase tracking-wider">{t('profil.documents')}</h5>
+          <DocumentUploadRow label={t('profil.kbisPdf')} accept=".pdf" file={kbisFile} existingUrl={kbisUrl} onChange={e => handleFileUpload(e, 'kbis')} />
+          <DocumentUploadRow label={t('profil.cinRecto')} accept="image/*,.pdf,application/pdf" file={cinRectoFile} existingUrl={cinRectoUrl} onChange={e => handleFileUpload(e, 'cinRecto')} selectedLabel={t('register.selected')} />
+          <DocumentUploadRow label={t('profil.cinVerso')} accept="image/*,.pdf,application/pdf" file={cinVersoFile} existingUrl={cinVersoUrl} onChange={e => handleFileUpload(e, 'cinVerso')} selectedLabel={t('register.selected')} />
+        </div>
+
+        {user.role === 'vendeur' && (
+          <div className="space-y-4 border-t border-[#efece3] pt-4">
+            <h5 className="font-bold text-xs text-[#111827] uppercase tracking-wider">{t('register.bankInfo')}</h5>
+            <label className="block text-sm text-[#13243c]">{t('register.bankName')}
+              <input required type="text" value={bankName} onChange={e => setBankName(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+            </label>
+            <label className="block text-sm text-[#13243c]">{t('register.accountHolder')}
+              <input required type="text" value={accountHolder} onChange={e => setAccountHolder(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="block text-sm text-[#13243c]">{t('register.iban')}
+                <input required type="text" value={iban} onChange={e => setIban(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+              </label>
+              <label className="block text-sm text-[#13243c]">{t('register.bic')}
+                <input required type="text" value={bic} onChange={e => setBic(e.target.value)} className="mt-2 w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-black" />
+              </label>
+            </div>
+            <DocumentUploadRow label={t('register.ribLabel')} accept=".pdf" file={ribFile} existingUrl={ribUrl} onChange={e => handleFileUpload(e, 'rib')} />
+          </div>
+        )}
+
+        <div ref={alertRef}>
+          {error && <Alert variant="error">{error}</Alert>}
+          {message && <Alert variant="success">{message}</Alert>}
+        </div>
+        {!hasChanges && <p className="text-xs text-gray-400 text-center">{t('profil.noChanges')}</p>}
+
+        <button
+          type="submit"
+          disabled={loading || uploading !== null || !hasChanges}
+          className="w-full sm:w-auto h-12 px-8 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2 transition-all"
+        >
+          {loading && <Spinner />}
+          {loading ? t('profil.saving') : t('profil.saveChanges')}
+        </button>
+      </form>
+
+      <div className="bg-[#f8f9fa] border border-[#eceadf] rounded-[12px] p-6 sm:p-8 mt-6">
+        <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] mb-6 border-b border-[#eceadf] pb-2">
+          {t('profil.documents')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {user.kbisUrl && (
             <a href={user.kbisUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-[8px] border border-[#eceadf] bg-white hover:border-[#13243c] transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9704f" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              <span className="text-[13px] font-semibold text-[#13243c]">Extrait Kbis</span>
+              <span className="text-[13px] font-semibold text-[#13243c]">{t('profil.kbisPdf')}</span>
             </a>
           )}
           {user.cinRectoUrl && (
             <a href={user.cinRectoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-[8px] border border-[#eceadf] bg-white hover:border-[#13243c] transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9704f" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              <span className="text-[13px] font-semibold text-[#13243c]">Pièce d&apos;identité (Recto)</span>
+              <span className="text-[13px] font-semibold text-[#13243c]">{t('profil.cinRecto')}</span>
             </a>
           )}
           {user.cinVersoUrl && (
             <a href={user.cinVersoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-[8px] border border-[#eceadf] bg-white hover:border-[#13243c] transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9704f" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              <span className="text-[13px] font-semibold text-[#13243c]">Pièce d&apos;identité (Verso)</span>
+              <span className="text-[13px] font-semibold text-[#13243c]">{t('profil.cinVerso')}</span>
             </a>
           )}
         </div>
 
         <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] mb-6 mt-10 border-b border-[#eceadf] pb-2 flex items-center justify-between">
-          <span>Tampon de l'entreprise</span>
+          <span>{t('profil.companyStamp')}</span>
           <Link
             href={localizedPath(getRoleStampPath(user.role), language)}
             className="text-[12px] font-bold text-[#d9704f] hover:underline normal-case tracking-normal"
           >
-            {user.stampUrl ? "Modifier le tampon" : "Ajouter un tampon"}
+            {user.stampUrl ? t('profil.editStamp') : t('profil.addStamp')}
           </Link>
         </h2>
         
@@ -579,7 +663,7 @@ export default function ProfilPage() {
           </div>
         ) : (
           <div className="text-[13px] text-[#5a5e66]">
-            Vous n'avez pas encore déposé de tampon d'entreprise. <Link href={localizedPath(getRoleStampPath(user.role), language)} className="text-[#d9704f] hover:underline font-semibold">Le déposer maintenant</Link>.
+            {t('profil.noStampYet')} <Link href={localizedPath(getRoleStampPath(user.role), language)} className="text-[#d9704f] hover:underline font-semibold">{t('profil.depositNow')}</Link>.
           </div>
         )}
       </div>

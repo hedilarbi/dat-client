@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../../api';
 import { useUser } from '../../../../components/LayoutWrapper';
-import { getRoleHomePath, localizedPath, useLanguage } from '../../../../i18n';
+import { getBuyingPaths, localizedPath, useLanguage } from '../../../../i18n';
 import Alert from '../../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../../components/RegistrationStatusNotices';
 import CommissionCheckout from '../../../../components/CommissionCheckout';
@@ -92,6 +92,7 @@ export default function WonSaleDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: userLoading } = useUser();
+  const paths = getBuyingPaths(user?.role);
   const { language, t } = useLanguage();
 
   const [sale, setSale] = useState<WonSaleDetail | null>(null);
@@ -134,18 +135,12 @@ export default function WonSaleDetailPage() {
 
   useEffect(() => {
     if (!userLoading && !user) {
-      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language))}`, language));
+      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`, language));
     }
   }, [userLoading, user, router, language, params.id]);
 
   useEffect(() => {
-    if (user && user.role !== 'acheteur') {
-      router.replace(localizedPath(getRoleHomePath(user.role), language));
-    }
-  }, [user, router, language]);
-
-  useEffect(() => {
-    if (user?.role !== 'acheteur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || !['acheteur', 'vendeur'].includes(user.role) || (user.status !== 'valide' && user.status !== 'suspendu')) return;
     apiRequest(`/sales/${params.id}`)
       .then((res) => { setSale(res.sale); setError(''); })
       .catch((requestError) => {
@@ -167,7 +162,7 @@ export default function WonSaleDetailPage() {
     // Le webhook Stripe peut avoir déjà fait avancer la vente avant le chargement de la page.
     if (sale.currentStep >= 2) {
       scrollToStepTwoRef.current = true;
-      router.replace(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language), { scroll: false });
+      router.replace(localizedPath(`${paths.purchases}/${params.id}`, language), { scroll: false });
       return;
     }
     if (sale.currentStep !== 1) return;
@@ -187,7 +182,7 @@ export default function WonSaleDetailPage() {
         setError('');
         setCheckoutOpen(false);
         // Retire session_id de l'URL pour ne pas rejouer la confirmation au rechargement
-        router.replace(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language), { scroll: false });
+        router.replace(localizedPath(`${paths.purchases}/${params.id}`, language), { scroll: false });
       })
       .catch((requestError) => {
         setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
@@ -270,7 +265,7 @@ const handleSubmitCertificate = async () => {
     try {
       await apiRequest(`/sales/${sale.id}/cancel-buyer`, { method: 'PUT' });
       // Après l'annulation, le compte est suspendu.
-      router.replace(localizedPath('/acheteur/tableau-de-bord/profil', language));
+      router.replace(localizedPath(paths.profile, language));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
       setCanceling(false);
@@ -288,7 +283,7 @@ const handleSubmitCertificate = async () => {
   };
 
   const backLink = (
-    <Link href={localizedPath('/acheteur/tableau-de-bord/mes-vehicules', language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
+    <Link href={localizedPath(paths.purchases, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       {t('saleDetail.backToList')}
     </Link>
@@ -376,7 +371,7 @@ const handleSubmitCertificate = async () => {
             </span>
           </div>
           <Link
-            href={localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${sale.id}/fiche`, language)}
+            href={localizedPath(`${paths.purchases}/${sale.id}/fiche`, language)}
             className="inline-flex h-9 items-center justify-center rounded-[8px] bg-[#13243c] px-4 text-[12px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#1c3050] cursor-pointer shadow-xs shrink-0"
           >
             {t('sales.viewVehicle')} →
@@ -683,7 +678,7 @@ const handleSubmitCertificate = async () => {
                             Vous devez déposer votre tampon d’entreprise avant de signer les documents.
                           </p>
                           <Link
-                            href={`${localizedPath('/acheteur/tableau-de-bord/tampon', language)}?returnTo=${encodeURIComponent(localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${params.id}`, language))}`}
+                            href={`${localizedPath(paths.stamp, language)}?returnTo=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`}
                             className="inline-flex min-h-11 items-center justify-center rounded-[9px] bg-[#13243c] px-5 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
                           >
                             Déposer mon tampon

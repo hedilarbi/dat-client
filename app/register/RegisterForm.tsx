@@ -16,6 +16,7 @@ import { countries } from '../lib/countries';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 
 type DocumentType = 'kbis' | 'cinRecto' | 'cinVerso' | 'rib';
+type RegistrationStep = 1 | 2 | 3 | 4;
 
 // SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
 const SIRET_REGEX = /^\d{14}$/;
@@ -29,7 +30,9 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const otherRole = role === 'acheteur' ? 'vendeur' : 'acheteur';
 
   // Step state: 1, 2 (OTP), 3 (Documents), 4 (Bank info - Vendeur only)
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<RegistrationStep>(1);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const progressStorageKey = `registrationProgress:${role}`;
 
   // Step 1 Fields
   const [email, setEmail] = useState('');
@@ -88,6 +91,29 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     setError('');
     setMessage('');
   }, [step]);
+
+  useEffect(() => {
+    try {
+      const savedProgress = JSON.parse(localStorage.getItem(progressStorageKey) || 'null') as {
+        step?: number;
+        email?: string;
+      } | null;
+      const maxStep = role === 'vendeur' ? 4 : 3;
+      if (savedProgress?.step && savedProgress.step >= 1 && savedProgress.step <= maxStep) {
+        setStep(savedProgress.step as RegistrationStep);
+      }
+      if (savedProgress?.email) setEmail(savedProgress.email);
+    } catch {
+      localStorage.removeItem(progressStorageKey);
+    } finally {
+      setProgressLoaded(true);
+    }
+  }, [progressStorageKey, role]);
+
+  useEffect(() => {
+    if (!progressLoaded) return;
+    localStorage.setItem(progressStorageKey, JSON.stringify({ step, email }));
+  }, [step, email, progressLoaded, progressStorageKey]);
 
   useEffect(() => {
     const s = searchParams.get('step');
@@ -185,6 +211,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       });
 
       localStorage.setItem('verifyEmail', email);
+      localStorage.setItem(progressStorageKey, JSON.stringify({ step: 2, email }));
       setMessage(t('register.step1Success'));
       setOtpTimer(45);
       setTimeout(() => {
@@ -215,12 +242,18 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
 
       setMessage(t('register.otpSuccess'));
       localStorage.setItem('userRole', res.user.role);
+      localStorage.setItem(progressStorageKey, JSON.stringify({ step: 3, email }));
       await refreshProfile();
 
       setTimeout(() => {
         setStep(3);
       }, 1000);
     } catch (err: any) {
+      if (err.code === 'auth.user_not_found') {
+        localStorage.removeItem(progressStorageKey);
+        localStorage.removeItem('verifyEmail');
+        setStep(1);
+      }
       setError(err.message || t('register.otpError'));
     } finally {
       setLoading(false);
@@ -238,6 +271,11 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       setMessage(res.message || t('register.resendOtp'));
       setOtpTimer(45);
     } catch (err: any) {
+      if (err.code === 'auth.user_not_found') {
+        localStorage.removeItem(progressStorageKey);
+        localStorage.removeItem('verifyEmail');
+        setStep(1);
+      }
       setError(err.message);
     }
   };
@@ -353,6 +391,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
     if (role === 'vendeur') {
       // Vendeur continues to step 4 (Bank Info)
       if (user) sessionStorage.setItem(`registerStep:${user._id}`, '4');
+      localStorage.setItem(progressStorageKey, JSON.stringify({ step: 4, email }));
       setStep(4);
       return;
     }
@@ -377,6 +416,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       });
 
       setMessage(t('register.completeBuyer'));
+      localStorage.removeItem(progressStorageKey);
+      localStorage.removeItem('verifyEmail');
       await refreshProfile();
       setTimeout(() => {
         router.push(localizedPath(getRoleProfilePath('acheteur'), language));
@@ -412,6 +453,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       });
 
       setMessage(t('register.completeSeller'));
+      localStorage.removeItem(progressStorageKey);
+      localStorage.removeItem('verifyEmail');
       if (user) sessionStorage.removeItem(`registerStep:${user._id}`);
       await refreshProfile();
       setTimeout(() => {
@@ -435,7 +478,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
   const hasCinVersoDocument = Boolean(cinVersoFile || cinVersoUrl);
   const hasRibDocument = Boolean(ribFile || ribUrl);
 
-  if (loadingProfile || (user?.status === 'brouillon' && user.emailVerified && user.role === role && step < 3)) {
+  if (!progressLoaded || loadingProfile || (user?.status === 'brouillon' && user.emailVerified && user.role === role && step < 3)) {
     return <div className="max-w-[1240px] w-full min-h-[600px] bg-white rounded-[10px] flex items-center justify-center"><Spinner /></div>;
   }
 
@@ -789,7 +832,10 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
             {!(user?.status === 'brouillon' && user.emailVerified) && (
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  localStorage.setItem(progressStorageKey, JSON.stringify({ step: 1, email }));
+                  setStep(1);
+                }}
                 className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"
               >
                 {t('register.back')}
@@ -894,6 +940,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               type="button"
               onClick={() => {
                 if (user) sessionStorage.removeItem(`registerStep:${user._id}`);
+                localStorage.setItem(progressStorageKey, JSON.stringify({ step: 3, email }));
                 setStep(3);
               }}
               className="h-12 px-6 border border-[#dcd7cb] rounded-[9px] text-[#13243c] font-semibold hover:bg-gray-50 transition"

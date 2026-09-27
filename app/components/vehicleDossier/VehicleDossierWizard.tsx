@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../api';
@@ -14,6 +14,7 @@ import StepSummary from './StepSummary';
 import type { VehicleDossier, VehicleDossierPayload } from '../../lib/vehicleDossier';
 import type { WizardDocument, WizardPhoto } from './types';
 import { useUser } from '../LayoutWrapper';
+import ConfirmModal from '../ConfirmModal';
 
 const toWizardPhoto = (p: VehicleDossier['photos'][number]): WizardPhoto => ({
   localId: p._id || `local_${Math.random().toString(36).slice(2, 8)}`,
@@ -40,6 +41,41 @@ interface VehicleDossierWizardProps {
 }
 
 const STEP_LABELS = ['Informations', 'Photos & documents', 'Mise en vente', 'Récapitulatif'];
+
+const fingerprintForm = (
+  values: VehicleDossierPayload,
+  photos: WizardPhoto[],
+  expertReport: WizardDocument | null,
+  additionalDocuments: WizardDocument[],
+) => {
+  const normalized = {
+    values: Object.fromEntries(
+      Object.entries(values).filter(([key]) => !['session', 'submit', 'confirmSessionDetach'].includes(key)),
+    ),
+    // L'ordre du tableau fait partie de l'empreinte : déplacer une photo est une modification.
+    photos: photos.map(({ originalUrl, processedUrl, blurZones, isCover }) => ({
+      originalUrl, processedUrl: processedUrl || '', blurZones, isCover,
+    })),
+    expertReport: expertReport ? {
+      originalUrl: expertReport.originalUrl,
+      processedUrl: expertReport.processedUrl || '',
+      mimeType: expertReport.mimeType,
+      blurZones: expertReport.blurZones,
+      label: expertReport.label,
+    } : null,
+    additionalDocuments: additionalDocuments.map(({ type, originalUrl, processedUrl, mimeType, blurZones, label }) => ({
+      type, originalUrl, processedUrl: processedUrl || '', mimeType, blurZones, label,
+    })),
+  };
+
+  const serialized = JSON.stringify(normalized);
+  let hash = 2166136261;
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= serialized.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
 
 export default function VehicleDossierWizard({ initialDossier }: VehicleDossierWizardProps) {
   const router = useRouter();
@@ -97,11 +133,26 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
   const [additionalDocuments, setAdditionalDocuments] = useState<WizardDocument[]>(
     (initialDossier?.additionalDocuments || []).map(toWizardDocument)
   );
+  const currentFingerprint = useMemo(
+    () => fingerprintForm(values, photos, expertReport, additionalDocuments),
+    [values, photos, expertReport, additionalDocuments],
+  );
+  const [savedFingerprint, setSavedFingerprint] = useState(() =>
+    fingerprintForm(values, photos, expertReport, additionalDocuments)
+  );
+  const hasChanges = currentFingerprint !== savedFingerprint;
 
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [sessionConfirmationOpen, setSessionConfirmationOpen] = useState(false);
+  const [pendingSessionAction, setPendingSessionAction] = useState<'save' | 'submit' | null>(null);
+  const [attachedToSession, setAttachedToSession] = useState(Boolean(initialDossier?.session));
+  const [returnToForSale, setReturnToForSale] = useState(initialDossier?.status === 'valide');
+  const [validationError, setValidationError] = useState('');
 
   const patchValues = (patch: Partial<VehicleDossierPayload>) => setValues((prev) => ({ ...prev, ...patch }));
 
@@ -123,8 +174,8 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     submit,
   });
 
-  const persist = async (submit: boolean) => {
-    const payload = buildPayload(submit);
+  const persist = async (submit: boolean, confirmSessionDetach = false) => {
+    const payload = { ...buildPayload(submit), confirmSessionDetach };
     if (dossierId) {
       const res = await apiRequest(`/vehicle-dossiers/${dossierId}`, { method: 'PUT', body: JSON.stringify(payload) });
       return res.dossier as VehicleDossier;
@@ -133,14 +184,23 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     return res.dossier as VehicleDossier;
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (confirmed = false) => {
+    if (initialDossier && !hasChanges) return;
+    if (attachedToSession && !confirmed) {
+      setPendingSessionAction('save');
+      setSessionConfirmationOpen(true);
+      return;
+    }
     setSavingDraft(true);
     setError('');
     setMessage('');
     try {
-      const dossier = await persist(false);
+      const dossier = await persist(false, confirmed);
       setDossierId(dossier._id);
-      setMessage(t('vehicleDossier.draftSaved') || 'Brouillon enregistré avec succès.');
+      setAttachedToSession(false);
+      setReturnToForSale(false);
+      setSavedFingerprint(currentFingerprint);
+      setMessage(initialDossier ? 'Modifications enregistrées. Le dossier est en attente de validation.' : (t('vehicleDossier.draftSaved') || 'Brouillon enregistré avec succès.'));
     } catch (err: any) {
       setError(err.message || t('vehicleDossier.genericError'));
     } finally {
@@ -148,12 +208,18 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     }
   };
 
-  const handleSubmitFinal = async () => {
+  const handleSubmitFinal = async (confirmed = false) => {
+    if (attachedToSession && !confirmed) {
+      setPendingSessionAction('submit');
+      setSessionConfirmationOpen(true);
+      return;
+    }
     setSubmitting(true);
     setError('');
     setMessage('');
     try {
-      await persist(true);
+      await persist(true, confirmed);
+      setAttachedToSession(false);
       setMessage(t('vehicleDossier.submitSuccess') || 'Dossier soumis pour validation avec succès.');
       setTimeout(() => {
         router.push(localizedPath('/vendeur/dossiers', language));
@@ -165,7 +231,28 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     }
   };
 
+  const canDelete = Boolean(initialDossier && ['brouillon', 'soumis', 'en_attente_validation', 'correction_demandee', 'refuse', 'valide'].includes(initialDossier.status));
+  const handleDelete = async () => {
+    if (!initialDossier) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await apiRequest(`/vehicle-dossiers/${initialDossier._id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmSessionDetach: attachedToSession }),
+      });
+      router.push(localizedPath('/vendeur/dossiers', language));
+    } catch (err: any) {
+      setError(err.message || t('vehicleDossier.deleteError'));
+      setDeleteConfirmationOpen(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const currentStepIndex = step - 1;
+  const backPath = returnToForSale ? '/vendeur/en-vente' : '/vendeur/dossiers';
+  const backSectionLabel = returnToForSale ? 'Mes véhicules en vente' : 'Mes dossiers';
 
   // Compute category / vehicle subtitle
   const subtitle = step === 1 && !initialDossier
@@ -180,20 +267,41 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     return 'Récapitulatif du dossier';
   })();
 
+  const validateStepForm = (formId: string, onValid: () => void) => {
+    const form = document.getElementById(formId) as HTMLFormElement | null;
+    if (!form) {
+      onValid();
+      return;
+    }
+
+    form.dataset.validationAttempted = 'true';
+    const firstInvalid = form.querySelector<HTMLElement>(':invalid');
+    if (!firstInvalid) {
+      setValidationError('');
+      onValid();
+      return;
+    }
+
+    const fieldLabel = firstInvalid.getAttribute('aria-label')
+      || firstInvalid.closest('label')?.querySelector('span')?.textContent?.replace('*', '').trim()
+      || 'Ce champ';
+    const control = firstInvalid as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    setValidationError(control.validity.valueMissing
+      ? `Le champ « ${fieldLabel} » est obligatoire.`
+      : `La valeur du champ « ${fieldLabel} » n'est pas valide.`);
+    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => firstInvalid.focus({ preventScroll: true }), 250);
+    firstInvalid.addEventListener('input', () => setValidationError(''), { once: true });
+  };
+
   const handleNextClick = () => {
     if (step === 1) {
-      const form = document.getElementById('step-vehicle-info-form') as HTMLFormElement | null;
-      if (form) {
-        if (form.reportValidity()) {
-          setStep(2);
-        }
-      } else {
-        setStep(2);
-      }
+      validateStepForm('step-vehicle-info-form', () => setStep(2));
     } else if (step === 2) {
+      setValidationError('');
       setStep(3);
     } else if (step === 3) {
-      setStep(4);
+      validateStepForm('step-pricing-form', () => setStep(4));
     } else if (step === 4) {
       handleSubmitFinal();
     }
@@ -201,16 +309,24 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
   return (
     <div className="w-full min-h-full flex flex-col font-sans text-black bg-white relative">
+      <style>{`
+        form[data-validation-attempted="true"] input:invalid,
+        form[data-validation-attempted="true"] select:invalid,
+        form[data-validation-attempted="true"] textarea:invalid {
+          border-color: #dc2626 !important;
+          box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14) !important;
+        }
+      `}</style>
       {/* Main Content Area */}
       <div className="flex-1 p-6 sm:p-[32px_44px_100px]">
         {/* Header Title Section with Back Link */}
         <div className="mb-[22px]">
           <Link
-            href={localizedPath('/vendeur/dossiers', language)}
+            href={localizedPath(backPath, language)}
             className="btn-back mb-3"
           >
             <span className="text-[14px]">←</span>
-            <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? 'Mes dossiers' : `Mes dossiers · ${subtitle}`}</span>
+            <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? backSectionLabel : `${backSectionLabel} · ${subtitle}`}</span>
           </Link>
           <h1 className="m-0 font-bold text-[34px] leading-none uppercase text-[#13243c] font-['Saira_Condensed',sans-serif]">
             {pageTitle}
@@ -293,7 +409,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
           <StepVehicleInfo
             values={values}
             onChange={patchValues}
-            verifyExistingRegistration={Boolean(initialDossier)}
+            isEditing={Boolean(initialDossier)}
             onNext={() => setStep(2)}
             onSaveDraft={handleSaveDraft}
             savingDraft={savingDraft}
@@ -341,6 +457,12 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
         )}
       </div>
 
+      {validationError && (
+        <div role="alert" className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-center text-[13px] font-bold text-red-700 shadow-lg">
+          {validationError}
+        </div>
+      )}
+
       {/* Fixed Sticky Action Bar at Bottom */}
       <div className="sticky bottom-0 left-0 right-0 z-40 bg-white border-t border-[#efece3] px-6 sm:px-[44px] py-5 flex justify-between items-center shadow-[0_-6px_20px_rgba(0,0,0,0.06)]">
         <div className="flex gap-3 items-center">
@@ -354,14 +476,20 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
             </button>
           ) : null}
 
+          {canDelete && (
+            <button type="button" onClick={() => setDeleteConfirmationOpen(true)} disabled={savingDraft || submitting || deleting} className="h-[48px] rounded-[9px] border border-red-200 px-4 text-[12px] font-bold uppercase text-[#b3261e] hover:bg-red-50 disabled:opacity-50">
+              {t('vehicleDossier.deleteDraft')}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={handleSaveDraft}
-            disabled={savingDraft || submitting}
+            onClick={() => void handleSaveDraft()}
+            disabled={savingDraft || submitting || Boolean(initialDossier && !hasChanges)}
             className="btn btn-secondary leading-[48px] disabled:opacity-50 gap-2"
           >
             {savingDraft && <Spinner />}
-            Enregistrer le brouillon
+            {initialDossier ? 'Enregistrer les modifications' : 'Enregistrer le brouillon'}
           </button>
         </div>
 
@@ -377,7 +505,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
           ) : (
             <button
               type="button"
-              onClick={handleSubmitFinal}
+              onClick={() => void handleSubmitFinal()}
               disabled={submitting || savingDraft}
               className="btn btn-primary leading-[48px] disabled:opacity-50 gap-2"
             >
@@ -387,6 +515,34 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={deleteConfirmationOpen}
+        title={t('vehicleDossier.deleteDraft')}
+        message={attachedToSession
+          ? 'Ce véhicule est rattaché à une session. Si vous confirmez, il sera retiré de la session puis supprimé définitivement.'
+          : t('vehicleDossier.deleteConfirm')}
+        confirmLabel={t('vehicleDossier.deleteDraft')}
+        danger
+        loading={deleting}
+        onCancel={() => setDeleteConfirmationOpen(false)}
+        onConfirm={handleDelete}
+      />
+      <ConfirmModal
+        open={sessionConfirmationOpen}
+        title="Retirer le véhicule de la session ?"
+        message="Ce véhicule est rattaché à une session. Si vous confirmez la modification, il sera retiré de la session et son dossier repassera en attente de validation."
+        confirmLabel="Modifier et retirer"
+        loading={savingDraft || submitting}
+        onCancel={() => { setSessionConfirmationOpen(false); setPendingSessionAction(null); }}
+        onConfirm={() => {
+          const action = pendingSessionAction;
+          setSessionConfirmationOpen(false);
+          setPendingSessionAction(null);
+          if (action === 'save') void handleSaveDraft(true);
+          if (action === 'submit') void handleSubmitFinal(true);
+        }}
+      />
     </div>
   );
 }

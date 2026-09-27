@@ -28,6 +28,13 @@ type EditingTarget = { kind: 'photo'; localId: string } | { kind: 'expertReport'
 
 const makeLocalId = () => `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+// Les URL `blob:` retiennent le fichier en mémoire tant qu'elles ne sont pas révoquées. Sans cela,
+// chaque photo choisie gardait son original pleine résolution en mémoire (plusieurs Mo) et, sur
+// téléphone, la page finissait par planter après quelques photos.
+const revokeIfBlobUrl = (url?: string | null) => {
+  if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+};
+
 const STANDARD_SLOTS = [
   { id: 'front', label: 'Face avant', icon: '/face-avant.png' },
   { id: 'rear', label: 'Face arrière', icon: '/face-arriere.png' },
@@ -46,6 +53,7 @@ export default function StepMedia({
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
   const [cropTargetIndex, setCropTargetIndex] = useState<number | null>(null);
   const [applyingBlur, setApplyingBlur] = useState(false);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
 
   // Document upload state flags
   const [uploadingRecto, setUploadingRecto] = useState(false);
@@ -65,26 +73,34 @@ export default function StepMedia({
     setCroppingImageSrc(objectUrl);
   };
 
-  const handleCropComplete = async (croppedBlob: Blob, previewUrl: string) => {
+  const closeCropEditor = () => {
+    revokeIfBlobUrl(croppingImageSrc);
     setCroppingImageSrc(null);
+  };
 
-    const targetIndex = cropTargetIndex ?? 0;
-    const currentPhoto = photos[targetIndex];
-    const tempLocalId = currentPhoto?.localId || makeLocalId();
-    const file = new File([croppedBlob], `photo-${targetIndex + 1}.jpg`, { type: 'image/jpeg' });
+  const handleCropComplete = async (croppedBlob: Blob, previewUrl: string) => {
+    closeCropEditor();
 
-    const placeholder: WizardPhoto = {
-      localId: tempLocalId,
-      originalUrl: previewUrl,
-      blurZones: currentPhoto?.blurZones || [],
-      isCover: targetIndex === 0,
-      uploading: true,
-    };
+    const requestedIndex = cropTargetIndex ?? 0;
+    const tempLocalId = makeLocalId();
+    const file = new File([croppedBlob], `photo-${requestedIndex + 1}.jpg`, { type: 'image/jpeg' });
 
+    // La liste doit rester dense : un « trou » (entrée undefined) fait planter tout le rendu de
+    // la page (photos.find(p => p.isCover) lit alors undefined.isCover). C'est ce qui arrivait
+    // en cliquant un emplacement vide situé après la dernière photo, par exemple « Intérieur »
+    // en ayant sauté « Compteur ». L'index est donc borné sur l'état le plus récent (prev),
+    // jamais sur un rendu précédent : un clic sur un emplacement plus loin ajoute à la fin.
     onPhotosChange((prev) => {
-      const next = prev.map((p, index) => ({ ...p, isCover: index === 0 }));
-      next[targetIndex] = placeholder;
-      return next;
+      const next = prev.filter(Boolean);
+      const index = Math.min(requestedIndex, next.length);
+      next[index] = {
+        localId: tempLocalId,
+        originalUrl: previewUrl,
+        blurZones: next[index]?.blurZones || [],
+        isCover: index === 0,
+        uploading: true,
+      };
+      return next.map((p, photoIndex) => ({ ...p, isCover: photoIndex === 0 }));
     });
 
     try {
@@ -96,6 +112,9 @@ export default function StepMedia({
     } catch (err: any) {
       setError(err.message || t('vehicleDossier.uploadError'));
       onPhotosChange((prev) => prev.filter((p) => p.localId !== tempLocalId));
+    } finally {
+      // L'aperçu local ne sert que pendant l'envoi : la photo pointe ensuite sur l'URL serveur.
+      revokeIfBlobUrl(previewUrl);
     }
   };
 
@@ -110,6 +129,17 @@ export default function StepMedia({
 
   const removeSlotPhoto = (localId: string) => {
     onPhotosChange((prev) => prev.filter((p) => p.localId !== localId).map((p, index) => ({ ...p, isCover: index === 0 })));
+  };
+
+  const movePhoto = (localId: string, direction: -1 | 1) => {
+    onPhotosChange((prev) => {
+      const index = prev.findIndex((photo) => photo.localId === localId);
+      const destination = index + direction;
+      if (index < 0 || destination < 0 || destination >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[destination]] = [next[destination], next[index]];
+      return next.map((photo, photoIndex) => ({ ...photo, isCover: photoIndex === 0 }));
+    });
   };
 
   // Carte grise documents
@@ -214,12 +244,15 @@ export default function StepMedia({
 
   const updateEditingZones = (zones: BlurZone[]) => {
     if (!editingTarget) return;
+    // Mises à jour fonctionnelles : partir d'un instantané de `photos` pris à un rendu antérieur
+    // écrasait un envoi terminé entre-temps (la photo revenait à son aperçu local en cours d'envoi).
+    const { localId } = editingTarget as { localId?: string };
     if (editingTarget.kind === 'photo') {
-      onPhotosChange(photos.map((p) => (p.localId === editingTarget.localId ? { ...p, blurZones: zones } : p)));
+      onPhotosChange((prev) => prev.map((p) => (p.localId === localId ? { ...p, blurZones: zones } : p)));
     } else if (editingTarget.kind === 'expertReport') {
-      if (expertReport) onExpertReportChange({ ...expertReport, blurZones: zones });
+      onExpertReportChange((prev) => (prev ? { ...prev, blurZones: zones } : prev));
     } else {
-      onAdditionalDocumentsChange(additionalDocuments.map((d) => (d.localId === editingTarget.localId ? { ...d, blurZones: zones } : d)));
+      onAdditionalDocumentsChange((prev) => prev.map((d) => (d.localId === localId ? { ...d, blurZones: zones } : d)));
     }
   };
 
@@ -237,12 +270,13 @@ export default function StepMedia({
             method: 'POST',
             body: JSON.stringify({ imageUrl: editingItem.originalUrl, zones: editingItem.blurZones }),
           });
+      const { localId } = editingTarget as { localId?: string };
       if (editingTarget.kind === 'photo') {
-        onPhotosChange(photos.map((p) => (p.localId === editingTarget.localId ? { ...p, processedUrl: res.url } : p)));
+        onPhotosChange((prev) => prev.map((p) => (p.localId === localId ? { ...p, processedUrl: res.url } : p)));
       } else if (editingTarget.kind === 'expertReport') {
-        if (expertReport) onExpertReportChange({ ...expertReport, processedUrl: res.url });
+        onExpertReportChange((prev) => (prev ? { ...prev, processedUrl: res.url } : prev));
       } else {
-        onAdditionalDocumentsChange(additionalDocuments.map((d) => (d.localId === editingTarget.localId ? { ...d, processedUrl: res.url } : d)));
+        onAdditionalDocumentsChange((prev) => prev.map((d) => (d.localId === localId ? { ...d, processedUrl: res.url } : d)));
       }
       setEditingTarget(null);
     } catch (err: any) {
@@ -253,6 +287,9 @@ export default function StepMedia({
   };
 
   const carteGriseComplete = Boolean(carteGriseRecto && carteGriseVerso);
+  const selectedPhotoIndex = selectedPhotoId
+    ? photos.findIndex((photo) => photo.localId === selectedPhotoId)
+    : -1;
 
   return (
     <div className="max-w-[900px] w-full">
@@ -264,7 +301,7 @@ export default function StepMedia({
           Photo de couverture
         </div>
         <p className="font-normal text-[12px] text-[#5a5e66] mb-3">
-          Photo principale affichée sur la carte du véhicule lors des ventes et enchères.
+          Photo principale affichée sur la carte du véhicule lors des ventes et offres.
         </p>
 
         <div className="w-full max-w-[500px]">
@@ -359,6 +396,37 @@ export default function StepMedia({
           Photos du véhicule
         </div>
 
+        <div className="mb-4 flex min-h-[58px] flex-col gap-3 rounded-[10px] border border-[#e2ddd1] bg-[#fbfaf7] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[12px] font-bold text-[#13243c]">
+              {selectedPhotoIndex >= 0
+                ? `Photo ${selectedPhotoIndex + 1} sélectionnée sur ${photos.length}`
+                : 'Sélectionnez une photo pour modifier son ordre'}
+            </div>
+            <div className="mt-0.5 text-[11px] text-[#5a5e66]">
+              La première photo est utilisée comme photo de couverture.
+            </div>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => selectedPhotoId && movePhoto(selectedPhotoId, -1)}
+              disabled={selectedPhotoIndex <= 0 || photos[selectedPhotoIndex]?.uploading}
+              className="rounded-[7px] border border-[#d3ccbd] bg-white px-3 py-2 text-[12px] font-bold text-[#13243c] transition hover:bg-[#f1efe8] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              ← Déplacer à gauche
+            </button>
+            <button
+              type="button"
+              onClick={() => selectedPhotoId && movePhoto(selectedPhotoId, 1)}
+              disabled={selectedPhotoIndex < 0 || selectedPhotoIndex >= photos.length - 1 || photos[selectedPhotoIndex]?.uploading}
+              className="rounded-[7px] border border-[#d3ccbd] bg-white px-3 py-2 text-[12px] font-bold text-[#13243c] transition hover:bg-[#f1efe8] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Déplacer à droite →
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
           {STANDARD_SLOTS.map((slot, index) => {
             const photo = photos[index];
@@ -367,9 +435,12 @@ export default function StepMedia({
             return (
               <div
                 key={slot.id}
+                onClick={() => photo && setSelectedPhotoId(photo.localId)}
                 className={`relative aspect-[4/3] border-[1.5px] border-dashed rounded-[10px] flex flex-col items-center justify-center p-3 text-center transition-all ${
                   hasPhoto
-                    ? 'border-[#bcd8c8] bg-[#f2f8f4]'
+                    ? selectedPhotoId === photo.localId
+                      ? 'cursor-pointer border-[#d9704f] bg-[#fff5f0] ring-2 ring-[#d9704f]/25'
+                      : 'cursor-pointer border-[#bcd8c8] bg-[#f2f8f4]'
                     : 'border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270]'
                 }`}
               >
@@ -397,17 +468,17 @@ export default function StepMedia({
                     )}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 transition-opacity p-2 text-white">
                       <div className="font-semibold text-[12px] truncate w-full text-center">{slot.label}</div>
-                      <div className="flex gap-1.5">
+                      <div className="flex flex-wrap justify-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setEditingTarget({ kind: 'photo', localId: photo.localId })}
+                          onClick={(event) => { event.stopPropagation(); setEditingTarget({ kind: 'photo', localId: photo.localId }); }}
                           className="px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-[11px] font-semibold"
                         >
                           Flouter
                         </button>
                         <button
                           type="button"
-                          onClick={() => removeSlotPhoto(photo.localId)}
+                          onClick={(event) => { event.stopPropagation(); removeSlotPhoto(photo.localId); }}
                           className="px-2 py-1 bg-red-600/80 hover:bg-red-700 rounded text-[11px] font-semibold"
                         >
                           Suppr.
@@ -438,17 +509,23 @@ export default function StepMedia({
             );
           })}
 
-          {photos.slice(STANDARD_SLOTS.length).map((photo, offset) => (
-              <div key={photo.localId} className="relative aspect-[4/3] overflow-hidden rounded-[10px] border border-[#eceadf] bg-[#f2f8f4] group">
+          {photos.slice(STANDARD_SLOTS.length).map((photo, offset) => {
+            return (
+              <div
+                key={photo.localId}
+                onClick={() => setSelectedPhotoId(photo.localId)}
+                className={`relative aspect-[4/3] cursor-pointer overflow-hidden rounded-[10px] border bg-[#f2f8f4] group ${selectedPhotoId === photo.localId ? 'border-[#d9704f] ring-2 ring-[#d9704f]/25' : 'border-[#eceadf]'}`}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photo.processedUrl || photo.originalUrl} alt={`Photo supplémentaire ${offset + 1}`} className="h-full w-full object-cover" />
                 {photo.uploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white"><Spinner /></div>}
-                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition group-hover:opacity-100">
-                  <button type="button" onClick={() => setEditingTarget({ kind: 'photo', localId: photo.localId })} className="rounded bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">Flouter</button>
-                  <button type="button" onClick={() => removeSlotPhoto(photo.localId)} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Suppr.</button>
+                <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-2 bg-black/60 p-2 opacity-0 transition group-hover:opacity-100">
+                  <button type="button" onClick={(event) => { event.stopPropagation(); setEditingTarget({ kind: 'photo', localId: photo.localId }); }} className="rounded bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">Flouter</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); removeSlotPhoto(photo.localId); }} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Suppr.</button>
                 </div>
               </div>
-          ))}
+            );
+          })}
 
           {photos.length < 20 && (
             <label className="relative aspect-[4/3] border-[1.5px] border-dashed border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270] rounded-[10px] flex flex-col items-center justify-center p-3 text-center cursor-pointer transition-all group">
@@ -768,7 +845,7 @@ export default function StepMedia({
         <ImageCropEditor
           imageSrc={croppingImageSrc}
           onCropComplete={handleCropComplete}
-          onClose={() => { setCroppingImageSrc(null); setCropTargetIndex(null); }}
+          onClose={() => { closeCropEditor(); setCropTargetIndex(null); }}
         />
       )}
 

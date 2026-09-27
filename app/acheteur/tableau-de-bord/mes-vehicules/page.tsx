@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../api';
 import { useUser } from '../../../components/LayoutWrapper';
-import { getRoleHomePath, localizedPath, useLanguage } from '../../../i18n';
+import { getBuyingPaths, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../components/RegistrationStatusNotices';
 import { formatEuros } from '../../../lib/format';
@@ -44,6 +44,7 @@ export default function WonSalesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: userLoading } = useUser();
+  const paths = getBuyingPaths(user?.role);
   const { language, t } = useLanguage();
 
   const [ongoing, setOngoing] = useState<WonSale[]>([]);
@@ -68,18 +69,12 @@ export default function WonSalesPage() {
 
   useEffect(() => {
     if (!userLoading && !user) {
-      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath('/acheteur/tableau-de-bord/mes-vehicules', language))}`, language));
+      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath(paths.purchases, language))}`, language));
     }
   }, [userLoading, user, router, language]);
 
   useEffect(() => {
-    if (user && user.role !== 'acheteur') {
-      router.replace(localizedPath(getRoleHomePath(user.role), language));
-    }
-  }, [user, router, language]);
-
-  useEffect(() => {
-    if (user?.role === 'acheteur' && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
+    if (user && ['acheteur', 'vendeur'].includes(user.role) && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
   }, [fetchSales, user]);
 
   if (userLoading || !user) {
@@ -94,7 +89,7 @@ export default function WonSalesPage() {
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
-      <Link href={localizedPath('/acheteur/tableau-de-bord', language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
+      <Link href={localizedPath(paths.dashboard, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Retour au tableau de bord
       </Link>
@@ -153,6 +148,8 @@ function SaleCard({
   t: (key: string, params?: Record<string, string>) => string;
   highlighted: boolean;
 }) {
+  const { user } = useUser();
+  const paths = getBuyingPaths(user?.role);
   const title = ([sale.vehicle?.brand, sale.vehicle?.model].filter(Boolean).join(' ') + (sale.vehicle?.registrationNumber ? ` (${sale.vehicle.registrationNumber})` : '')).trim() || '—';
   const locale = language === 'fr' ? 'fr-FR' : 'en-GB';
   const formatDate = (value: string) => new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -231,7 +228,7 @@ function SaleCard({
         {/* Bouton d'action principal */}
         <div className="shrink-0 pt-2 sm:pt-0">
           <Link
-            href={localizedPath(`/acheteur/tableau-de-bord/mes-vehicules/${sale.id}`, language)}
+            href={localizedPath(`${paths.purchases}/${sale.id}`, language)}
             className={`inline-flex h-11 items-center justify-center rounded-[10px] px-5 text-[12px] font-bold uppercase tracking-[0.03em] transition cursor-pointer ${
               sale.status === 'cloturee'
                 ? 'bg-[#f1efe8] text-[#13243c] hover:bg-[#e4e1d5]'

@@ -25,6 +25,7 @@ interface VehiclePhoto {
 
 interface PublicVehicle {
   id: string;
+  isOwnVehicle: boolean;
   brand: string;
   model: string;
   year: number | null;
@@ -114,7 +115,7 @@ export default function VehicleDetailPage() {
 
   const title = [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || '—';
   const coverPhoto = vehicle.photos[0] || null;
-  const canBid = user?.role === 'acheteur' && user.status === 'valide';
+  const canBid = Boolean(user && ['acheteur', 'vendeur'].includes(user.role) && user.status === 'valide' && !vehicle.isOwnVehicle);
   // Une offre déjà déposée se modifie, elle ne se double pas
   const myOffer = vehicle.myOffer;
   // Chemin localisé pour revenir sur cette fiche après connexion (le formulaire de connexion
@@ -308,7 +309,7 @@ export default function VehicleDetailPage() {
                 <button
                   type="button"
                   onClick={() => setBidOpen(true)}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-[10px] border border-[#dcd7cb] bg-white px-6 py-3.5 font-heading text-sm font-bold uppercase tracking-[.04em] text-[#13243c] transition hover:bg-gray-50 cursor-pointer"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#f28c28] px-6 py-3.5 font-heading text-sm font-bold uppercase tracking-[.04em] text-white transition hover:bg-[#d97a1c] cursor-pointer"
                 >
                   {t('bid.editCta')}
                 </button>
@@ -349,7 +350,7 @@ export default function VehicleDetailPage() {
               <p className="text-center text-sm leading-6 text-[#5a5e66]">{t('bid.accountPending')}</p>
             )}
 
-            {user && user.status === 'valide' && user.role !== 'acheteur' && (
+            {user && user.status === 'valide' && vehicle.isOwnVehicle && (
               <p className="text-center text-sm leading-6 text-[#5a5e66]">{t('bid.sellerNotice')}</p>
             )}
           </div>

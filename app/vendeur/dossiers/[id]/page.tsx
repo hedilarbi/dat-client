@@ -18,6 +18,7 @@ export default function DossierVehiculeDetailPage() {
   const [dossier, setDossier] = useState<VehicleDossier | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,14 +50,35 @@ export default function DossierVehiculeDetailPage() {
     );
   }
 
-  const isEditable = ['brouillon', 'correction_demandee'].includes(dossier.status);
+  const isEditable = ['brouillon', 'soumis', 'en_attente_validation', 'correction_demandee', 'valide'].includes(dossier.status);
   const badge = getVehicleDossierStatusBadge(dossier.status, t);
   const vehicleLabel = [dossier.brand, dossier.model].filter(Boolean).join(' ') || 'Sans nom';
   const lastRefusal = dossier.refusals?.[dossier.refusals.length - 1];
   const backPath = dossier.status === 'valide' ? '/vendeur/en-vente' : '/vendeur/dossiers';
   const backLabel = dossier.status === 'valide' ? 'Mes véhicules en vente' : 'Mes dossiers';
+  const vehicleDetails = [
+    ['Marque', dossier.brand], ['Modèle', dossier.model], ['Année', dossier.year],
+    ['Immatriculation', dossier.registrationNumber], ['Pays d’immatriculation', dossier.registrationCountry],
+    ['Première circulation', dossier.firstRegistrationDate], ['N° de série (VIN)', dossier.vin],
+    ['Énergie', dossier.energyLabel || dossier.fuelType], ['Moteur', dossier.engine],
+    ['Boîte de vitesse', dossier.gearbox === 'M' ? 'Manuelle' : dossier.gearbox === 'A' ? 'Automatique' : dossier.gearbox],
+    ['CO₂', dossier.co2 ? `${dossier.co2} g/km` : undefined], ['Genre', dossier.vehicleGenre],
+    ['Puissance fiscale', dossier.fiscalPower], ['Carrosserie', dossier.bodyType],
+    ['Passagers', dossier.passengerCount], ['Portes', dossier.doorCount], ['Couleur', dossier.color],
+    ['Kilométrage', dossier.mileage != null ? `${dossier.mileage.toLocaleString('fr-FR')} km` : undefined],
+    ['VRADE', dossier.vrade], ['Procédure', dossier.procedure],
+    ['Prix de réserve', dossier.reservePrice != null ? `${dossier.reservePrice.toLocaleString('fr-FR')} €` : undefined],
+  ];
+  const address = dossier.vehicleAddress || [
+    dossier.vehicleAddressDetails?.street,
+    [dossier.vehicleAddressDetails?.postalCode, dossier.vehicleAddressDetails?.city].filter(Boolean).join(' '),
+    dossier.vehicleAddressDetails?.country,
+  ].filter(Boolean).join(', ');
+  const missingReasonLabels: Record<string, string> = {
+    declaration_perte: 'Déclaration de perte', declaration_vol: 'Déclaration de vol', autre: 'Autre',
+  };
 
-  if (isEditable) {
+  if (isEditable && (dossier.status !== 'valide' || editing)) {
     return <VehicleDossierWizard initialDossier={dossier} />;
   }
 
@@ -82,7 +104,18 @@ export default function DossierVehiculeDetailPage() {
               {vehicleLabel}
             </h1>
           </div>
-          <Badge style={badge} className="px-3.5 py-2 shrink-0" />
+          <div className="flex shrink-0 items-center gap-2">
+            {isEditable && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="btn btn-primary"
+              >
+                Modifier
+              </button>
+            )}
+            <Badge style={badge} className="px-3.5 py-2 shrink-0" />
+          </div>
         </div>
       </div>
 
@@ -118,7 +151,7 @@ export default function DossierVehiculeDetailPage() {
             ✓
           </div>
           <div className="font-medium text-[13px] leading-relaxed text-[#2f6f4f]">
-            Votre dossier véhicule a été <strong className="font-bold">validé par l'administrateur</strong>. Il sera prochainement programmé dans une session d'enchères. Aucune modification supplémentaire n'est requise.
+            Votre dossier véhicule a été <strong className="font-bold">validé par l'administrateur</strong>. Il sera prochainement programmé dans une session de vente. Aucune modification supplémentaire n'est requise.
           </div>
         </div>
       )}
@@ -139,51 +172,22 @@ export default function DossierVehiculeDetailPage() {
       <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
         Informations du véhicule
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-7">
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Marque / Modèle
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
+        {vehicleDetails.map(([label, value]) => (
+          <div key={String(label)} className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
+            <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">{label}</div>
+            <div className="font-semibold text-[14px] text-[#13243c] break-words">{value ?? '—'}</div>
           </div>
-          <div className="font-semibold text-[14px] text-[#13243c]">
-            {vehicleLabel}
-          </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Immatriculation / VIN
-          </div>
-          <div className="font-semibold text-[14px] text-[#13243c] font-mono">
-            {dossier.registrationNumber || dossier.vin || '—'}
-          </div>
-        </div>
-
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Kilométrage
-          </div>
-          <div className="font-semibold text-[14px] text-[#13243c]">
-            {dossier.mileage ? `${dossier.mileage.toLocaleString('fr-FR')} km` : '—'}
-          </div>
-        </div>
-
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Procédure
-          </div>
-          <div className="font-semibold text-[14px] text-[#13243c]">
-            {dossier.procedure || '—'}
-          </div>
-        </div>
-
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white">
-          <div className="font-medium text-[11px] text-[#5a5e66] uppercase tracking-[0.04em] mb-1">
-            Prix de réserve
-          </div>
-          <div className="font-semibold text-[14px] text-[#13243c] font-mono">
-            {dossier.reservePrice ? `${dossier.reservePrice.toLocaleString('fr-FR')} €` : 'Non défini'}
-          </div>
-        </div>
+      <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">Localisation et documents administratifs</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Localisation du véhicule</div><div className="font-semibold text-[14px] text-[#13243c]">{address || '—'}</div></div>
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Carte grise disponible</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardAvailable ? 'Oui' : 'Non'}</div></div>
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Livre de police</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.policeBookNumber || '—'}</div></div>
+        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Motif d’absence</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardMissingReasons?.map((reason) => missingReasonLabels[reason] || reason).join(', ') || '—'}</div></div>}
+        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Fiche d’identification</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.identificationSheetAvailable ? 'Disponible' : 'Non disponible'}</div></div>}
       </div>
 
       {/* Description */}
@@ -199,6 +203,13 @@ export default function DossierVehiculeDetailPage() {
                 : <React.Fragment key={index}>{part}</React.Fragment>
             )}
           </div>
+        </div>
+      )}
+
+      {dossier.conditionDetails && (
+        <div className="mb-7">
+          <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-2">Détails de l’état</div>
+          <div className="whitespace-pre-wrap rounded-[10px] border border-[#eceadf] bg-white p-4 text-[13px] leading-relaxed text-[#1a2230]">{dossier.conditionDetails}</div>
         </div>
       )}
 
@@ -219,6 +230,23 @@ export default function DossierVehiculeDetailPage() {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="mb-7">
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">Documents fournis</div>
+        <div className="space-y-2">
+          {dossier.expertReport && (
+            <a href={dossier.expertReport.processedUrl || dossier.expertReport.originalUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#eceadf] p-4 text-[13px] font-semibold text-[#13243c] hover:bg-[#fbfaf7]">
+              <span>{dossier.expertReport.label || 'Rapport d’expertise'}</span><span className="text-[#d9704f]">Consulter →</span>
+            </a>
+          )}
+          {dossier.additionalDocuments.map((document, index) => (
+            <a key={document._id || index} href={document.processedUrl || document.originalUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#eceadf] p-4 text-[13px] font-semibold text-[#13243c] hover:bg-[#fbfaf7]">
+              <span>{document.label || `Document complémentaire ${index + 1}`}</span><span className="text-[#d9704f]">Consulter →</span>
+            </a>
+          ))}
+          {!dossier.expertReport && dossier.additionalDocuments.length === 0 && <div className="rounded-[10px] border border-dashed border-[#dcd7cb] p-4 text-[13px] text-[#5a5e66]">Aucun document fourni.</div>}
         </div>
       </div>
     </div>

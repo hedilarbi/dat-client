@@ -57,12 +57,15 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
     const isAuthenticationError =
       typeof data.error === 'string' && data.error.startsWith('auth.');
 
-    // Session invalide/expirée (401) ou compte suspendu/bloqué (403) : ces deux statuts ne sont
-    // considérés comme des erreurs d'authentification que lorsque le serveur fournit un code
-    // `auth.*`. Une API tierce peut aussi renvoyer 401/403 (par exemple la recherche de plaque),
-    // sans que la session de l'utilisateur soit expirée.
+    // Seules une session invalide/expirée (401) ou un compte bloqué (403 auth.account_blocked)
+    // renvoient vers la connexion, et uniquement avec un code `auth.*` : une API tierce peut aussi
+    // renvoyer 401/403 (par exemple la recherche de plaque) sans que la session soit en cause.
+    // Les autres 403 `auth.*` (auth.forbidden, auth.seller_not_validated, auth.account_suspended…)
+    // signifient « connecté, mais pas autorisé ici » : la session reste valide, donc /login
+    // renverrait aussitôt vers la page d'origine, qui referait le même appel — une boucle sans fin
+    // entre /connexion et le tableau de bord (cas d'un vendeur suspendu sur son tableau de bord).
     if (
-      ((response.status === 401) || (response.status === 403 && data.error !== 'auth.account_suspended')) &&
+      ((response.status === 401) || (response.status === 403 && data.error === 'auth.account_blocked')) &&
       isAuthenticationError &&
       path !== '/auth/me' &&
       typeof window !== 'undefined'

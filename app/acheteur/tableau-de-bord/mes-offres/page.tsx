@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../../api';
 import { useUser } from '../../../components/LayoutWrapper';
-import { getRoleHomePath, localizedPath, useLanguage } from '../../../i18n';
+import { getBuyingPaths, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import BidModal from '../../../components/BidModal';
 import ConfirmModal from '../../../components/ConfirmModal';
@@ -33,6 +33,7 @@ const vehicleTitle = (offer: BuyerOffer) =>
 export default function MyOffersPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
+  const paths = getBuyingPaths(user?.role);
   const { language, t } = useLanguage();
 
   const [ongoing, setOngoing] = useState<BuyerOffer[]>([]);
@@ -60,26 +61,19 @@ export default function MyOffersPage() {
   // Non connecté : renvoi vers la connexion, avec retour sur cette page
   useEffect(() => {
     if (!userLoading && !user) {
-      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath('/acheteur/tableau-de-bord/mes-offres', language))}`, language));
+      router.replace(localizedPath(`/login?next=${encodeURIComponent(localizedPath(paths.offers, language))}`, language));
     }
   }, [userLoading, user, router, language]);
-
-  // Les offres sont propres aux acheteurs : un vendeur est renvoyé vers son espace
-  useEffect(() => {
-    if (user && user.role !== 'acheteur') {
-      router.replace(localizedPath(getRoleHomePath(user.role), language));
-    }
-  }, [user, router, language]);
 
   // Un acheteur suspendu n'a pas accès à ses offres : renvoi vers le tableau de bord
   useEffect(() => {
     if (user && user.status === 'suspendu') {
-      router.replace(localizedPath('/acheteur/tableau-de-bord', language));
+      router.replace(localizedPath(paths.dashboard, language));
     }
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role === 'acheteur' && user.status === 'valide') fetchOffers();
+    if (user && ['acheteur', 'vendeur'].includes(user.role) && user.status === 'valide') fetchOffers();
   }, [fetchOffers, user]);
 
   // Rafraîchit les comptes à rebours de clôture de session
@@ -114,7 +108,7 @@ export default function MyOffersPage() {
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
-      <Link href={localizedPath('/acheteur/tableau-de-bord', language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
+      <Link href={localizedPath(paths.dashboard, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Retour au tableau de bord
       </Link>

@@ -1,31 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
 import { useUser } from '../components/LayoutWrapper';
-import { canonicalPathFromPathname, getRoleHomePath, getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
+import { getRoleRegisterPath, localizedPath, useLanguage } from '../i18n';
 import PasswordInput from '../components/PasswordInput';
 import Alert from '../components/Alert';
 import Spinner from '../components/Spinner';
 import Link from 'next/link';
 
-function getReturnPath() {
-  if (typeof window === 'undefined') return null;
-
-  const candidate = new URLSearchParams(window.location.search).get('next');
-  if (!candidate || !candidate.startsWith('/') || candidate.startsWith('//')) return null;
-
-  const candidatePathname = candidate.split(/[?#]/, 1)[0];
-  const canonicalCandidate = canonicalPathFromPathname(candidatePathname);
-  if (canonicalCandidate.startsWith('/login') || canonicalCandidate.startsWith('/register')) return null;
-
-  return candidate;
-}
-
 export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const router = useRouter();
-  const { user, refreshProfile } = useUser();
+  const { refreshProfile } = useUser();
   const { language, t } = useLanguage();
   const forgotPasswordPath = localizedPath('/forgot-password', language);
 
@@ -34,17 +21,12 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const loginInProgressRef = useRef(false);
 
-  // Déjà connecté : renvoi hors de la page de connexion
-  useEffect(() => {
-    if (!user || loginInProgressRef.current) return;
-    const nextPath = user.status === 'brouillon' && user.emailVerified
-      ? localizedPath(`${getRoleRegisterPath(user.role)}?step=documents`, language)
-      : getReturnPath() || localizedPath(getRoleHomePath(user.role), language);
-    router.replace(nextPath);
-  }, [user, router, language, role]);
-
+  // Une fois connecté, la navigation hors de cette page (tableau de bord, ?next=..., ou étape
+  // documents d'un brouillon) est entièrement gérée par LayoutWrapper — voir
+  // `redirectsAuthenticatedUser` dans ce fichier. Ce composant ne doit plus naviguer lui-même :
+  // les deux redirections concurrentes faisaient bondir l'écran entre /login et le tableau de
+  // bord après la connexion.
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -59,18 +41,9 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
 
       setMessage(t('login.successMessage'));
       localStorage.setItem('userRole', res.user.role);
-      loginInProgressRef.current = true;
 
-      // Refresh context profile
+      // Met à jour le contexte : LayoutWrapper prend alors le relais pour naviguer.
       await refreshProfile();
-
-      const nextPath = res.user.status === 'brouillon' && res.user.emailVerified
-        ? localizedPath(`${getRoleRegisterPath(res.user.role)}?step=documents`, language)
-        : getReturnPath() || localizedPath(getRoleHomePath(res.user.role), language);
-
-      setTimeout(() => {
-        router.push(nextPath);
-      }, 1200);
     } catch (err: any) {
       if (err.code === 'auth.email_not_verified') {
         setError(t('login.emailNotVerified'));

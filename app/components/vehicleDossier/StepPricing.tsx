@@ -32,6 +32,7 @@ export default function StepPricing({
         <div className="relative max-w-[280px]">
           <input
             required
+            aria-label="Prix de réserve"
             type="number"
             min={0}
             value={values.reservePrice ?? ''}

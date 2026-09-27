@@ -3,8 +3,8 @@ import JsonLd from '../components/JsonLd';
 import LocalizedLink from '../components/LocalizedLink';
 
 export const metadata: Metadata = {
-  title: 'Comment fonctionne la vente aux enchères B2B | DealAutoPro',
-  description: 'Découvrez comment vendre ou acheter un véhicule accidenté entre professionnels : dossier, enchères, paiement, documents et enlèvement.',
+  title: 'Comment fonctionne la vente B2B par offres | DealAutoPro',
+  description: 'Découvrez comment vendre ou acheter un véhicule accidenté entre professionnels : dossier, offres, paiement, documents et enlèvement.',
 };
 
 const sellerSteps = [

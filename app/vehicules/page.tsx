@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { formatEuros } from '../lib/format';
 import { localizedPath, useLanguage } from '../i18n';
 import { formatTimeLeft, useCurrentSales, type SalesAccessReason } from '../lib/currentSales';
 import { useUser } from '../components/LayoutWrapper';
@@ -124,19 +125,19 @@ export default function CurrentSalesPage() {
       }} />
       <section className="relative h-[430px] sm:h-[460px] overflow-hidden bg-[#0b1423]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={HERO_IMAGE} alt="Véhicule proposé aux enchères" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={HERO_IMAGE} alt="Véhicule proposé à la vente" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,20,35,.94)_0%,rgba(11,20,35,.72)_42%,rgba(11,20,35,.18)_78%)]" />
         <div className="relative flex h-full flex-col justify-center px-4 pb-14 sm:px-10 sm:pb-[70px]">
           <p className="mb-[18px] text-[11px] font-bold uppercase tracking-[.3em] text-[#e2a175] sm:text-xs">
-            {fr ? "Plateforme d'enchères B2B" : 'B2B auction platform'}
+            {fr ? "Plateforme d'offres B2B" : 'B2B offer platform'}
           </p>
           <h1 className="mb-[18px] max-w-[820px] font-heading text-[48px] font-extrabold uppercase leading-[.94] tracking-[-.01em] text-white sm:text-[76px]">
             {fr ? <>Roulez sur<br />de vraies affaires</> : <>Drive into<br />real opportunities</>}
           </h1>
           <p className="max-w-[500px] text-[15px] leading-6 text-[#c3cedd] sm:text-base">
             {fr
-              ? 'Des véhicules professionnels vérifiés, mis aux enchères chaque semaine entre concessionnaires et casses agréées.'
-              : 'Verified professional vehicles auctioned every week between dealers and approved dismantlers.'}
+              ? 'Des véhicules professionnels vérifiés, proposés chaque semaine entre concessionnaires et casses agréées.'
+              : 'Verified professional vehicles offered every week between dealers and approved dismantlers.'}
           </p>
         </div>
       </section>
@@ -177,7 +178,7 @@ export default function CurrentSalesPage() {
             {sessionName}{currentSession ? ` · ${fr ? 'clôture dans' : 'closes in'} ${sessionTimeLeft}` : ''}
           </p>
           <h2 className="font-heading text-[28px] font-bold uppercase leading-none text-[#13243c]">
-            {fr ? `${total} véhicules aux enchères` : `${total} vehicles at auction`}
+            {fr ? `${total} véhicules en vente` : `${total} vehicles for sale`}
           </h2>
         </div>
       </section>
@@ -194,7 +195,7 @@ export default function CurrentSalesPage() {
           >
             <div className="relative aspect-4/3 overflow-hidden bg-[#eef1f5]">
               {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
-              {lot.hasActiveOffer && <span className="absolute left-2.5 top-2.5 rounded-[7px] bg-[#e9f4ee] px-2.5 py-1.5 text-[11px] font-bold text-[#20754c] shadow-sm">✓ {t('vehicle.offerPlaced')}</span>}
+              {lot.hasActiveOffer && <span className="absolute left-2.5 top-2.5 rounded-[7px] bg-[#e9f4ee] px-2.5 py-1.5 text-[11px] font-bold text-[#20754c] shadow-sm">✓ {t('vehicle.offerPlaced')}{lot.offerAmount != null ? ` · ${formatEuros(lot.offerAmount, language)}` : ''}</span>}
               <span className="absolute right-2.5 top-2.5 rounded-[7px] bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 font-mono text-[11px] font-bold text-white">{formatTimeLeft(lot.session?.endDate)}</span>
             </div>
             <div className="flex flex-1 flex-col p-4 pb-[18px]">

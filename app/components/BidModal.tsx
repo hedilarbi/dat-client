@@ -174,7 +174,7 @@ export default function BidModal({ vehicleId, vehicleTitle, offerId, initialAmou
                   />
                   <span className="font-heading text-[24px] font-bold text-[#13243c]">€</span>
                 </div>
-                <span className="mt-2 block text-xs leading-5 text-[#5a5e66]">{t('bid.amountHint')}</span>
+                {!isEdit && <span className="mt-2 block text-xs leading-5 text-[#5a5e66]">{t('bid.amountHint')}</span>}
               </label>
 
               <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">

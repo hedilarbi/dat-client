@@ -13,7 +13,7 @@ interface Props {
   onNext: () => void;
   onSaveDraft: () => void;
   savingDraft: boolean;
-  verifyExistingRegistration?: boolean;
+  isEditing?: boolean;
 }
 
 type ApiVehicleField = typeof textFields[number]['key'] | 'registrationNumber';
@@ -63,32 +63,23 @@ const fuelFromLabel = (value: string): FuelType => {
   return 'autre';
 };
 
-export default function StepVehicleInfo({ values, onChange, onNext, verifyExistingRegistration = false }: Props) {
+export default function StepVehicleInfo({ values, onChange, onNext, isEditing = false }: Props) {
   const [searching, setSearching] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(Boolean(values.brand || values.model || values.vin));
   const [lookupError, setLookupError] = useState('');
   const [lockedApiFields, setLockedApiFields] = useState<Set<ApiVehicleField>>(new Set());
-  const [checkingApiFields, setCheckingApiFields] = useState(verifyExistingRegistration);
+  const [checkingApiFields, setCheckingApiFields] = useState(false);
   const verifiedRegistration = useRef('');
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const registration = values.registrationNumber?.trim();
-    if (!verifyExistingRegistration || !registration || verifiedRegistration.current === registration) return;
+    if (!isEditing || !registration || verifiedRegistration.current === registration) return;
+    // En modification, seul le matricule est immuable. Les données récupérées lors de la
+    // création ne doivent pas verrouiller les autres champs du véhicule.
     verifiedRegistration.current = registration;
-    setCheckingApiFields(true);
-    apiRequest('/vehicle-dossiers/registration-lookup', {
-      method: 'POST',
-      body: JSON.stringify({ immatriculation: registration }),
-    }).then(({ data }) => {
-      const apiValues = apiVehicleValues((data || {}) as Record<string, unknown>);
-      setLockedApiFields(new Set(
-        (Object.entries(apiValues) as Array<[ApiVehicleField, string]>)
-          .filter(([, value]) => Boolean(value.trim()))
-          .map(([key]) => key),
-      ));
-    }).catch(() => setLockedApiFields(new Set())).finally(() => setCheckingApiFields(false));
-  }, [values.registrationNumber, verifyExistingRegistration]);
+    setLockedApiFields(new Set(['registrationNumber']));
+  }, [values.registrationNumber, isEditing]);
 
   const updateVehicleAddress = (patch: Partial<VehicleAddressDetails>) => {
     const details: VehicleAddressDetails = {
@@ -166,9 +157,10 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Informations voiture</h2>
         <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Immatriculation</label>
         <div className="flex flex-col sm:flex-row gap-3">
-          <input required readOnly={checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
-          <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>
+          <input required aria-label="Immatriculation" readOnly={isEditing || checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
+          {!isEditing && <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>}
         </div>
+        {isEditing && <p className="mt-2 text-[11px] text-[#5a5e66]">Le matricule ne peut pas être modifié après la création du dossier.</p>}
         {lookupError && <Alert variant="error" className="mt-3">{lookupError}</Alert>}
 
       {detailsVisible && (
@@ -178,9 +170,9 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
           <label key={key} className="block">
             <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{label}{required && <span className="text-[#b42318]"> *</span>}</span>
             {key === 'gearbox' ? (
-              <select required disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">Sélectionner</option><option value="M">M — Manuelle</option><option value="A">A — Automatique</option></select>
+              <select required aria-label={label} disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">Sélectionner</option><option value="M">M — Manuelle</option><option value="A">A — Automatique</option></select>
             ) : (
-              <input required={required} readOnly={checkingApiFields || lockedApiFields.has(key)} value={String(values[key] ?? '')} onChange={(e) => onChange({ [key]: e.target.value } as Partial<VehicleDossierPayload>)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
+              <input required={required} aria-label={label} readOnly={checkingApiFields || lockedApiFields.has(key)} value={String(values[key] ?? '')} onChange={(e) => onChange({ [key]: e.target.value } as Partial<VehicleDossierPayload>)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
             )}
           </label>
         ))}
@@ -192,7 +184,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
       {detailsVisible && <>
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Kilométrage</h2>
-        <label><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Kilométrage <span className="text-[#b42318]">*</span></span><input required type="number" min="0" value={values.mileage ?? ''} onChange={(e) => onChange({ mileage: e.target.value ? Number(e.target.value) : undefined })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" /></label>
+        <label><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Kilométrage <span className="text-[#b42318]">*</span></span><input required aria-label="Kilométrage" type="number" min="0" value={values.mileage ?? ''} onChange={(e) => onChange({ mileage: e.target.value ? Number(e.target.value) : undefined })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" /></label>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
@@ -207,7 +199,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Procédure</h2>
         <label className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Procédure <span className="text-[#b42318]">*</span></label>
-        <select required value={values.procedure || ''} onChange={(e) => onChange({ procedure: e.target.value as VehicleDossierPayload['procedure'] })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white"><option value="">Sélectionner</option>{['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'].map((item) => <option key={item}>{item}</option>)}</select>
+        <select required aria-label="Procédure" value={values.procedure || ''} onChange={(e) => onChange({ procedure: e.target.value as VehicleDossierPayload['procedure'] })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white"><option value="">Sélectionner</option>{['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'].map((item) => <option key={item}>{item}</option>)}</select>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
@@ -237,7 +229,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, verifyExisti
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
         <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Description du choc</h2>
         <div className="flex items-center justify-between mb-2"><label className="font-semibold text-[11px] uppercase text-[#4c5058]">Description du choc</label><button type="button" onClick={makeSelectionBold} className="btn btn-secondary">B</button></div>
-        <textarea required ref={descriptionRef} rows={7} value={values.description || ''} onChange={(e) => onChange({ description: e.target.value })} placeholder={'Décrivez le choc…\nLes retours à la ligne seront conservés.'} className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm leading-6 resize-y whitespace-pre-wrap" />
+        <textarea required aria-label="Description du choc" ref={descriptionRef} rows={7} value={values.description || ''} onChange={(e) => onChange({ description: e.target.value })} placeholder={'Décrivez le choc…\nLes retours à la ligne seront conservés.'} className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm leading-6 resize-y whitespace-pre-wrap" />
         <p className="text-xs text-[#5a5e66] mt-1">Sélectionnez du texte puis cliquez sur B pour le mettre en gras. Les retours à la ligne sont conservés.</p>
       </section>
 

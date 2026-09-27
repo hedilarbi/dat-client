@@ -164,6 +164,10 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
 
     canvas.toBlob(
       (blob) => {
+        // Libère tout de suite la mémoire du canvas : Safari iOS plafonne la mémoire totale des
+        // canvas et tarde à la rendre, ce qui contribuait au plantage après quelques photos.
+        canvas.width = 0;
+        canvas.height = 0;
         if (blob) {
           const previewUrl = URL.createObjectURL(blob);
           onCropComplete(blob, previewUrl);
