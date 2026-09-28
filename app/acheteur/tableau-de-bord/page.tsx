@@ -19,6 +19,16 @@ interface BuyerOfferPreview {
   session: { name: string } | null;
 }
 
+function timeLeft(dueAt?: string | null): string | null {
+  if (!dueAt) return null;
+  const remaining = new Date(dueAt).getTime() - Date.now();
+  if (remaining <= 0) return null;
+  const hours = Math.floor(remaining / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1000);
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
+}
+
 export default function BuyerDashboardPage() {
   const { user, loading: userLoading } = useUser();
   const paths = getBuyingPaths(user?.role);
@@ -29,6 +39,12 @@ export default function BuyerDashboardPage() {
   const [closedSalesCount, setClosedSalesCount] = useState(0);
   const [pastOffersCount, setPastOffersCount] = useState(0);
   const [offersLoaded, setOffersLoaded] = useState(false);
+  const [, setClock] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!user || (user.status !== 'valide' && user.status !== 'suspendu')) return;
@@ -100,6 +116,8 @@ export default function BuyerDashboardPage() {
           <div className="grid gap-4">
             {ongoingSales.map(sale => {
               const isBuyerTurn = sale.currentStep === 1 || sale.currentStep === 3 || sale.currentStep === 5 || sale.currentStep === 6;
+              const showPaymentCountdown = sale.currentStep === 1 || sale.currentStep === 2;
+              const remaining = showPaymentCountdown ? timeLeft(sale.currentStepDueAt) : null;
               return (
                 <div key={sale.id} className={`flex flex-col sm:flex-row items-center gap-4 bg-white border-2 ${isBuyerTurn ? 'border-[#d9704f] shadow-[0_4px_12px_rgba(217,112,79,0.15)]' : 'border-[#eceadf] shadow-sm'} rounded-[12px] p-4 transition-transform hover:-translate-y-1`}>
                   {sale.vehicle?.photoUrl && (
@@ -136,6 +154,14 @@ export default function BuyerDashboardPage() {
                         <span className="text-[12px] text-[#8a8270]">{t('dashboard.awaitingSeller')}</span>
                       )}
                     </div>
+                    {showPaymentCountdown && sale.currentStepDueAt && (
+                      <div className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-bold ${remaining ? 'border-red-200 bg-red-50 text-red-700' : 'border-[#f5d5c7] bg-[#fdece4] text-[#b04a2c]'}`}>
+                        <span className={`h-2 w-2 rounded-full ${remaining ? 'bg-red-500 animate-pulse' : 'bg-[#b04a2c]'}`} />
+                        {remaining
+                          ? t('dashboard.timeLeft', { time: remaining })
+                          : t('dashboard.deadlinePassed')}
+                      </div>
+                    )}
                   </div>
                   <div className="text-center sm:text-right">
                     <div className="text-[11px] text-[#7a756a] font-bold uppercase">{t('dashboard.amountWon')}</div>
