@@ -25,6 +25,7 @@ interface SellerSaleDetail {
   steps: string[];
   currentStepStartedAt: string | null;
   currentStepDueAt: string | null;
+  sellerDecisionDueAt: string | null;
   commissionPaidAt: string | null;
   documentsDelivery: 'main_propre' | 'poste' | null;
   transferConfirmedAt: string | null;
@@ -308,6 +309,8 @@ export default function SellerSaleDetailPage() {
   const title = ([sale.vehicle?.brand, sale.vehicle?.model].filter(Boolean).join(' ') + (sale.vehicle?.registrationNumber ? ` (${sale.vehicle.registrationNumber})` : '')).trim() || '—';
   const locale = language === 'fr' ? 'fr-FR' : 'en-GB';
   const remaining = timeLeft(sale.currentStepDueAt);
+  const decisionRemaining = timeLeft(sale.sellerDecisionDueAt);
+  const decisionExpired = sale.status === 'suspendue' && Boolean(sale.sellerDecisionDueAt) && !decisionRemaining;
   const formatDate = (value: string) => new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   const subtitle = [
     sale.vehicle?.year ? String(sale.vehicle.year) : null,
@@ -389,13 +392,28 @@ export default function SellerSaleDetailPage() {
 
       {['en_session', 'suspendue'].includes(sale.status) ? (
         <section className="rounded-[14px] border border-[#ebdcc9] bg-[#faf7ef] p-5">
+          {sale.status === 'suspendue' && sale.sellerDecisionDueAt && (
+            <div className={`mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3 ${decisionExpired ? 'border-[#f0c9bd] bg-[#fdece4]' : 'border-[#f0c9bd] bg-white'}`} aria-live="polite">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b04a2c]">
+                  {t('sellerSale.decisionDeadline')}
+                </div>
+                <div className="mt-0.5 text-[12px] font-semibold text-[#5a5e66]">
+                  {t('sellerSale.decisionDeadlineText')}
+                </div>
+              </div>
+              <div className={`font-mono text-[24px] font-bold tabular-nums ${decisionExpired ? 'text-[#b04a2c]' : 'text-[#13243c]'}`}>
+                {decisionExpired ? t('sellerSale.decisionExpired') : decisionRemaining}
+              </div>
+            </div>
+          )}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-heading text-[18px] font-bold uppercase text-[#13243c]">{t('sellerSale.offersTitle')}</h2>
               <p className="mt-1 text-sm text-[#5a5e66]">{sale.status === 'en_session' ? t('sellerSale.offersLiveText') : t('sellerSale.offersSuspendedText')}</p>
             </div>
             {sale.status === 'suspendue' && (
-              <button type="button" onClick={handleRelist} disabled={offerActionLoading !== null} className="btn btn-secondary disabled:opacity-50">
+              <button type="button" onClick={handleRelist} disabled={offerActionLoading !== null || decisionExpired} className="btn btn-secondary disabled:opacity-50">
                 {offerActionLoading === 'relist' && <Spinner />} {t('sellerSale.relist')}
               </button>
             )}
@@ -407,7 +425,7 @@ export default function SellerSaleDetailPage() {
                   <div className="font-semibold text-[#13243c]">{offer.buyer?.companyName || [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ') || t('sellerSale.buyer')}</div>
                   <div className="font-mono text-lg font-bold text-[#d9704f]">{formatEuros(offer.amount, language)}</div>
                 </div>
-                <button type="button" disabled={!offer.selectable || offerActionLoading !== null} onClick={() => (sale.status === 'en_session' ? setOfferToAccept({ id: offer.id, amount: offer.amount }) : handleAcceptOffer(offer.id))} className="btn btn-primary disabled:opacity-40">
+                <button type="button" disabled={!offer.selectable || offerActionLoading !== null || decisionExpired} onClick={() => (sale.status === 'en_session' ? setOfferToAccept({ id: offer.id, amount: offer.amount }) : handleAcceptOffer(offer.id))} className="btn btn-primary disabled:opacity-40">
                   {offerActionLoading === offer.id && <Spinner />} {t('sellerSale.acceptOffer')}
                 </button>
               </div>
