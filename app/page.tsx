@@ -10,6 +10,7 @@ import { apiRequest } from "./api";
 import { useUser } from "./components/LayoutWrapper";
 import Spinner from "./components/Spinner";
 import JsonLd from "./components/JsonLd";
+import ShowcaseGallery from './components/ShowcaseGallery';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
@@ -56,11 +57,11 @@ interface HomeSaleReminder {
 export default function Home() {
   const { language, t } = useLanguage();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [saleReminders, setSaleReminders] = useState<HomeSaleReminder[]>([]);
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
-  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8 });
+  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
   const currentSession = sessions[0];
   const currentSessionName = currentSession?.name || (language === 'fr' ? 'Aucune session ouverte' : 'No open session');
   const closingIn = formatTimeLeft(currentSession?.endDate);
@@ -213,6 +214,7 @@ export default function Home() {
         </div>
       )}
 
+      {!userLoading && !user ? <ShowcaseGallery language={language} /> : <>
       {/* Brands */}
       <div className="px-4 sm:px-[40px] pt-10 sm:pt-12 pb-6">
         <div className="font-semibold text-[11px] tracking-[0.2em] uppercase text-[#a3987f] mb-2.5">{t('home.brandsEyebrow')}</div>
@@ -277,6 +279,7 @@ export default function Home() {
           </Link>
         ))}
       </div>
+      </>}
 
       {/* How it works */}
       <div id="a-propos" className="scroll-mt-[70px] bg-[#f8f7f2] px-4 sm:px-[40px] py-12 sm:py-16 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-8 sm:gap-[52px] items-center">

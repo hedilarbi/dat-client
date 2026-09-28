@@ -13,6 +13,7 @@ import vehicleCatalog from '../lib/vehicleCatalog.json';
 import { ENERGY_OPTIONS, GEARBOX_OPTIONS, PROCEDURE_OPTIONS } from '../lib/vehicleLabels';
 import Spinner from '../components/Spinner';
 import JsonLd from '../components/JsonLd';
+import ShowcaseGallery from '../components/ShowcaseGallery';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const CURRENT_YEAR = new Date().getFullYear();
@@ -34,6 +35,7 @@ const EMPTY_FILTERS: SaleFilters = { brand: '', model: '', energy: '', procedure
 
 export default function CurrentSalesPage() {
   const { language, t } = useLanguage();
+  const { user, loading: userLoading } = useUser();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<SaleFilters>(EMPTY_FILTERS);
   const [filters, setFilters] = useState<SaleFilters>(EMPTY_FILTERS);
@@ -42,13 +44,12 @@ export default function CurrentSalesPage() {
   // Le filtrage est appliqué en base : sans ça il ne porterait que sur les pages déjà chargées.
   const {
     vehicles: lots, sessions, total, loading, loadingMore, error, hasMore, canLoadMore, loadMore,
-  } = useCurrentSales({ filters });
+  } = useCurrentSales({ filters, enabled: !userLoading && Boolean(user) });
 
   // Le droit de charger la suite se décide sur la session, comme l'affichage des boutons
   // dans l'en-tête : `user` est connu dès le premier rendu, alors que `access` du serveur
   // n'arrive qu'avec la réponse. Tant que la session est en cours de chargement, on refuse —
   // un doute doit fermer l'accès, jamais l'ouvrir.
-  const { user, loading: userLoading } = useUser();
   const sessionAllowsMore = !userLoading
     && Boolean(user)
     && (user?.role === 'admin' || user?.status === 'valide');
@@ -142,6 +143,9 @@ export default function CurrentSalesPage() {
         </div>
       </section>
 
+      {!userLoading && !user && <ShowcaseGallery language={language} compact />}
+
+      <div className={!userLoading && !user ? 'hidden' : undefined}>
       <section className="relative z-2 -mt-[38px] mb-5 px-4 sm:px-10">
         <div className="rounded-[14px] border border-[#eceadf] bg-white shadow-[0_16px_34px_rgba(19,36,60,.16)]">
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-6">
@@ -252,6 +256,7 @@ export default function CurrentSalesPage() {
         returnPath={localizedPath('/vehicules', language)}
         onClose={() => setAccessModalOpen(false)}
       />
+      </div>
     </main>
   );
 }

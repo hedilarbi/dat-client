@@ -78,13 +78,14 @@ const buildQueryString = (filters: CurrentSalesFilters | undefined, pageSize: nu
 interface UseCurrentSalesOptions {
   filters?: CurrentSalesFilters;
   pageSize?: number;
+  enabled?: boolean;
 }
 
 /**
  * Charge les ventes en cours page par page. La première page arrive au montage (et à chaque
  * changement de filtres) ; `loadMore` ajoute la suivante à la liste déjà affichée.
  */
-export function useCurrentSales({ filters, pageSize }: UseCurrentSalesOptions = {}) {
+export function useCurrentSales({ filters, pageSize, enabled = true }: UseCurrentSalesOptions = {}) {
   const [vehicles, setVehicles] = useState<CurrentSaleVehicle[]>([]);
   const [sessions, setSessions] = useState<CurrentSaleSession[]>([]);
   const [brands, setBrands] = useState<CurrentSaleBrand[]>([]);
@@ -100,7 +101,7 @@ export function useCurrentSales({ filters, pageSize }: UseCurrentSalesOptions = 
   // Jeu de filtres auquel correspondent les données affichées : tant qu'il diffère de la requête
   // courante, on est en chargement. État dérivé plutôt que setState synchrone dans l'effet.
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
-  const loading = loadedQuery !== queryString;
+  const loading = enabled && loadedQuery !== queryString;
 
   const pageRef = useRef(1);
   // Garde de dernier recours contre les fermetures périmées. `loadMore` capture `canLoadMore`
@@ -115,6 +116,7 @@ export function useCurrentSales({ filters, pageSize }: UseCurrentSalesOptions = 
   const requestRef = useRef(0);
 
   useEffect(() => {
+    if (!enabled) return;
     const requestId = ++requestRef.current;
     pageRef.current = 1;
     canLoadMoreRef.current = false;
@@ -138,10 +140,10 @@ export function useCurrentSales({ filters, pageSize }: UseCurrentSalesOptions = 
         setError(requestError instanceof Error ? requestError.message : 'Chargement impossible.');
         setLoadedQuery(queryString);
       });
-  }, [queryString]);
+  }, [enabled, queryString]);
 
   const loadMore = useCallback(() => {
-    if (loading || loadingMore || !hasMore || !canLoadMore) return;
+    if (!enabled || loading || loadingMore || !hasMore || !canLoadMore) return;
     // La ref prime sur la valeur capturée : elle seule reflète l'état au moment de l'appel.
     if (!canLoadMoreRef.current) return;
 
@@ -172,7 +174,7 @@ export function useCurrentSales({ filters, pageSize }: UseCurrentSalesOptions = 
       .finally(() => {
         if (requestRef.current === requestId) setLoadingMore(false);
       });
-  }, [canLoadMore, hasMore, loading, loadingMore, queryString]);
+  }, [canLoadMore, enabled, hasMore, loading, loadingMore, queryString]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock((value) => value + 1), 1000);
