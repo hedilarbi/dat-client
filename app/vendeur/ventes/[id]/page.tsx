@@ -96,6 +96,7 @@ export default function SellerSaleDetailPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [transferConfirmationOpen, setTransferConfirmationOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [formulaNumberInput, setFormulaNumberInput] = useState('');
   const [motifAbsenceInput, setMotifAbsenceInput] = useState('');
@@ -156,6 +157,7 @@ export default function SellerSaleDetailPage() {
       const res = await apiRequest(`/sales/${sale.id}/transfer-received`, { method: 'POST' });
       setSale(res.sale);
       setMessage(res.message || '');
+      setTransferConfirmationOpen(false);
       setConfirmOpen(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
@@ -553,7 +555,7 @@ export default function SellerSaleDetailPage() {
                         </p>
                         <button
                           type="button"
-                          onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : handleConfirmTransfer}
+                          onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : () => setTransferConfirmationOpen(true)}
                           disabled={confirming}
                           className="h-12 w-full rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10 cursor-pointer"
                         >
@@ -868,6 +870,16 @@ export default function SellerSaleDetailPage() {
           </section>
         </>
       )}
+
+      <ConfirmModal
+        open={transferConfirmationOpen}
+        title={t('sellerSale.confirmTransferTitle')}
+        message={t('sellerSale.confirmTransferMessage')}
+        confirmLabel={t('sellerSale.confirmTransferAction')}
+        loading={confirming}
+        onConfirm={handleConfirmTransfer}
+        onCancel={() => { if (!confirming) setTransferConfirmationOpen(false); }}
+      />
 
       <ConfirmModal
         open={confirmOpen}

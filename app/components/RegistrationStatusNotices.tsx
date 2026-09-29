@@ -122,7 +122,7 @@ export function SuspendedNotice() {
           <div className="space-y-4">
             <p className="text-sm text-red-800 leading-relaxed">
               {user.pendingCommission.reason === 'penalite_etape_2'
-                ? <>Votre compte a été suspendu car le délai de virement de l’étape 2 a été dépassé. Pour le réactiver, vous devez régler la pénalité de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.</>
+                ? <>Votre compte a été suspendu car le délai de virement de l’étape 2 a été dépassé. Pour le réactiver, vous devez régler le montant de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.</>
                 : <>Votre compte a été suspendu car la commission de l’étape 1 n’a pas été réglée dans le délai prévu. Pour le réactiver, vous devez payer cette commission, soit <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.</>}
             </p>
 

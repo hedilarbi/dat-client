@@ -314,6 +314,9 @@ const handleSubmitCertificate = async () => {
   const locale = language === 'fr' ? 'fr-FR' : 'en-GB';
   const formatDate = (value: string) => new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   const remaining = timeLeft(sale.currentStepDueAt);
+  const cancellationFee = sale.fees
+    ? Number(sale.fees.commission || 0) + Number(sale.fees.taxAmount || 0)
+    : null;
   const subtitle = [
     sale.vehicle?.year ? String(sale.vehicle.year) : null,
     sale.vehicle?.mileage != null ? `${sale.vehicle.mileage.toLocaleString(locale)} km` : null,
@@ -988,8 +991,9 @@ const handleSubmitCertificate = async () => {
             <h3 className="mb-4 text-xl font-bold text-[#13243c]">Annuler la vente</h3>
             <p className="mb-6 text-sm text-[#5a5e66]">
               Attention : l'annulation est définitive. Conformément aux conditions d'utilisation,
-              vous devrez tout de même vous acquitter de la commission d'annulation (300,00 €).<br /><br />
-              <strong className="text-red-600">Votre compte sera immédiatement suspendu jusqu'au paiement de cette pénalité.</strong>
+              vous devrez tout de même vous acquitter de la commission d'annulation
+              {cancellationFee != null ? <> (<strong>{formatEuros(cancellationFee, language)}</strong>)</> : null}.<br /><br />
+              <strong className="text-red-600">Votre compte sera immédiatement suspendu jusqu'au paiement de ce montant.</strong>
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button

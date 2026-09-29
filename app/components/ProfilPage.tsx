@@ -487,7 +487,7 @@ export default function ProfilPage() {
           <p className="text-red-700 mb-6 leading-relaxed">
             La vente du véhicule vous a été retirée et attribuée à l’offre suivante.{' '}
             {user.pendingCommission.reason === 'penalite_etape_2'
-              ? <>Le délai de virement de l’étape 2 ayant été dépassé, vous devez régler la pénalité de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong> pour réactiver votre compte.</>
+              ? <>Le délai de virement de l’étape 2 ayant été dépassé, vous devez régler le montant de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong> pour réactiver votre compte.</>
               : <>La commission de l’étape 1 n’ayant pas été réglée, vous devez payer cette commission, soit <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>, pour réactiver votre compte.</>}
           </p>
 
