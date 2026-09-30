@@ -39,6 +39,7 @@ const ROUTE_SLUGS: Record<string, Record<Language, string>> = {
   '/acheteur/tableau-de-bord': { fr: 'acheteur/tableau-de-bord', en: 'buyer/dashboard' },
   '/acheteur/tableau-de-bord/mes-offres': { fr: 'acheteur/tableau-de-bord/mes-offres', en: 'buyer/dashboard/my-bids' },
   '/acheteur/tableau-de-bord/mes-vehicules': { fr: 'acheteur/tableau-de-bord/mes-vehicules', en: 'buyer/dashboard/my-vehicles' },
+  '/signature-terminee': { fr: 'signature-terminee', en: 'signature-complete' },
 };
 
 export function getLocaleFromPath(pathname: string | null): Language | null {

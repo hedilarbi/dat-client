@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../../api';
@@ -10,6 +10,7 @@ import Alert from '../../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../../components/RegistrationStatusNotices';
 import CommissionCheckout from '../../../../components/CommissionCheckout';
 import VerticalStep from '../../../../components/VerticalStep';
+import EsignatureStep, { useEsignatureSync } from '../../../../components/EsignatureStep';
 import { formatEuros } from '../../../../lib/format';
 import { isStripeConfigured } from '../../../../lib/stripe';
 import Spinner from '../../../../components/Spinner';
@@ -33,6 +34,7 @@ interface WonSaleDetail {
   currentStepDueAt: string | null;
   commissionPaidAt: string | null;
   documentsDelivery: DeliveryMode | null;
+  transferConfirmedAt: string | null;
   certificate: {
     url: string | null; generatedAt: string | null; 
     sellerSignedUrl: string | null; sellerSignedAt: string | null;
@@ -44,7 +46,7 @@ interface WonSaleDetail {
   };
   purchaseDeclaration: { url: string | null; generatedAt: string | null };
   bonEnlevement: { url: string | null; generatedAt: string | null } | null;
-  esignature: { status: string | null; sellerUrl: string | null; buyerUrl: string | null; initiatedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
+  esignature: { status: string | null; buyerUrl?: string | null; initiatedAt: string | null; sellerSignedAt: string | null; buyerSignedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
   handover: { declarationUrl: string | null; generatedAt: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
@@ -148,6 +150,14 @@ export default function WonSaleDetailPage() {
       })
       .finally(() => setLoaded(true));
   }, [params.id, t, user]);
+
+  // Étape 3 : la page de retour de la plateforme de signature ajoute ?signature=retour
+  const returnedFromSigning = searchParams.get('signature') === 'retour';
+  const refreshSale = useCallback(async () => {
+    const res = await apiRequest(`/sales/${params.id}`);
+    setSale(res.sale);
+  }, [params.id]);
+  useEsignatureSync(sale?.id, sale?.status === 'en_cours' && sale.currentStep === 3, refreshSale);
 
   // Rafraîchit le compte à rebours de l'échéance
   useEffect(() => {
@@ -619,11 +629,17 @@ const handleSubmitCertificate = async () => {
               </>
             )}
             
-            {renderStepNumber === 2 && (
+            {renderStepNumber === 2 && (isHistorical ? (
               <>
-                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical ? "Le vendeur a confirmé la réception du virement bancaire." : t('saleDetail.step2Intro')}
-                </p>
+                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('saleDetail.step2Done')}</p>
+                <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
+                  <SellerRow label={t('saleDetail.step2History.amount')} value={sale.amount != null ? formatEuros(sale.amount, language) : ''} mono />
+                  <SellerRow label={t('saleDetail.step2History.confirmedAt')} value={sale.transferConfirmedAt ? formatDate(sale.transferConfirmedAt) : ''} />
+                </dl>
+              </>
+            ) : (
+              <>
+                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('saleDetail.step2Intro')}</p>
 
                 {sale.seller?.bankInfo && (
                   <dl className="mb-4 overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
@@ -642,54 +658,37 @@ const handleSubmitCertificate = async () => {
                 )}
 
 
-                {!isHistorical && (
-                  <>
-                    <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                      {t('saleDetail.deadlineWarning')}
-                    </p>
-                    <p className="mt-3 text-[12px] italic text-[#5a5e66]">{t('saleDetail.step2Coming')}</p>
-                  </>
-                )}
+                <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                  {t('saleDetail.deadlineWarning')}
+                </p>
+                <p className="mt-3 text-[12px] italic text-[#5a5e66]">{t('saleDetail.step2Coming')}</p>
               </>
-            )}
+            ))}
             
             {renderStepNumber === 3 && (
               <>
                 {sale.esignature?.buyerUrl ? (
-                  <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
-                    <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-                      Signature électronique
-                    </div>
-                    <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
-                      {isHistorical 
-                        ? "Vous avez signé les documents avec succès."
-                        : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat."}
-                    </p>
-                    {!isHistorical && (
-                      user?.stampUrl ? (
-                        <a
-                          href={sale.esignature.buyerUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
+                  <EsignatureStep
+                    side="buyer"
+                    signUrl={sale.esignature.buyerUrl}
+                    sellerSignedAt={sale.esignature.sellerSignedAt}
+                    buyerSignedAt={sale.esignature.buyerSignedAt}
+                    isHistorical={isHistorical}
+                    returnedFromSigning={returnedFromSigning}
+                    blocker={user?.stampUrl ? null : (
+                      <div className="rounded-[10px] border border-[#e2a175] bg-[#fdf3ec] p-4" role="alert">
+                        <p className="mb-3 text-[13px] font-semibold leading-6 text-[#8a4b24]">
+                          {t('esign.stampRequired')}
+                        </p>
+                        <Link
+                          href={`${localizedPath(paths.stamp, language)}?returnTo=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`}
+                          className="inline-flex min-h-11 items-center justify-center rounded-[9px] bg-[#13243c] px-5 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
                         >
-                          Signer les documents
-                        </a>
-                      ) : (
-                        <div className="rounded-[10px] border border-[#e2a175] bg-[#fdf3ec] p-4" role="alert">
-                          <p className="mb-3 text-[13px] font-semibold leading-6 text-[#8a4b24]">
-                            Vous devez déposer votre tampon d’entreprise avant de signer les documents.
-                          </p>
-                          <Link
-                            href={`${localizedPath(paths.stamp, language)}?returnTo=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`}
-                            className="inline-flex min-h-11 items-center justify-center rounded-[9px] bg-[#13243c] px-5 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
-                          >
-                            Déposer mon tampon
-                          </Link>
-                        </div>
-                      )
+                          {t('esign.stampCta')}
+                        </Link>
+                      </div>
                     )}
-                  </div>
+                  />
                 ) : (
                   <>
                     <p className="mb-4 text-sm leading-6 text-[#5a5e66]">

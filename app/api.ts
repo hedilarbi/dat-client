@@ -15,6 +15,8 @@ const AUTH_EXEMPT_PATHS = new Set([
   '/register/vendeur',
   '/forgot-password',
   '/forgot-password/reset',
+  // Retour de la plateforme de signature : sans session, la page affiche une confirmation
+  '/signature-terminee',
 ]);
 
 /**

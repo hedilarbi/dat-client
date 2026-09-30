@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../api';
 import { uploadFile } from '../../../lib/uploadFile';
 import { useUser } from '../../../components/LayoutWrapper';
@@ -10,6 +10,7 @@ import { getRoleHomePath, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import ConfirmModal from '../../../components/ConfirmModal';
 import VerticalStep from '../../../components/VerticalStep';
+import EsignatureStep, { useEsignatureSync } from '../../../components/EsignatureStep';
 import { formatEuros } from '../../../lib/format';
 import Spinner from '../../../components/Spinner';
 
@@ -40,11 +41,11 @@ interface SellerSaleDetail {
   };
   purchaseDeclaration: { url: string | null; generatedAt: string | null };
   bonEnlevement: { url: string | null; generatedAt: string | null } | null;
-  esignature: { status: string | null; sellerUrl: string | null; buyerUrl: string | null; initiatedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
+  esignature: { status: string | null; sellerUrl?: string | null; initiatedAt: string | null; sellerSignedAt: string | null; buyerSignedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
   handover: { declarationUrl: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
-  vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null; registrationCardAvailable: boolean | null; } | null;
+  vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null; registrationCardAvailable: boolean | null; formulaNumber?: string | null; registrationCardMissingMotif?: string | null; } | null;
   session: { id: string; name: string; endDate: string } | null;
   /** Révélé par le serveur une fois la commission réglée */
   buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
@@ -88,6 +89,7 @@ function timeLeft(dueAt: string | null): string | null {
 export default function SellerSaleDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: userLoading } = useUser();
   const { language, t } = useLanguage();
 
@@ -142,6 +144,14 @@ export default function SellerSaleDetailPage() {
       })
       .finally(() => setLoaded(true));
   }, [params.id, t, user]);
+
+  // Étape 3 : la page de retour de la plateforme de signature ajoute ?signature=retour
+  const returnedFromSigning = searchParams.get('signature') === 'retour';
+  const refreshSale = useCallback(async () => {
+    const res = await apiRequest(`/sales/seller/${params.id}`);
+    setSale(res.sale);
+  }, [params.id]);
+  useEsignatureSync(sale?.id, sale?.status === 'en_cours' && sale.currentStep === 3, refreshSale);
 
   // Rafraîchit le compte à rebours de l'échéance
   useEffect(() => {
@@ -530,14 +540,22 @@ export default function SellerSaleDetailPage() {
                   </p>
                 )}
 
-                {renderStepNumber === 2 && (
+                {renderStepNumber === 2 && (isHistorical ? (
+                  <>
+                    <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.step2Done')}</p>
+                    <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
+                      <InfoRow label={t('sellerSale.step2History.amount')} value={sale.amount != null ? formatEuros(sale.amount, language) : ''} />
+                      <InfoRow label={t('sellerSale.step2History.confirmedAt')} value={sale.transferConfirmedAt ? formatDate(sale.transferConfirmedAt) : ''} />
+                      <InfoRow label={t('sellerSale.step2History.formulaNumber')} value={sale.vehicle?.formulaNumber || ''} />
+                      <InfoRow label={t('sellerSale.step2History.missingMotif')} value={sale.vehicle?.registrationCardMissingMotif || ''} />
+                    </dl>
+                  </>
+                ) : (
                   <>
                     <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical
-                        ? "Vous avez confirmé la réception du virement bancaire."
-                        : sale.transferConfirmedAt
-                          ? 'Étape 2,5 — Virement confirmé. Renseignez maintenant les données de la carte grise avant la génération des documents.'
-                          : t('sellerSale.step2Waiting')}
+                      {sale.transferConfirmedAt
+                        ? 'Étape 2,5 — Virement confirmé. Renseignez maintenant les données de la carte grise avant la génération des documents.'
+                        : t('sellerSale.step2Waiting')}
                     </p>
 
                     {sale.amount != null && (
@@ -547,25 +565,20 @@ export default function SellerSaleDetailPage() {
                       </div>
                     )}
 
-
-                    {!isHistorical && (
-                      <>
-                        <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                          {sale.transferConfirmedAt ? 'La vente restera à cette étape tant que le traitement de la carte grise et la génération des documents ne seront pas terminés.' : t('sellerSale.step2Note')}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : () => setTransferConfirmationOpen(true)}
-                          disabled={confirming}
-                          className="h-12 w-full rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10 cursor-pointer"
-                        >
-                          {confirming ? t('sellerSale.confirming') : sale.transferConfirmedAt ? 'Continuer le traitement carte grise' : t('sellerSale.confirmTransfer')}
-                        </button>
-                        <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
-                      </>
-                    )}
+                    <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                      {sale.transferConfirmedAt ? 'La vente restera à cette étape tant que le traitement de la carte grise et la génération des documents ne seront pas terminés.' : t('sellerSale.step2Note')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : () => setTransferConfirmationOpen(true)}
+                      disabled={confirming}
+                      className="h-12 w-full rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10 cursor-pointer"
+                    >
+                      {confirming ? t('sellerSale.confirming') : sale.transferConfirmedAt ? 'Continuer le traitement carte grise' : t('sellerSale.confirmTransfer')}
+                    </button>
+                    <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
                   </>
-                )}
+                ))}
 
                 {(renderStepNumber === 3 || renderStepNumber === 4) && (
                   <>
@@ -592,26 +605,14 @@ export default function SellerSaleDetailPage() {
                     )}
 <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{renderStepNumber === 3 ? 'Signature électronique des documents' : 'Tampon du vendeur'}</h3>
                     {renderStepNumber === 3 ? (
-                      <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
-                        <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-                          Signature électronique
-                        </div>
-                        <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">
-                          {isHistorical 
-                            ? "Vous avez signé les documents avec succès."
-                            : "Veuillez signer électroniquement le certificat de cession et la déclaration d'achat."}
-                        </p>
-                        {!isHistorical && (
-                          <a
-                            href={sale.esignature?.sellerUrl || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
-                          >
-                            Signer les documents
-                          </a>
-                        )}
-                      </div>
+                      <EsignatureStep
+                        side="seller"
+                        signUrl={sale.esignature?.sellerUrl}
+                        sellerSignedAt={sale.esignature?.sellerSignedAt}
+                        buyerSignedAt={sale.esignature?.buyerSignedAt}
+                        isHistorical={isHistorical}
+                        returnedFromSigning={returnedFromSigning}
+                      />
                     ) : (
                       <>
                         <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
