@@ -11,28 +11,27 @@ const sellerSteps = [
   ['1', 'Créez le dossier du véhicule', 'Renseignez les caractéristiques, l’état, les documents et les photos utiles. Notre équipe vérifie le dossier avant sa mise en vente.'],
   ['2', 'Suivez la session de vente', 'Votre véhicule est présenté aux acheteurs professionnels validés. Les offres restent confidentielles jusqu’à la clôture.'],
   ['3', 'Confirmez le règlement', 'Une fois l’acheteur confirmé, il effectue le virement du prix du véhicule directement sur votre compte. Vous confirmez sa réception depuis votre espace.'],
-  ['4', 'Finalisez les documents', 'Vous signez électroniquement les documents, puis votre tampon est ajouté automatiquement s’il est enregistré. Sinon, vous déposez la version tamponnée.'],
-  ['5', 'Organisez l’enlèvement', 'Après validation finale, le bon d’enlèvement est généré. La vente est clôturée et le véhicule peut être remis.'],
+  ['4', 'Finalisez les documents', 'Complétez les informations de la carte grise : le certificat de cession et la déclaration d’achat sont générés avec les tampons des deux parties. Vous les vérifiez, puis vous les signez électroniquement.'],
+  ['5', 'Remettez le véhicule', 'Dès que les deux parties ont signé, la vente est finalisée et le bon d’enlèvement est généré : le véhicule peut être remis.'],
 ];
 
 const buyerSteps = [
   ['1', 'Accédez aux véhicules', 'Après validation de votre compte professionnel, consultez les dossiers, les photos, les informations techniques et les dates de clôture.'],
   ['2', 'Déposez votre meilleure offre', 'Votre proposition est enregistrée de manière confidentielle. À la clôture, les meilleurs offrants sont informés de la suite donnée à la vente.'],
   ['3', 'Confirmez votre achat', 'Si votre offre est retenue, réglez la commission dans le délai indiqué puis effectuez le virement du véhicule directement au vendeur.'],
-  ['4', 'Signez et validez le dossier', 'Signez électroniquement les documents, vérifiez la version tamponnée par le vendeur et ajoutez votre tampon lorsqu’il est requis.'],
-  ['5', 'Récupérez le véhicule', 'Lorsque le dossier est validé, téléchargez le bon d’enlèvement et organisez la récupération avec le vendeur.'],
+  ['4', 'Vérifiez et signez le dossier', 'Les documents sont générés avec votre tampon et celui du vendeur. Vérifiez-les, validez-les ou signalez une erreur, puis signez-les électroniquement.'],
+  ['5', 'Récupérez le véhicule', 'Dès que les deux parties ont signé, téléchargez le bon d’enlèvement et organisez la récupération avec le vendeur.'],
 ];
 
+// Miroir de la procédure d'achat : 1, 2, puis l'étape « Documents administratifs » en 3.1 à 3.3
 const transactionSteps = [
   'Paiement de la commission par l’acheteur',
-  'Validation du virement et informations de carte grise',
-  'Signature électronique de l’acheteur et du vendeur',
-  'Ajout ou dépôt du tampon du vendeur',
-  'Validation du dossier par l’acheteur',
-  'Ajout ou dépôt du tampon de l’acheteur',
-  'Validation finale par le vendeur',
-  'Génération du bon d’enlèvement et clôture de la vente',
+  'Virement du prix, confirmé par le vendeur',
+  'Informations de carte grise et tampons des deux parties',
+  'Vérification des documents tamponnés par les deux parties',
+  'Signature électronique, bon d’enlèvement et clôture de la vente',
 ];
+const TRANSACTION_STEP_NUMBERS = ['1', '2', '3.1', '3.2', '3.3'];
 
 function AudienceSteps({ steps }: { steps: string[][] }) {
   return <ol className="mt-8 space-y-5">{steps.map(([number, title, description]) => (
@@ -79,10 +78,10 @@ export default function CommentCaMarchePage() {
       <section className="bg-[#f8f7f2] px-4 py-16 sm:px-10 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#d9704f]">Après l’attribution</p>
-          <h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c] sm:text-4xl">Les 8 étapes de la transaction</h2>
+          <h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c] sm:text-4xl">Les étapes de la transaction</h2>
           <p className="mt-4 max-w-3xl leading-relaxed text-[#5a5e66]">Chaque partie voit l’étape actuelle, l’action attendue et les documents disponibles depuis son espace.</p>
-          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{transactionSteps.map((step, index) => (
-            <li key={step} className="rounded-2xl border border-[#e8e4da] bg-white p-5"><span className="font-mono text-xs font-bold uppercase text-[#d9704f]">Étape {index + 1}/8</span><p className="mt-3 font-bold leading-snug text-[#13243c]">{step}</p></li>
+          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{transactionSteps.map((step, index) => (
+            <li key={step} className="rounded-2xl border border-[#e8e4da] bg-white p-5"><span className="font-mono text-xs font-bold uppercase text-[#d9704f]">Étape {TRANSACTION_STEP_NUMBERS[index]}</span><p className="mt-3 font-bold leading-snug text-[#13243c]">{step}</p></li>
           ))}</ol>
         </div>
       </section>

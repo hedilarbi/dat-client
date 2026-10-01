@@ -2,6 +2,8 @@ import React from 'react';
 
 interface VerticalStepProps {
   stepNumber: number;
+  // Numéro affiché quand il diffère du rang (sous-étapes 3.1, 3.2, 3.3)
+  stepLabel?: string;
   title: string;
   isOpen: boolean;
   isCurrent: boolean;
@@ -14,6 +16,7 @@ interface VerticalStepProps {
 
 export default function VerticalStep({
   stepNumber,
+  stepLabel,
   title,
   isOpen,
   isCurrent,
@@ -51,7 +54,7 @@ export default function VerticalStep({
             outlineColor: isCurrent ? '#d9704f' : '#2f6f4f'
           }}
         >
-          {isCompleted && !isCurrent ? '✓' : stepNumber}
+          {isCompleted && !isCurrent ? '✓' : (stepLabel ?? stepNumber)}
         </button>
         {!isLast && (
           <div

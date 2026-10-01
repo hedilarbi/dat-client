@@ -8,6 +8,7 @@ import { getBuyingPaths, localizedPath, useLanguage } from '../../i18n';
 import StampReminderBanner from '../../components/StampReminderBanner';
 import StatCard from '../../components/StatCard';
 import { formatEuros } from '../../lib/format';
+import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
 import { UnderReviewNotice, SuspendedNotice } from '../../components/RegistrationStatusNotices';
 import Spinner from '../../components/Spinner';
 
@@ -115,7 +116,8 @@ export default function BuyerDashboardPage() {
           </h2>
           <div className="grid gap-4">
             {ongoingSales.map(sale => {
-              const isBuyerTurn = sale.currentStep === 1 || sale.currentStep === 3 || sale.currentStep === 5 || sale.currentStep === 6;
+              // Action attendue de l'acheteur, calculée par le serveur (null : il attend le vendeur)
+              const isBuyerTurn = Boolean(sale.pendingAction);
               const showPaymentCountdown = sale.currentStep === 1 || sale.currentStep === 2;
               const remaining = showPaymentCountdown ? timeLeft(sale.currentStepDueAt) : null;
               return (
@@ -136,19 +138,14 @@ export default function BuyerDashboardPage() {
                         <span className="hidden sm:inline">•</span>
                       )}
                       {sale.currentStep != null && sale.stepCount != null && (
-                        <span>{t('dashboard.step', { current: String(sale.currentStep), total: String(sale.stepCount) })}</span>
+                        <span>{t('dashboard.step', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}</span>
                       )}
                     </div>
                     <div className="mt-2">
-                      {isBuyerTurn && sale.stepKey ? (
+                      {isBuyerTurn ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#13243c] px-2.5 py-1 text-[11px] font-bold text-white">
                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          {sale.currentStep === 3 ? t('dashboard.awaitingYourSignature') : t(`sales.step.${sale.stepKey}`)}
-                        </span>
-                      ) : sale.currentStep === 8 ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a] px-2.5 py-1 text-[11px] font-bold text-white">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          {t('dashboard.handoverPapersReady')}
+                          {t(`saleAction.${sale.pendingAction}`)}
                         </span>
                       ) : (
                         <span className="text-[12px] text-[#8a8270]">{t('dashboard.awaitingSeller')}</span>

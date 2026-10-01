@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { apiRequest } from '../api';
+import React from 'react';
 import { useLanguage } from '../i18n';
 
 type Side = 'seller' | 'buyer';
@@ -15,12 +14,10 @@ interface EsignatureStepProps {
   isHistorical: boolean;
   // Retour depuis la plateforme de signature (?signature=retour), avant confirmation par OpenAPI
   returnedFromSigning: boolean;
-  // Remplace le bouton de signature quand un prérequis manque (tampon de l'acheteur)
-  blocker?: React.ReactNode;
 }
 
 /**
- * Étape 3 : signature électronique par les deux parties sur la plateforme OpenAPI.
+ * Étape 3.3 : signature électronique par les deux parties sur la plateforme OpenAPI.
  * Le premier signataire y voit « en attente des autres signataires » sans savoir s'il doit
  * attendre : ce bloc montre où en est chacun et lui confirme qu'il n'a plus rien à faire.
  */
@@ -31,7 +28,6 @@ export default function EsignatureStep({
   buyerSignedAt,
   isHistorical,
   returnedFromSigning,
-  blocker,
 }: EsignatureStepProps) {
   const { t } = useLanguage();
   const otherSide: Side = side === 'seller' ? 'buyer' : 'seller';
@@ -84,7 +80,7 @@ export default function EsignatureStep({
 
               <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">{t('esign.instructions')}</p>
 
-              {blocker || (signUrl ? (
+              {signUrl ? (
                 <a
                   href={signUrl}
                   target="_blank"
@@ -95,7 +91,7 @@ export default function EsignatureStep({
                 </a>
               ) : (
                 <p className="text-[13px] italic text-[#5a5e66]">{t('esign.linkPending')}</p>
-              ))}
+              )}
 
               {!otherSignedAt && (
                 <div className="mt-4 border-t border-[#eceadf] pt-3">
@@ -113,36 +109,4 @@ export default function EsignatureStep({
       )}
     </div>
   );
-}
-
-/**
- * Tient l'étape 3 à jour sans rechargement : la signature se fait dans un autre onglet, on relit
- * donc l'avancement à l'affichage, au retour sur l'onglet, puis toutes les 30 secondes tant que
- * la page est visible. La vente passe ainsi d'elle-même à l'étape suivante.
- */
-export function useEsignatureSync(saleId: string | undefined, active: boolean, refresh: () => Promise<unknown>) {
-  useEffect(() => {
-    if (!saleId || !active) return;
-    let running = false;
-
-    const sync = () => {
-      if (running || document.visibilityState !== 'visible') return;
-      running = true;
-      apiRequest(`/sales/${saleId}/esignature/sync`, { method: 'POST' })
-        .then(() => refresh())
-        // En cas d'échec, la page garde le dernier état connu et réessaie au prochain passage.
-        .catch(() => {})
-        .finally(() => { running = false; });
-    };
-
-    sync();
-    const timer = window.setInterval(sync, 30_000);
-    document.addEventListener('visibilitychange', sync);
-    window.addEventListener('focus', sync);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', sync);
-      window.removeEventListener('focus', sync);
-    };
-  }, [saleId, active, refresh]);
 }

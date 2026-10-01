@@ -17,6 +17,7 @@ import StampReminderBanner from '../../components/StampReminderBanner';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, type Rejection } from '../../components/RegistrationStatusNotices';
 import TopOffers from '../../components/TopOffers';
 import { formatEuros } from '../../lib/format';
+import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
 import { formatTimeLeft } from '../../lib/currentSales';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
 
@@ -36,7 +37,8 @@ interface DashboardSale {
   stepCount?: number | null;
   stepKey?: string | null;
   sellerDecisionDueAt?: string | null;
-  /** Vrai quand la vente attend une action du vendeur (cf. SELLER_ACTION_STEPS côté serveur). */
+  /** Action attendue du vendeur, calculée par le serveur (cf. pendingActionFor) ; null s'il attend l'acheteur. */
+  pendingAction?: string | null;
   awaitingSeller?: boolean;
   vehicle: { id: string; brand: string; model: string; photoUrl?: string | null } | null;
   session: { name: string } | null;
@@ -517,14 +519,6 @@ export default function VendeurTableauDeBordPage() {
 
   const pendingDossiers = dossiers.filter((d) => d.status === 'en_attente_validation');
 
-  /** Ce que le vendeur doit faire, selon l'étape où la vente est bloquée. */
-  const sellerActionLabel = (stepKey?: string | null) => ({
-    virement_carte_grise: t('vendeurDashboard.actionConfirmTransfer'),
-    signature_electronique: t('dashboard.awaitingYourSignature'),
-    tampon_vendeur: t('vendeurDashboard.actionUploadCertificate'),
-    validation_vendeur: t('vendeurDashboard.actionValidateCertificate'),
-    enlevement: t('vendeurDashboard.actionEnterCode'),
-  }[stepKey || ''] || null);
 
 
   return (
@@ -659,7 +653,7 @@ export default function VendeurTableauDeBordPage() {
 
           <div className="grid gap-4">
             {ongoingSorted.map((sale) => {
-              const action = sellerActionLabel(sale.stepKey);
+              const action = sale.pendingAction ? t(`saleAction.${sale.pendingAction}`) : null;
               return (
                 <div key={sale.id} className={`flex flex-col sm:flex-row items-center gap-4 bg-white border-2 ${sale.awaitingSeller ? 'border-[#d9704f] shadow-[0_4px_12px_rgba(217,112,79,0.15)]' : 'border-[#eceadf] shadow-sm'} rounded-[12px] p-4 transition-transform hover:-translate-y-1`}>
                   {sale.vehicle?.photoUrl && (
@@ -678,7 +672,7 @@ export default function VendeurTableauDeBordPage() {
                         <span className="hidden sm:inline">•</span>
                       )}
                       {sale.currentStep != null && sale.stepCount != null && (
-                        <span>{t('dashboard.step', { current: String(sale.currentStep), total: String(sale.stepCount) })}</span>
+                        <span>{t('dashboard.step', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}</span>
                       )}
                     </div>
                     <div className="mt-2">
@@ -725,7 +719,8 @@ export default function VendeurTableauDeBordPage() {
           </div>
           <div className="grid gap-4">
             {ongoingPurchases.map((purchase) => {
-              const isBuyerTurn = [1, 3, 5, 6].includes(Number(purchase.currentStep));
+              // Achat du vendeur : action attendue de lui en tant qu'acheteur, calculée par le serveur
+              const isBuyerTurn = Boolean(purchase.pendingAction);
               return (
                 <div key={purchase.id} className={`flex flex-col sm:flex-row items-center gap-4 bg-white border-2 ${isBuyerTurn ? 'border-[#d9704f] shadow-[0_4px_12px_rgba(217,112,79,0.15)]' : 'border-[#eceadf] shadow-sm'} rounded-[12px] p-4 transition-transform hover:-translate-y-1`}>
                   {purchase.vehicle?.photoUrl && (
@@ -744,19 +739,14 @@ export default function VendeurTableauDeBordPage() {
                         <span className="hidden sm:inline">•</span>
                       )}
                       {purchase.currentStep != null && purchase.stepCount != null && (
-                        <span>{t('dashboard.step', { current: String(purchase.currentStep), total: String(purchase.stepCount) })}</span>
+                        <span>{t('dashboard.step', { current: stepDisplayNumber(purchase.currentStep), total: String(DISPLAYED_STEP_COUNT) })}</span>
                       )}
                     </div>
                     <div className="mt-2">
-                      {isBuyerTurn && purchase.stepKey ? (
+                      {isBuyerTurn ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#13243c] px-2.5 py-1 text-[11px] font-bold text-white">
                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          {purchase.currentStep === 3 ? t('dashboard.awaitingYourSignature') : t(`sales.step.${purchase.stepKey}`)}
-                        </span>
-                      ) : purchase.currentStep === 8 ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#16a34a] px-2.5 py-1 text-[11px] font-bold text-white">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                          {t('dashboard.handoverPapersReady')}
+                          {t(`saleAction.${purchase.pendingAction}`)}
                         </span>
                       ) : (
                         <span className="text-[12px] text-[#8a8270]">{t('dashboard.awaitingSeller')}</span>

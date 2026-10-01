@@ -9,6 +9,7 @@ import { getBuyingPaths, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../components/RegistrationStatusNotices';
 import { formatEuros } from '../../../lib/format';
+import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../../lib/saleSteps';
 import Spinner from '../../../components/Spinner';
 
 interface WonSale {
@@ -18,6 +19,8 @@ interface WonSale {
   currentStep: number;
   stepKey: string | null;
   stepCount: number;
+  // Action attendue de l'acheteur, calculée par le serveur ; null quand il attend le vendeur
+  pendingAction: string | null;
   currentStepDueAt: string | null;
   wonAt: string | null;
   closedAt: string | null;
@@ -161,8 +164,8 @@ function SaleCard({
   }, []);
 
   const remaining = timeLeft(sale.currentStepDueAt);
-  const stepName = sale.currentStep === 3
-    ? t('dashboard.awaitingYourSignature')
+  const stepName = sale.pendingAction
+    ? t(`saleAction.${sale.pendingAction}`)
     : sale.stepKey ? t(`sales.step.${sale.stepKey}`) : '';
 
   return (
@@ -188,9 +191,9 @@ function SaleCard({
             <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sale.status === 'cloturee' ? 'bg-[#e9f4ee] text-[#2f6f4f]' : 'bg-[#fdf6f2] text-[#d9704f] border border-[#f7d6cb]'}`}>
               {sale.status === 'cloturee' ? t('sales.filterClosed') : t('sales.filterOngoing')}
             </span>
-            {sale.status === 'en_cours' && sale.currentStep === 3 && (
+            {sale.status === 'en_cours' && sale.pendingAction && (
               <span className="rounded-full bg-[#13243c] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                {t('dashboard.awaitingYourSignature')}
+                {t(`saleAction.${sale.pendingAction}`)}
               </span>
             )}
           </div>
@@ -245,11 +248,11 @@ function SaleCard({
         <div className="border-t border-[#efece3] bg-[#faf9f5] px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#13243c] text-[11px] font-bold text-white font-mono">
-              {sale.currentStep}
+              {stepDisplayNumber(sale.currentStep)}
             </span>
             <div>
               <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#d9704f]">
-                Étape {sale.currentStep} sur {sale.stepCount}
+                {t('saleDetail.stepOf', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
               </div>
               <div className="text-[13px] font-bold text-[#13243c]">
                 {stepName}

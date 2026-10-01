@@ -1,17 +1,27 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../api';
-import { uploadFile } from '../../../lib/uploadFile';
 import { useUser } from '../../../components/LayoutWrapper';
-import { getRoleHomePath, localizedPath, useLanguage } from '../../../i18n';
+import { getRoleHomePath, getRoleStampPath, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import ConfirmModal from '../../../components/ConfirmModal';
 import VerticalStep from '../../../components/VerticalStep';
-import EsignatureStep, { useEsignatureSync } from '../../../components/EsignatureStep';
+import EsignatureStep from '../../../components/EsignatureStep';
+import SaleDocumentsReview from '../../../components/SaleDocumentsReview';
+import SignedDocuments from '../../../components/SignedDocuments';
+import StampRequiredBanner from '../../../components/StampRequiredBanner';
+import { useSaleAutoRefresh } from '../../../components/useSaleAutoRefresh';
 import { formatEuros } from '../../../lib/format';
+import {
+  DISPLAYED_STEP_COUNT,
+  STEP,
+  stepDisplayNumber,
+  type SaleDocumentsState,
+  type SaleEsignatureState,
+} from '../../../lib/saleSteps';
 import Spinner from '../../../components/Spinner';
 
 interface SellerSaleDetail {
@@ -30,19 +40,9 @@ interface SellerSaleDetail {
   commissionPaidAt: string | null;
   documentsDelivery: 'main_propre' | 'poste' | null;
   transferConfirmedAt: string | null;
-  certificate: {
-    url: string | null; generatedAt: string | null; 
-    sellerSignedUrl: string | null; sellerSignedAt: string | null;
-    signedUrl: string | null; signedAt: string | null;
-    validatedAt: string | null;
-    buyerValidatedAt: string | null;
-    lastRejection: { reason: string; comment?: string; rejectedAt?: string; rejectedBy?: string; url?: string; createdAt?: string } | null;
-    rejectionCount: number;
-  };
-  purchaseDeclaration: { url: string | null; generatedAt: string | null };
+  documents: SaleDocumentsState;
+  esignature: SaleEsignatureState | null;
   bonEnlevement: { url: string | null; generatedAt: string | null } | null;
-  esignature: { status: string | null; sellerUrl?: string | null; initiatedAt: string | null; sellerSignedAt: string | null; buyerSignedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
-  handover: { declarationUrl: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
   vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null; registrationCardAvailable: boolean | null; formulaNumber?: string | null; registrationCardMissingMotif?: string | null; } | null;
@@ -60,19 +60,7 @@ interface SellerSaleDetail {
 const SELLER_STEP_LABELS: Record<string, string> = {
   commission: 'sellerSale.step.commission',
   virement_carte_grise: 'sellerSale.step.virement_carte_grise',
-  signature_electronique: 'sellerSale.step.signature_electronique',
-  tampon_vendeur: 'sellerSale.step.tampon_vendeur',
-  validation_acheteur: 'sellerSale.step.validation_acheteur',
-  tampon_acheteur: 'sellerSale.step.tampon_acheteur',
-  validation_vendeur: 'sellerSale.step.validation_vendeur',
-  enlevement: 'sellerSale.step.enlevement',
 };
-
-// Miroir de CERTIFICATE_REJECTION_REASONS (server/models/sale.model.js)
-const REJECTION_REASONS = [
-  'tampon_manquant', 'document_illisible', 'signature_manquante',
-  'document_incomplet', 'mauvais_document', 'mauvais_tampon', 'autre',
-] as const;
 
 /** Compte à rebours lisible ; null une fois l'échéance dépassée. */
 function timeLeft(dueAt: string | null): string | null {
@@ -97,28 +85,19 @@ export default function SellerSaleDetailPage() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Étape 2 : confirmation du virement ; étape 3.1 : données complémentaires de la carte grise
   const [transferConfirmationOpen, setTransferConfirmationOpen] = useState(false);
+  const [registrationCardOpen, setRegistrationCardOpen] = useState(false);
+  const registrationCardShownRef = useRef(false);
   const [confirming, setConfirming] = useState(false);
   const [formulaNumberInput, setFormulaNumberInput] = useState('');
   const [motifAbsenceInput, setMotifAbsenceInput] = useState('');
-  // Étape 4 : validation du certificat signé déposé par l'acheteur
-  const [validateOpen, setValidateOpen] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectComment, setRejectComment] = useState('');
-  const [rejecting, setRejecting] = useState(false);
-  // Étape 5 : saisie du code de remise communiqué par l'acheteur
-  
+
   const [, setClock] = useState(0);
 
   // Vue historique
   const [viewedStepIndex, setViewedStepIndex] = useState<number | null>(null);
 
-  // Upload certificat par le vendeur (Étape 3)
-  const [signedFile, setSignedFile] = useState<File | null>(null);
-  const [submittingCertificate, setSubmittingCertificate] = useState(false);
   const [offerActionLoading, setOfferActionLoading] = useState<string | null>(null);
   // Offre en attente de confirmation : choisir un acheteur avant la clôture est irréversible
   const [offerToAccept, setOfferToAccept] = useState<{ id: string; amount: number } | null>(null);
@@ -145,13 +124,27 @@ export default function SellerSaleDetailPage() {
       .finally(() => setLoaded(true));
   }, [params.id, t, user]);
 
-  // Étape 3 : la page de retour de la plateforme de signature ajoute ?signature=retour
+  // Étape 3 : l'acheteur peut déposer son tampon, vérifier ou signer à tout moment. La page de
+  // retour de la plateforme de signature ajoute ?signature=retour.
   const returnedFromSigning = searchParams.get('signature') === 'retour';
   const refreshSale = useCallback(async () => {
     const res = await apiRequest(`/sales/seller/${params.id}`);
     setSale(res.sale);
   }, [params.id]);
-  useEsignatureSync(sale?.id, sale?.status === 'en_cours' && sale.currentStep === 3, refreshSale);
+  useSaleAutoRefresh(
+    sale?.id,
+    sale?.status === 'en_cours' && sale.currentStep >= STEP.PREPARATION,
+    refreshSale,
+  );
+
+  // Étape 3.1 : le modal de la carte grise s'ouvre de lui-même, une fois par visite
+  useEffect(() => {
+    if (registrationCardShownRef.current || !sale) return;
+    if (sale.status === 'en_cours' && sale.currentStep === STEP.PREPARATION && !sale.documents.registrationCardSubmittedAt) {
+      registrationCardShownRef.current = true;
+      setRegistrationCardOpen(true);
+    }
+  }, [sale]);
 
   // Rafraîchit le compte à rebours de l'échéance
   useEffect(() => {
@@ -167,8 +160,11 @@ export default function SellerSaleDetailPage() {
       const res = await apiRequest(`/sales/${sale.id}/transfer-received`, { method: 'POST' });
       setSale(res.sale);
       setMessage(res.message || '');
+      setViewedStepIndex(null);
       setTransferConfirmationOpen(false);
-      setConfirmOpen(true);
+      // La vente passe à l'étape 3.1 : la carte grise est demandée tout de suite
+      registrationCardShownRef.current = true;
+      setRegistrationCardOpen(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
@@ -176,7 +172,7 @@ export default function SellerSaleDetailPage() {
     }
   };
 
-  const handleProcessRegistrationCard = async () => {
+  const handleSubmitRegistrationCard = async () => {
     if (!sale) return;
     setConfirming(true);
     setError('');
@@ -187,7 +183,7 @@ export default function SellerSaleDetailPage() {
       } else if (sale.vehicle?.registrationCardAvailable === false) {
         payload.registrationCardMissingMotif = motifAbsenceInput.trim();
       } else {
-        setError("La disponibilité de la carte grise n'est pas renseignée dans le dossier du véhicule.");
+        setError(t('sellerSale.registrationCardUnknown'));
         return;
       }
 
@@ -197,78 +193,12 @@ export default function SellerSaleDetailPage() {
       });
       setSale(res.sale);
       setMessage(res.message || '');
-      setConfirmOpen(false);
+      setViewedStepIndex(null);
+      setRegistrationCardOpen(false);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
       setConfirming(false);
-    }
-  };
-
-  const handleValidateCertificate = async () => {
-    if (!sale) return;
-    setValidating(true);
-    setError('');
-    try {
-      const res = await apiRequest(`/sales/${sale.id}/certificate/validate`, { method: 'POST' });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setValidateOpen(false);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
-    } finally {
-      setValidating(false);
-    }
-  };
-
-  const handleSubmitSellerCertificate = async () => {
-    if (!sale) return;
-    if (!signedFile) {
-      setError(t('saleDetail.certificateRequired'));
-      return;
-    }
-
-    setSubmittingCertificate(true);
-    setError('');
-    try {
-      const url = await uploadFile(signedFile, 'ventes/documents');
-      const res = await apiRequest(`/sales/${sale.id}/certificate/seller`, {
-        method: 'POST',
-        body: JSON.stringify({ url, filename: signedFile.name }),
-      });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setSignedFile(null);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
-    } finally {
-      setSubmittingCertificate(false);
-    }
-  };
-
-  const handleRejectCertificate = async () => {
-    if (!sale) return;
-    if (!rejectReason) {
-      setError(t('sellerSale.rejectReasonRequired'));
-      return;
-    }
-
-    setRejecting(true);
-    setError('');
-    try {
-      const res = await apiRequest(`/sales/${sale.id}/certificate/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: rejectReason, comment: rejectComment.trim() || undefined }),
-      });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setRejectOpen(false);
-      setRejectReason('');
-      setRejectComment('');
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
-    } finally {
-      setRejecting(false);
     }
   };
 
@@ -329,6 +259,8 @@ export default function SellerSaleDetailPage() {
     sale.vehicle?.mileage != null ? `${sale.vehicle.mileage.toLocaleString(locale)} km` : null,
     sale.session?.name,
   ].filter(Boolean).join(' · ');
+  // La page tampon ramène le vendeur sur cette vente une fois son tampon déposé
+  const stampHref = `${localizedPath(getRoleStampPath('vendeur'), language)}?returnTo=${encodeURIComponent(localizedPath(`/vendeur/ventes/${params.id}`, language))}`;
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px]">
@@ -361,31 +293,6 @@ export default function SellerSaleDetailPage() {
           </div>
         )}
       </div>
-
-      {sale.currentStep >= 3 && sale.currentStep < 8 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
-        <section className="mb-6 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
-          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-            Documents de vente
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
-              <a href={sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>{sale.esignature?.buyerStampedUrl ? 'Dossier signé avec les deux tampons' : sale.esignature?.sellerStampedUrl ? 'Dossier signé avec tampon vendeur' : sale.esignature?.signedDocumentUrl ? 'Dossier signé sans tampon' : 'Certificat de cession'}</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-            {sale.purchaseDeclaration.url && (
-              <a href={sale.purchaseDeclaration.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>Déclaration d’achat préremplie</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-            {sale.esignature?.auditUrl && (
-              <a href={sale.esignature.auditUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>Piste d’audit de signature</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-          </div>
-        </section>
-      )}
 
       {sale.buyer && (
         <div className="mb-6 overflow-hidden rounded-[14px] border border-[#eceadf] bg-white">
@@ -457,17 +364,10 @@ export default function SellerSaleDetailPage() {
           {sale.status === 'cloturee' && viewedStepIndex === null && (
             <section className="mb-6 rounded-[14px] border border-[#cbe3d5] bg-[#e9f4ee] p-5">
               <h2 className="font-heading text-[18px] font-bold uppercase text-[#2f6f4f]">{t('sellerSale.closedTitle')}</h2>
-              <p className="mt-1 text-sm text-[#2f6f4f]">{t('sellerSale.closedText')}</p>
-              {sale.handover.confirmedAt && (
-                <p className="mt-1 text-[12px] text-[#2f6f4f]">
-                  {t('sellerSale.handoverDone', { date: formatDate(sale.handover.confirmedAt) })}
-                </p>
-              )}
-              {sale.bonEnlevement?.url && (
-                <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[13px] font-bold text-[#2f6f4f] hover:underline">
-                  Télécharger le bon d’enlèvement
-                </a>
-              )}
+              <p className="mt-1 mb-4 text-sm text-[#2f6f4f]">
+                {sale.closedAt ? t('saleDocs.closedOn', { date: formatDate(sale.closedAt) }) : t('sellerSale.closedText')}
+              </p>
+              <SignedDocuments esignature={sale.esignature} bonEnlevementUrl={sale.bonEnlevement?.url} />
             </section>
           )}
 
@@ -475,7 +375,7 @@ export default function SellerSaleDetailPage() {
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('sellerSale.progressTitle')}</h2>
               <span className="text-[12px] font-semibold text-[#13243c]">
-                {t('sellerSale.stepOf', { current: String(sale.currentStep), total: String(sale.stepCount) })}
+                {t('sellerSale.stepOf', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
               </span>
             </div>
 
@@ -488,7 +388,7 @@ export default function SellerSaleDetailPage() {
                   <p className="text-sm font-semibold text-[#2f6f4f]">En main propre</p>
                 ) : (
                   <div>
-                    <p className="text-sm font-semibold text-[#13243c]">Par voie postale à l'adresse de l'acheteur :</p>
+                    <p className="text-sm font-semibold text-[#13243c]">Par voie postale à l&apos;adresse de l&apos;acheteur :</p>
                     {sale.buyer?.address ? (
                       <address className="mt-1 text-[13px] text-[#5a5e66] not-italic leading-relaxed">
                         {sale.buyer.address.street && <div>{sale.buyer.address.street}</div>}
@@ -496,7 +396,7 @@ export default function SellerSaleDetailPage() {
                         {sale.buyer.address.country && <div>{sale.buyer.address.country}</div>}
                       </address>
                     ) : (
-                      <p className="mt-1 text-[13px] text-red-500 italic">L'adresse de l'acheteur est indisponible.</p>
+                      <p className="mt-1 text-[13px] text-red-500 italic">L&apos;adresse de l&apos;acheteur est indisponible.</p>
                     )}
                   </div>
                 )}
@@ -510,13 +410,13 @@ export default function SellerSaleDetailPage() {
                 const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
                 const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
                 const isHistorical = isCompleted;
-                const renderStepNumber = stepNumber;
                 const isLast = index === sale.steps.length - 1;
 
                 return (
                   <VerticalStep
                     key={stepKey}
                     stepNumber={stepNumber}
+                    stepLabel={stepDisplayNumber(stepNumber)}
                     title={SELLER_STEP_LABELS[stepKey] ? t(SELLER_STEP_LABELS[stepKey]) : t(`sales.step.${stepKey}`)}
                     isOpen={isOpen}
                     isCurrent={isCurrent}
@@ -533,78 +433,85 @@ export default function SellerSaleDetailPage() {
                     )}
                     {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('sellerSale.todo')}</h3>}
 
-
-                {renderStepNumber === 1 && (
-                  <p className="text-sm leading-6 text-[#5a5e66]">
-                    {isHistorical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
-                  </p>
-                )}
-
-                {renderStepNumber === 2 && (isHistorical ? (
-                  <>
-                    <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.step2Done')}</p>
-                    <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
-                      <InfoRow label={t('sellerSale.step2History.amount')} value={sale.amount != null ? formatEuros(sale.amount, language) : ''} />
-                      <InfoRow label={t('sellerSale.step2History.confirmedAt')} value={sale.transferConfirmedAt ? formatDate(sale.transferConfirmedAt) : ''} />
-                      <InfoRow label={t('sellerSale.step2History.formulaNumber')} value={sale.vehicle?.formulaNumber || ''} />
-                      <InfoRow label={t('sellerSale.step2History.missingMotif')} value={sale.vehicle?.registrationCardMissingMotif || ''} />
-                    </dl>
-                  </>
-                ) : (
-                  <>
-                    <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                      {sale.transferConfirmedAt
-                        ? 'Étape 2,5 — Virement confirmé. Renseignez maintenant les données de la carte grise avant la génération des documents.'
-                        : t('sellerSale.step2Waiting')}
-                    </p>
-
-                    {sale.amount != null && (
-                      <div className="mb-4 flex items-baseline justify-between gap-3 rounded-[10px] bg-[#13243c] px-4 py-3.5">
-                        <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#c3cedd]">{t('sellerSale.amountExpected')}</span>
-                        <span className="font-mono text-lg font-bold text-white">{formatEuros(sale.amount, language)}</span>
-                      </div>
-                    )}
-
-                    <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                      {sale.transferConfirmedAt ? 'La vente restera à cette étape tant que le traitement de la carte grise et la génération des documents ne seront pas terminés.' : t('sellerSale.step2Note')}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={sale.transferConfirmedAt ? () => setConfirmOpen(true) : () => setTransferConfirmationOpen(true)}
-                      disabled={confirming}
-                      className="h-12 w-full rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10 cursor-pointer"
-                    >
-                      {confirming ? t('sellerSale.confirming') : sale.transferConfirmedAt ? 'Continuer le traitement carte grise' : t('sellerSale.confirmTransfer')}
-                    </button>
-                    <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
-                  </>
-                ))}
-
-                {(renderStepNumber === 3 || renderStepNumber === 4) && (
-                  <>
-                    {!isHistorical && sale.transferConfirmedAt && (
-                      <p className="mb-3 rounded-[10px] border-l-4 border-[#2f6f4f] bg-[#e9f4ee] p-3.5 text-sm leading-6 text-[#2f6f4f]">
-                        {t('sellerSale.transferConfirmed', { date: formatDate(sale.transferConfirmedAt) })}
+                    {stepNumber === STEP.COMMISSION && (
+                      <p className="text-sm leading-6 text-[#5a5e66]">
+                        {isHistorical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
                       </p>
                     )}
-                    
-                    {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'buyer' && (
-                      <div className="mb-4 rounded-[10px] border-l-4 border-[#9a3b2f] bg-[#fdece4] p-3.5">
-                        <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#9a3b2f]">
-                          {t('sellerSale.buyerRejection')}
-                        </div>
-                        <p className="mt-1.5 text-sm leading-6 text-[#b04a2c]">
-                          {t(`reason.${sale.certificate.lastRejection.reason}`)}
-                        </p>
-                        {sale.certificate.lastRejection.comment && (
-                          <p className="mt-1 text-sm leading-6 text-[#b04a2c]">
-                            {sale.certificate.lastRejection.comment}
-                          </p>
+
+                    {stepNumber === STEP.VIREMENT && (isHistorical ? (
+                      <>
+                        <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.step2Done')}</p>
+                        <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
+                          <InfoRow label={t('sellerSale.step2History.amount')} value={sale.amount != null ? formatEuros(sale.amount, language) : ''} />
+                          <InfoRow label={t('sellerSale.step2History.confirmedAt')} value={sale.transferConfirmedAt ? formatDate(sale.transferConfirmedAt) : ''} />
+                        </dl>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.step2Waiting')}</p>
+
+                        {sale.amount != null && (
+                          <div className="mb-4 flex items-baseline justify-between gap-3 rounded-[10px] bg-[#13243c] px-4 py-3.5">
+                            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#c3cedd]">{t('sellerSale.amountExpected')}</span>
+                            <span className="font-mono text-lg font-bold text-white">{formatEuros(sale.amount, language)}</span>
+                          </div>
                         )}
+
+                        <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                          {t('sellerSale.step2Note')}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setTransferConfirmationOpen(true)}
+                          disabled={confirming}
+                          className="h-12 w-full cursor-pointer rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 disabled:opacity-50 sm:w-auto sm:px-10"
+                        >
+                          {confirming ? t('sellerSale.confirming') : t('sellerSale.confirmTransfer')}
+                        </button>
+                        <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
+                      </>
+                    ))}
+
+                    {stepNumber === STEP.PREPARATION && (isHistorical ? (
+                      <>
+                        <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.preparationDone')}</p>
+                        <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
+                          <InfoRow label={t('sellerSale.preparationHistory.submittedAt')} value={sale.documents.registrationCardSubmittedAt ? formatDate(sale.documents.registrationCardSubmittedAt) : ''} />
+                          <InfoRow label={t('sellerSale.preparationHistory.formulaNumber')} value={sale.vehicle?.formulaNumber || ''} />
+                          <InfoRow label={t('sellerSale.preparationHistory.missingMotif')} value={sale.vehicle?.registrationCardMissingMotif || ''} />
+                        </dl>
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-sm leading-6 text-[#5a5e66]">{t('sellerSale.preparationIntro')}</p>
+                        <button
+                          type="button"
+                          onClick={() => setRegistrationCardOpen(true)}
+                          className="btn btn-primary w-full sm:w-auto sm:px-8"
+                        >
+                          {t('sellerSale.registrationCardCta')}
+                        </button>
+                        {!sale.documents.stamps.seller && <StampRequiredBanner stampHref={stampHref} />}
                       </div>
+                    ))}
+
+                    {stepNumber === STEP.VERIFICATION && (
+                      <SaleDocumentsReview<SellerSaleDetail>
+                        saleId={sale.id}
+                        side="seller"
+                        documents={sale.documents}
+                        isHistorical={isHistorical}
+                        stampHref={stampHref}
+                        onUpdated={(updated, updateMessage) => {
+                          setSale(updated);
+                          setMessage(updateMessage);
+                          setViewedStepIndex(null);
+                        }}
+                      />
                     )}
-<h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{renderStepNumber === 3 ? 'Signature électronique des documents' : 'Tampon du vendeur'}</h3>
-                    {renderStepNumber === 3 ? (
+
+                    {stepNumber === STEP.SIGNATURE && (
                       <EsignatureStep
                         side="seller"
                         signUrl={sale.esignature?.sellerUrl}
@@ -613,257 +520,7 @@ export default function SellerSaleDetailPage() {
                         isHistorical={isHistorical}
                         returnedFromSigning={returnedFromSigning}
                       />
-                    ) : (
-                      <>
-                        <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
-                          {isHistorical 
-                            ? "Vous avez généré, signé et tamponné le certificat de cession. Les documents de cette étape sont disponibles ci-dessous." 
-                            : "Vous devez télécharger, signer et tamponner le certificat de cession généré, puis le redéposer ci-dessous. Il sera ensuite transmis à l'acheteur."}
-                        </p>
-                        
-                        {sale.certificate.url && (
-                          <a
-                            href={sale.certificate.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat généré {isHistorical ? '(avant signature)' : ''}</span>
-                            {sale.certificate.generatedAt && (
-                              <span className="text-[11px] text-[#5a5e66]">
-                                Généré le {formatDate(sale.certificate.generatedAt)}
-                              </span>
-                            )}
-                          </a>
-                        )}
-
-                        {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'buyer' && sale.certificate.lastRejection.url && (
-                          <a
-                            href={sale.certificate.lastRejection.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-red-300 bg-white px-4 py-3 transition hover:bg-[#fdece4] sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <span className="text-sm font-bold text-[#b91c1c]">↓ Télécharger le certificat refusé</span>
-                            <span className="text-[11px] text-[#b91c1c]">
-                              Refusé le {sale.certificate.lastRejection.createdAt && formatDate(sale.certificate.lastRejection.createdAt)}
-                            </span>
-                          </a>
-                        )}
-
-                        {isHistorical && sale.certificate.sellerSignedUrl && (
-                          <a
-                            href={sale.certificate.sellerSignedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#2f6f4f] bg-[#e9f4ee] px-4 py-3 transition hover:bg-[#d1e8da] sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <span className="text-sm font-bold text-[#2f6f4f]">↓ Télécharger votre certificat signé</span>
-                            {sale.certificate.sellerSignedAt && (
-                              <span className="text-[11px] text-[#2f6f4f]">
-                                Déposé le {formatDate(sale.certificate.sellerSignedAt)}
-                              </span>
-                            )}
-                          </a>
-                        )}
-
-                        {!isHistorical && (
-                          <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
-                            <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-                              Déposer le dossier signé et tamponné
-                            </div>
-                            <p className="mb-3 text-[12px] text-[#5a5e66]">Format PDF ou image lisible (JPG, PNG).</p>
-
-                            <label className="mb-3 flex cursor-pointer flex-col gap-2 sm:flex-row sm:items-center">
-                              <span className="inline-flex h-10 items-center rounded-[8px] border border-[#dcd7cb] bg-white px-4 text-[12px] font-bold uppercase text-[#13243c] transition hover:bg-[#f1efe8]">
-                                Choisir un fichier
-                              </span>
-                              <input
-                                type="file"
-                                accept="application/pdf,image/*"
-                                className="hidden"
-                                onChange={(event) => setSignedFile(event.target.files?.[0] || null)}
-                              />
-                              <span className="truncate text-[13px] text-[#5a5e66]">{signedFile?.name || '—'}</span>
-                            </label>
-
-                            <button
-                              type="button"
-                              onClick={handleSubmitSellerCertificate}
-                              disabled={submittingCertificate || !signedFile}
-                              className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-                            >
-                              {submittingCertificate ? 'Envoi...' : 'Envoyer le certificat'}
-                            </button>
-                          </div>
-                        )}
-                      </>
                     )}
-                  </>
-                )}
-
-                
-                {renderStepNumber === 5 && (
-                  <>
-                    <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical ? "L'acheteur a validé votre certificat de cession." : t('sellerSale.stepValidationWaiting')}
-                    </p>
-
-                    {isHistorical && sale.certificate.buyerValidatedAt && (
-                      <div className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#2f6f4f] bg-[#e9f4ee] px-4 py-3 transition hover:bg-[#d1e8da] sm:flex-row sm:items-center sm:justify-between">
-                        <span className="text-sm font-bold text-[#2f6f4f]">✓ Certificat vendeur validé</span>
-                        <span className="text-[11px] text-[#2f6f4f]">
-                          Le {new Date(sale.certificate.buyerValidatedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-{renderStepNumber === 6 && (
-                  <>
-                    <p className="mb-3 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical ? "L'acheteur a signé et redéposé le certificat de cession." : t('sellerSale.step3Waiting')}
-                    </p>
-                    
-                    {!isHistorical && sale.certificate.rejectionCount > 0 && (
-                      <p className="mb-3 text-[12px] font-semibold text-[#b04a2c]">
-                        {t('sellerSale.previousRejections', { count: String(sale.certificate.rejectionCount) })}
-                        {sale.certificate.lastRejection && ` · ${t(`reason.${sale.certificate.lastRejection.reason}`)}`}
-                      </p>
-                    )}
-
-                    {isHistorical && sale.certificate.signedUrl && (
-                      <a
-                        href={sale.certificate.signedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat de l'acheteur</span>
-                        {sale.certificate.signedAt && (
-                          <span className="text-[11px] text-[#5a5e66]">
-                            Déposé le {formatDate(sale.certificate.signedAt)}
-                          </span>
-                        )}
-                      </a>
-                    )}
-                  </>
-                )}
-
-                {renderStepNumber === 7 && (
-                  <>
-                    <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical ? "Vous avez validé le document de l'acheteur." : t('sellerSale.step4Waiting')}
-                    </p>
-
-                    {(sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl) && (
-                      <a
-                        href={sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le dossier signé et tamponné</span>
-                        {sale.certificate.signedAt && (
-                          <span className="text-[11px] text-[#5a5e66]">
-                            {t('sellerSale.uploadedOn', { date: formatDate(sale.certificate.signedAt) })}
-                          </span>
-                        )}
-                      </a>
-                    )}
-
-                    {!isHistorical && (sale.esignature?.buyerStampedUrl || sale.certificate.signedUrl) ? (
-                      <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-4 sm:flex-row">
-                          <button
-                            type="button"
-                            onClick={() => setValidateOpen(true)}
-                            disabled={validating || rejecting}
-                            className="btn bg-[#2f6f4f] hover:bg-emerald-800 text-white border-transparent w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto flex-1"
-                          >
-                            {validating ? t('sellerSale.validating') : t('sellerSale.validateCertificate')}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => { setRejectOpen(!rejectOpen); if (rejectOpen) { setRejectReason(''); setRejectComment(''); } }}
-                            disabled={validating || rejecting}
-                            className="btn bg-[#fdece4] border-[#9a3b2f] text-[#9a3b2f] hover:bg-[#9a3b2f] hover:text-white w-full sm:w-auto flex-1 transition"
-                          >
-                            {t('sellerSale.rejectCertificate')}
-                          </button>
-                        </div>
-                        <p className="text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.validateWarning')}</p>
-
-                        {rejectOpen && (
-                          <div className="rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] p-4 mt-2">
-                            <div className="mb-3 text-[13px] font-bold text-[#13243c]">{t('sellerSale.rejectTitle')}</div>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#5a5e66]">
-                                  {t('sellerSale.rejectReasonLabel')}
-                                </label>
-                                <select
-                                  value={rejectReason}
-                                  onChange={(event) => setRejectReason(event.target.value)}
-                                  className="w-full rounded-[8px] border border-[#dcd7cb] bg-white px-3 py-2 text-sm focus:border-[#13243c] focus:outline-none"
-                                >
-                                  <option value="">—</option>
-                                  {REJECTION_REASONS.map((reason) => (
-                                    <option key={reason} value={reason}>
-                                      {t(`reason.${reason}`)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#5a5e66]">
-                                  {t('sellerSale.rejectCommentLabel')}
-                                </label>
-                                <textarea
-                                  rows={2}
-                                  value={rejectComment}
-                                  onChange={(event) => setRejectComment(event.target.value)}
-                                  placeholder={t('sellerSale.rejectCommentPlaceholder')}
-                                  className="h-20 w-full resize-none rounded-[8px] border border-[#dcd7cb] bg-white px-3 py-2 text-sm focus:border-[#13243c] focus:outline-none"
-                                />
-                              </div>
-                              <p className="text-[12px] leading-5 text-[#8a4b24]">{t('sellerSale.rejectNote')}</p>
-                              <div className="flex justify-end pt-2">
-                                <button
-                                  type="button"
-                                  onClick={handleRejectCertificate}
-                                  disabled={rejecting || !rejectReason || validating}
-                                  className="btn bg-[#9a3b2f] text-white hover:bg-[#832f25]"
-                                >
-                                  {rejecting ? t('sellerSale.rejecting') : t('sellerSale.rejectConfirm')}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : !isHistorical ? (
-                      <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                        Les documents signés et tamponnés par l’acheteur ne sont pas encore disponibles.
-                      </p>
-                    ) : null}
-                  </>
-                )}
-
-                {renderStepNumber === 8 && (
-                  sale.bonEnlevement?.url && (
-                    <a
-                      href={sale.bonEnlevement.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn bg-[#e9f4ee] border-[#2f6f4f] text-[#2f6f4f] w-full sm:w-auto hover:bg-[#cbe3d5]"
-                    >
-                      Télécharger le bon d’enlèvement
-                    </a>
-                  )
-                )}
                   </VerticalStep>
                 );
               })}
@@ -883,63 +540,66 @@ export default function SellerSaleDetailPage() {
       />
 
       <ConfirmModal
-        open={confirmOpen}
-        title="Traitement de la carte grise"
+        open={registrationCardOpen}
+        title={t('sellerSale.registrationCardTitle')}
         message={
           <div className="flex flex-col gap-4">
-            {sale?.vehicle?.registrationCardAvailable === true && (
+            <p className="text-[13px] leading-5 text-[#5a5e66]">{t('sellerSale.registrationCardHelp')}</p>
+            {sale.vehicle?.registrationCardAvailable === true && (
               <div className="flex flex-col gap-2">
-                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]">
-                  Numéro de formule de la carte grise
+                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]" htmlFor="formula-number">
+                  {t('sellerSale.formulaNumberLabel')}
                 </label>
                 <div className="flex items-center">
-                  <span className="flex items-center justify-center h-10 px-3 bg-gray-100 border border-r-0 border-[#dcd7cb] rounded-l-[8px] text-sm text-gray-500 font-mono">
+                  <span className="flex h-10 items-center justify-center rounded-l-[8px] border border-r-0 border-[#dcd7cb] bg-gray-100 px-3 font-mono text-sm text-gray-500">
                     20
                   </span>
                   <input
+                    id="formula-number"
                     type="text"
                     value={formulaNumberInput}
                     onChange={(e) => setFormulaNumberInput(e.target.value)}
-                    placeholder="Saisissez la suite du numéro..."
+                    placeholder={t('sellerSale.formulaNumberPlaceholder')}
                     className="h-10 flex-1 rounded-r-[8px] border border-[#dcd7cb] bg-white px-3 text-sm focus:border-[#13243c] focus:outline-none"
                   />
                 </div>
               </div>
             )}
-            {sale?.vehicle?.registrationCardAvailable === false && (
+            {sale.vehicle?.registrationCardAvailable === false && (
               <div className="flex flex-col gap-2">
-                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]">
-                  Motif d&apos;absence de carte grise
+                <label className="text-[12px] font-bold uppercase tracking-wide text-[#7a756a]" htmlFor="missing-motif">
+                  {t('sellerSale.missingMotifLabel')}
                 </label>
                 <input
+                  id="missing-motif"
                   type="text"
                   value={motifAbsenceInput}
                   onChange={(e) => setMotifAbsenceInput(e.target.value)}
-                  placeholder="Ex: Déclaration de perte..."
+                  placeholder={t('sellerSale.missingMotifPlaceholder')}
                   className="h-10 w-full rounded-[8px] border border-[#dcd7cb] bg-white px-3 text-sm focus:border-[#13243c] focus:outline-none"
                 />
               </div>
             )}
-            {sale?.vehicle?.registrationCardAvailable == null && (
+            {sale.vehicle?.registrationCardAvailable == null && (
               <p className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-red-700">
-                La disponibilité de la carte grise n&apos;est pas renseignée dans le dossier du véhicule. La confirmation est bloquée.
+                {t('sellerSale.registrationCardUnknown')}
               </p>
             )}
           </div>
         }
-        confirmLabel="Enregistrer"
+        confirmLabel={t('sellerSale.registrationCardSave')}
         loading={confirming}
         confirmDisabled={
-          sale?.vehicle?.registrationCardAvailable === true
+          sale.vehicle?.registrationCardAvailable === true
             ? !formulaNumberInput.trim()
-            : sale?.vehicle?.registrationCardAvailable === false
+            : sale.vehicle?.registrationCardAvailable === false
               ? !motifAbsenceInput.trim()
               : true
         }
-        onConfirm={handleProcessRegistrationCard}
+        onConfirm={handleSubmitRegistrationCard}
         onCancel={() => {
           if (!confirming) {
-            setConfirmOpen(false);
+            setRegistrationCardOpen(false);
             setFormulaNumberInput('');
             setMotifAbsenceInput('');
           }
@@ -959,16 +619,6 @@ export default function SellerSaleDetailPage() {
           setOfferToAccept(null);
         }}
         onCancel={() => { if (offerActionLoading === null) setOfferToAccept(null); }}
-      />
-
-      <ConfirmModal
-        open={validateOpen}
-        title={t('sellerSale.validateCertificate')}
-        message={t('sellerSale.validateWarning')}
-        confirmLabel={t('sellerSale.validateCertificate')}
-        loading={validating}
-        onConfirm={handleValidateCertificate}
-        onCancel={() => { if (!validating) setValidateOpen(false); }}
       />
     </div>
   );

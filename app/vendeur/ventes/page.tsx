@@ -9,6 +9,7 @@ import { getRoleHomePath, localizedPath, useLanguage } from '../../i18n';
 import Alert from '../../components/Alert';
 import PageHeader from '../../components/PageHeader';
 import { formatEuros } from '../../lib/format';
+import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
 import Spinner from '../../components/Spinner';
 import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from '../../components/SellerListFilters';
 
@@ -37,22 +38,18 @@ interface SellerVehicleRow {
   offerCount: number;
   vehicle: { id: string; brand: string; model: string; photoUrl: string | null; registrationNumber: string | null } | null;
   session: { id: string; name: string; startDate: string; endDate: string; status: string } | null;
-  sale: { id: string; status: string; amount: number | null; currentStep: number | null; stepKey: string | null; stepCount: number; wonAt: string | null; closedAt: string | null } | null;
+  // pendingAction : action attendue du vendeur, calculée par le serveur ; null s'il attend l'acheteur
+  sale: { id: string; status: string; amount: number | null; currentStep: number | null; stepKey: string | null; stepCount: number; pendingAction?: string | null; wonAt: string | null; closedAt: string | null } | null;
 }
 
 type Counts = Record<VehicleState, number>;
 
 const EMPTY_COUNTS: Counts = { vente_en_cours: 0, vendu: 0, vente_annulee: 0 };
 
+// Étapes dont le libellé diffère côté vendeur ; les autres gardent `sales.step.<clé>`
 const SELLER_STEP_LABELS: Record<string, string> = {
   commission: 'sellerSale.step.commission',
   virement_carte_grise: 'sellerSale.step.virement_carte_grise',
-  signature_electronique: 'sellerSale.step.signature_electronique',
-  tampon_vendeur: 'sellerSale.step.tampon_vendeur',
-  validation_acheteur: 'sellerSale.step.validation_acheteur',
-  tampon_acheteur: 'sellerSale.step.tampon_acheteur',
-  validation_vendeur: 'sellerSale.step.validation_vendeur',
-  enlevement: 'sellerSale.step.enlevement',
 };
 
 export default function SellerSalesPage() {
@@ -228,14 +225,14 @@ function VehicleRowCard({
             {row.state === 'vente_en_cours' && row.sale?.currentStep != null && row.sale.stepKey && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fdf3ec] px-2.5 py-1 text-[10px] font-bold uppercase text-[#d9704f] ring-1 ring-inset ring-[#f4c9b9]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#d9704f]" aria-hidden="true" />
-                {t('dashboard.step', { current: String(row.sale.currentStep), total: String(row.sale.stepCount) })}
+                {t('dashboard.step', { current: stepDisplayNumber(row.sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
                 <span aria-hidden="true">·</span>
                 {t(SELLER_STEP_LABELS[row.sale.stepKey] || `sales.step.${row.sale.stepKey}`)}
               </span>
             )}
-            {row.state === 'vente_en_cours' && row.sale?.currentStep === 3 && (
+            {row.state === 'vente_en_cours' && row.sale?.pendingAction && (
               <span className="rounded-full bg-[#13243c] px-2.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                {t('dashboard.awaitingYourSignature')}
+                {t(`saleAction.${row.sale.pendingAction}`)}
               </span>
             )}
             {row.lotNumber != null && (

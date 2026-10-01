@@ -171,8 +171,9 @@ export default function StampPage() {
       setFile(null);
       setMessage(data.backgroundRemoved === false ? t('stamp.savedWithoutRemoval') : t('stamp.saved'));
       await refreshProfile();
+      // Retour à la vente qui attendait ce tampon (étape 3 : acheteur comme vendeur)
       const returnTo = searchParams.get('returnTo');
-      if (user?.role === 'acheteur' && returnTo?.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes('\\')) {
+      if (returnTo?.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes('\\')) {
         router.replace(returnTo);
         return;
       }

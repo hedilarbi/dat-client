@@ -10,17 +10,21 @@ import Alert from '../../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../../components/RegistrationStatusNotices';
 import CommissionCheckout from '../../../../components/CommissionCheckout';
 import VerticalStep from '../../../../components/VerticalStep';
-import EsignatureStep, { useEsignatureSync } from '../../../../components/EsignatureStep';
+import EsignatureStep from '../../../../components/EsignatureStep';
+import SaleDocumentsReview from '../../../../components/SaleDocumentsReview';
+import SignedDocuments from '../../../../components/SignedDocuments';
+import StampRequiredBanner from '../../../../components/StampRequiredBanner';
+import { useSaleAutoRefresh } from '../../../../components/useSaleAutoRefresh';
 import { formatEuros } from '../../../../lib/format';
+import {
+  DISPLAYED_STEP_COUNT,
+  STEP,
+  stepDisplayNumber,
+  type SaleDocumentsState,
+  type SaleEsignatureState,
+} from '../../../../lib/saleSteps';
 import { isStripeConfigured } from '../../../../lib/stripe';
 import Spinner from '../../../../components/Spinner';
-import { uploadFile } from '../../../../lib/uploadFile';
-
-// Miroir de CERTIFICATE_REJECTION_REASONS (server/models/sale.model.js)
-const REJECTION_REASONS = [
-  'tampon_manquant', 'document_illisible', 'signature_manquante',
-  'document_incomplet', 'mauvais_document', 'mauvais_tampon', 'autre',
-] as const;
 
 interface WonSaleDetail {
   id: string;
@@ -35,19 +39,9 @@ interface WonSaleDetail {
   commissionPaidAt: string | null;
   documentsDelivery: DeliveryMode | null;
   transferConfirmedAt: string | null;
-  certificate: {
-    url: string | null; generatedAt: string | null; 
-    sellerSignedUrl: string | null; sellerSignedAt: string | null;
-    signedUrl: string | null; signedAt: string | null;
-    validatedAt: string | null;
-    buyerValidatedAt: string | null;
-    lastRejection: { reason: string; comment?: string; rejectedAt?: string; rejectedBy?: string; url?: string; createdAt?: string } | null;
-    rejectionCount: number;
-  };
-  purchaseDeclaration: { url: string | null; generatedAt: string | null };
+  documents: SaleDocumentsState;
+  esignature: SaleEsignatureState | null;
   bonEnlevement: { url: string | null; generatedAt: string | null } | null;
-  esignature: { status: string | null; buyerUrl?: string | null; initiatedAt: string | null; sellerSignedAt: string | null; buyerSignedAt: string | null; signedDocumentUrl: string | null; sellerStampedUrl: string | null; buyerStampedUrl: string | null; auditUrl: string | null; completedAt: string | null } | null;
-  handover: { declarationUrl: string | null; generatedAt: string | null; confirmedAt: string | null; otpAttempts: number };
   wonAt: string | null;
   closedAt: string | null;
   fees: { commission: number; taxName: string; taxRate: number; taxAmount: number; total: number } | null;
@@ -114,16 +108,6 @@ export default function WonSaleDetailPage() {
   const stepTwoRef = useRef<HTMLDivElement>(null);
   const scrollToStepTwoRef = useRef(false);
 
-  // Étape 3 : dépôt du certificat signé et tamponné
-  const [signedFile, setSignedFile] = useState<File | null>(null);
-  
-  const [validatingSellerCertificate, setValidatingSellerCertificate] = useState(false);
-  const [rejectingSellerCertificate, setRejectingSellerCertificate] = useState(false);
-  const [showRejectForm, setShowRejectForm] = useState(false);
-  const [sellerRejectReason, setSellerRejectReason] = useState('mauvais_tampon');
-  const [sellerRejectComment, setSellerRejectComment] = useState('');
-  const [submittingCertificate, setSubmittingCertificate] = useState(false);
-
   // Vue historique
   const [viewedStepIndex, setViewedStepIndex] = useState<number | null>(null);
 
@@ -151,13 +135,18 @@ export default function WonSaleDetailPage() {
       .finally(() => setLoaded(true));
   }, [params.id, t, user]);
 
-  // Étape 3 : la page de retour de la plateforme de signature ajoute ?signature=retour
+  // Étape 3 : le vendeur peut compléter la carte grise, vérifier ou signer à tout moment. La page
+  // de retour de la plateforme de signature ajoute ?signature=retour.
   const returnedFromSigning = searchParams.get('signature') === 'retour';
   const refreshSale = useCallback(async () => {
     const res = await apiRequest(`/sales/${params.id}`);
     setSale(res.sale);
   }, [params.id]);
-  useEsignatureSync(sale?.id, sale?.status === 'en_cours' && sale.currentStep === 3, refreshSale);
+  useSaleAutoRefresh(
+    sale?.id,
+    sale?.status === 'en_cours' && sale.currentStep >= STEP.PREPARATION,
+    refreshSale,
+  );
 
   // Rafraîchit le compte à rebours de l'échéance
   useEffect(() => {
@@ -209,65 +198,6 @@ export default function WonSaleDetailPage() {
   }, [sale?.currentStep]);
 
   
-  const handleValidateSellerCertificate = async () => {
-    if (!sale) return;
-    setValidatingSellerCertificate(true);
-    setError('');
-    try {
-      const res = await apiRequest(`/sales/${sale.id}/seller-certificate/validate`, { method: 'POST' });
-      setSale(res.sale);
-      setMessage(res.message || '');
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
-    } finally {
-      setValidatingSellerCertificate(false);
-    }
-  };
-
-  const handleRejectSellerCertificate = async () => {
-    if (!sale) return;
-    setRejectingSellerCertificate(true);
-    setError('');
-    try {
-      const res = await apiRequest(`/sales/${sale.id}/seller-certificate/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: sellerRejectReason, comment: sellerRejectComment }),
-      });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setRejectingSellerCertificate(false);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
-      setRejectingSellerCertificate(false);
-    }
-  };
-
-const handleSubmitCertificate = async () => {
-    if (!sale) return;
-    if (!signedFile) {
-      setError(t('saleDetail.certificateRequired'));
-      return;
-    }
-
-    setSubmittingCertificate(true);
-    setError('');
-    try {
-      // Le fichier passe par le stockage générique, puis son URL est rattachée à la vente
-      const url = await uploadFile(signedFile, 'ventes/documents');
-      const res = await apiRequest(`/sales/${sale.id}/certificate`, {
-        method: 'POST',
-        body: JSON.stringify({ url, filename: signedFile.name }),
-      });
-      setSale(res.sale);
-      setMessage(res.message || '');
-      setSignedFile(null);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t('saleDetail.notFound'));
-    } finally {
-      setSubmittingCertificate(false);
-    }
-  };
-
   const handleCancelSale = async () => {
     if (!sale) return;
     setCanceling(true);
@@ -332,6 +262,8 @@ const handleSubmitCertificate = async () => {
     sale.vehicle?.mileage != null ? `${sale.vehicle.mileage.toLocaleString(locale)} km` : null,
     sale.session?.name,
   ].filter(Boolean).join(' · ');
+  // La page tampon ramène l'acheteur sur cette vente une fois son tampon déposé
+  const stampHref = `${localizedPath(paths.stamp, language)}?returnTo=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`;
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px]">
@@ -392,31 +324,6 @@ const handleSubmitCertificate = async () => {
         </div>
       )}
 
-      {sale.currentStep >= 3 && sale.currentStep < 8 && (sale.certificate.url || sale.purchaseDeclaration.url) && (
-        <section className="mb-6 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
-          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-            Documents de vente
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url) && (
-              <a href={sale.esignature?.buyerStampedUrl || sale.esignature?.sellerStampedUrl || sale.esignature?.signedDocumentUrl || sale.certificate.url || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>{sale.esignature?.buyerStampedUrl ? 'Dossier signé avec les deux tampons' : sale.esignature?.sellerStampedUrl ? 'Dossier signé avec tampon vendeur' : sale.esignature?.signedDocumentUrl ? 'Dossier signé sans tampon' : 'Certificat de cession'}</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-            {sale.purchaseDeclaration.url && (
-              <a href={sale.purchaseDeclaration.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>Déclaration d’achat préremplie</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-            {sale.esignature?.auditUrl && (
-              <a href={sale.esignature.auditUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]">
-                <span>Piste d’audit de signature</span><span aria-hidden="true">↓</span>
-              </a>
-            )}
-          </div>
-        </section>
-      )}
-
       {sale.seller && (
         <div className="mb-6 overflow-hidden rounded-[14px] border border-[#eceadf] bg-white">
           <div className="border-b border-[#efece3] bg-[#f8f7f2] px-5 py-4 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
@@ -449,19 +356,10 @@ const handleSubmitCertificate = async () => {
       {sale.status === 'cloturee' && viewedStepIndex === null && (
         <section className="mb-6 rounded-[14px] border border-[#cbe3d5] bg-[#e9f4ee] p-5">
           <h2 className="font-heading text-[18px] font-bold uppercase text-[#2f6f4f]">{t('saleDetail.closedTitle')}</h2>
-          <p className="mt-1 text-sm text-[#2f6f4f]">{t('saleDetail.closedText')}</p>
-          {sale.handover.confirmedAt && (
-            <p className="mt-1 text-[12px] text-[#2f6f4f]">
-              {t('saleDetail.handoverDone', { date: new Date(sale.handover.confirmedAt).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            </p>
-          )}
-          <div className="mt-4 flex flex-wrap gap-3">
-            {sale.bonEnlevement?.url && (
-              <a href={sale.bonEnlevement.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-[#2f6f4f] hover:underline">
-                ↓ Télécharger le bon d’enlèvement
-              </a>
-            )}
-          </div>
+          <p className="mt-1 mb-4 text-sm text-[#2f6f4f]">
+            {sale.closedAt ? t('saleDocs.closedOn', { date: formatDate(sale.closedAt) }) : t('saleDetail.closedText')}
+          </p>
+          <SignedDocuments esignature={sale.esignature} bonEnlevementUrl={sale.bonEnlevement?.url} />
         </section>
       )}
 
@@ -470,7 +368,7 @@ const handleSubmitCertificate = async () => {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('saleDetail.progressTitle')}</h2>
           <span className="rounded-full bg-[#fdf6f2] border border-[#f7d6cb] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#d9704f]">
-            {t('saleDetail.stepOf', { current: String(sale.currentStep), total: String(sale.stepCount) })}
+            {t('saleDetail.stepOf', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
           </span>
         </div>
 
@@ -481,13 +379,13 @@ const handleSubmitCertificate = async () => {
             const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
             const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
             const isHistorical = isCompleted;
-            const renderStepNumber = stepNumber;
             const isLast = index === sale.steps.length - 1;
 
             return (
               <div key={stepKey} ref={stepNumber === 2 ? stepTwoRef : undefined}>
                 <VerticalStep
                   stepNumber={stepNumber}
+                  stepLabel={stepDisplayNumber(stepNumber)}
                   title={t(`sales.step.${stepKey}`)}
                   isOpen={isOpen}
                   isCurrent={isCurrent}
@@ -506,7 +404,7 @@ const handleSubmitCertificate = async () => {
                 )}
                 {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('saleDetail.todo')}</h3>}
 
-            {renderStepNumber === 1 && (
+            {stepNumber === STEP.COMMISSION && (
               <>
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
                   {isHistorical ? "Vous avez réglé la commission d'achat." : t('saleDetail.step1Intro')}
@@ -629,7 +527,7 @@ const handleSubmitCertificate = async () => {
               </>
             )}
             
-            {renderStepNumber === 2 && (isHistorical ? (
+            {stepNumber === STEP.VIREMENT && (isHistorical ? (
               <>
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('saleDetail.step2Done')}</p>
                 <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
@@ -665,316 +563,45 @@ const handleSubmitCertificate = async () => {
               </>
             ))}
             
-            {renderStepNumber === 3 && (
-              <>
-                {sale.esignature?.buyerUrl ? (
-                  <EsignatureStep
-                    side="buyer"
-                    signUrl={sale.esignature.buyerUrl}
-                    sellerSignedAt={sale.esignature.sellerSignedAt}
-                    buyerSignedAt={sale.esignature.buyerSignedAt}
-                    isHistorical={isHistorical}
-                    returnedFromSigning={returnedFromSigning}
-                    blocker={user?.stampUrl ? null : (
-                      <div className="rounded-[10px] border border-[#e2a175] bg-[#fdf3ec] p-4" role="alert">
-                        <p className="mb-3 text-[13px] font-semibold leading-6 text-[#8a4b24]">
-                          {t('esign.stampRequired')}
-                        </p>
-                        <Link
-                          href={`${localizedPath(paths.stamp, language)}?returnTo=${encodeURIComponent(localizedPath(`${paths.purchases}/${params.id}`, language))}`}
-                          className="inline-flex min-h-11 items-center justify-center rounded-[9px] bg-[#13243c] px-5 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
-                        >
-                          {t('esign.stampCta')}
-                        </Link>
-                      </div>
-                    )}
-                  />
-                ) : (
-                  <>
-                    <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                      {isHistorical 
-                        ? "Le vendeur a téléchargé, signé et redéposé le certificat de cession." 
-                        : "Le vendeur doit d'abord télécharger, tamponner et signer le certificat de cession. Vous serez invité à faire de même une fois son document déposé."}
-                    </p>
-
-                    {isHistorical && sale.certificate.sellerSignedUrl && (
-                      <a
-                        href={sale.certificate.sellerSignedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat signé par le vendeur</span>
-                        {sale.certificate.sellerSignedAt && (
-                          <span className="text-[11px] text-[#5a5e66]">
-                            Déposé le {formatDate(sale.certificate.sellerSignedAt)}
-                          </span>
-                        )}
-                      </a>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {renderStepNumber === 4 && (
-              <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                Le dossier est signé. Le vendeur doit maintenant appliquer son tampon ou déposer une version tamponnée.
+            {stepNumber === STEP.PREPARATION && (isHistorical ? (
+              <p className="text-sm leading-6 text-[#5a5e66]">
+                {sale.documents.registrationCardSubmittedAt
+                  ? t('saleDocs.preparationDoneOn', { date: formatDate(sale.documents.registrationCardSubmittedAt) })
+                  : t('saleDocs.preparationDone')}
               </p>
-            )}
-            
-            
-            {renderStepNumber === 5 && (
-              <>
-                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical ? "Vous avez validé le certificat de cession du vendeur." : t('saleDetail.stepValidationWaiting')}
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm leading-6 text-[#5a5e66]">
+                  {t(sale.documents.stamps.buyer ? 'saleDocs.preparationBuyer' : 'saleDocs.preparationBuyerNoStamp')}
                 </p>
+                {!sale.documents.stamps.buyer && <StampRequiredBanner stampHref={stampHref} />}
+              </div>
+            ))}
 
-                {(sale.certificate.sellerSignedUrl || sale.certificate.url) && (
-                  <a
-                    href={sale.certificate.sellerSignedUrl || sale.certificate.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat du vendeur</span>
-                    {(sale.certificate.sellerSignedAt || sale.certificate.generatedAt) && (
-                      <span className="text-[11px] text-[#5a5e66]">
-                        {t('saleDetail.certificateGenerated', { date: new Date((sale.certificate.sellerSignedAt || sale.certificate.generatedAt)!).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                      </span>
-                    )}
-                  </a>
-                )}
-
-                {!isHistorical && (
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-4 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={handleValidateSellerCertificate}
-                        disabled={validatingSellerCertificate || rejectingSellerCertificate}
-                        className="btn bg-[#2f6f4f] hover:bg-emerald-800 text-white border-transparent w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto flex-1 flex items-center justify-center gap-2"
-                      >
-                        {validatingSellerCertificate && (
-                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
-                        {validatingSellerCertificate ? t('saleDetail.validating') : t('saleDetail.validateCertificate')}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowRejectForm(!showRejectForm)}
-                        disabled={validatingSellerCertificate || rejectingSellerCertificate}
-                        className="btn bg-[#fdece4] border-[#9a3b2f] text-[#9a3b2f] hover:bg-[#9a3b2f] hover:text-white w-full sm:w-auto flex-1 transition"
-                      >
-                        {t('saleDetail.rejectCertificate')}
-                      </button>
-                    </div>
-
-                    {showRejectForm && (
-                      <div className="rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] p-4 mt-2">
-                        <div className="mb-3 text-[13px] font-bold text-[#13243c]">{t('saleDetail.rejectTitle')}</div>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#5a5e66]">
-                              {t('saleDetail.rejectReasonLabel')}
-                            </label>
-                            <select
-                              value={sellerRejectReason}
-                              onChange={(e) => setSellerRejectReason(e.target.value)}
-                              className="w-full rounded-[8px] border border-[#dcd7cb] bg-white px-3 py-2 text-sm focus:border-[#13243c] focus:outline-none"
-                            >
-                              {REJECTION_REASONS.map((reason) => (
-                                <option key={reason} value={reason}>
-                                  {t(`reason.${reason}`)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-[#5a5e66]">
-                              {t('saleDetail.rejectCommentLabel')}
-                            </label>
-                            <textarea
-                              value={sellerRejectComment}
-                              onChange={(e) => setSellerRejectComment(e.target.value)}
-                              placeholder={t('saleDetail.rejectCommentPlaceholder')}
-                              className="h-20 w-full resize-none rounded-[8px] border border-[#dcd7cb] bg-white px-3 py-2 text-sm focus:border-[#13243c] focus:outline-none"
-                            />
-                          </div>
-                          <div className="flex justify-end pt-2">
-                            <button
-                              type="button"
-                              onClick={handleRejectSellerCertificate}
-                              disabled={rejectingSellerCertificate || validatingSellerCertificate}
-                              className="btn bg-[#9a3b2f] text-white hover:bg-[#832f25]"
-                            >
-                              {rejectingSellerCertificate ? t('saleDetail.rejecting') : t('saleDetail.rejectConfirm')}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
+            {stepNumber === STEP.VERIFICATION && (
+              <SaleDocumentsReview<WonSaleDetail>
+                saleId={sale.id}
+                side="buyer"
+                documents={sale.documents}
+                isHistorical={isHistorical}
+                stampHref={stampHref}
+                onUpdated={(updated, updateMessage) => {
+                  setSale(updated);
+                  setMessage(updateMessage);
+                  setViewedStepIndex(null);
+                }}
+              />
             )}
 
-            {renderStepNumber === 6 && (
-              <>
-                {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'seller' && (
-                  <div className="mb-4 rounded-[10px] border-l-4 border-[#9a3b2f] bg-[#fdece4] p-3.5">
-                    <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#9a3b2f]">
-                      {t('saleDetail.rejectedTitle')}
-                    </div>
-                    <p className="mt-1.5 text-sm leading-6 text-[#b04a2c]">
-                      {t('saleDetail.rejectedReason', { reason: t(`reason.${sale.certificate.lastRejection.reason}`) })}
-                    </p>
-                    {sale.certificate.lastRejection.comment && (
-                      <p className="mt-1 text-sm leading-6 text-[#b04a2c]">
-                        {t('saleDetail.rejectedComment', { comment: sale.certificate.lastRejection.comment })}
-                      </p>
-                    )}
-                    <p className="mt-2 text-[12px] text-[#8a4b24]">{t('saleDetail.rejectedAgain')}</p>
-                  </div>
-                )}
-
-                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical 
-                    ? "Vous avez contresigné le certificat de cession." 
-                    : t('saleDetail.step3Intro')}
-                </p>
-
-                {!isHistorical && (
-                  <ol className="mb-5 space-y-2">
-                    {[t('saleDetail.step3Point1'), t('saleDetail.step3Point2'), t('saleDetail.step3Point3')].map((point, index) => (
-                      <li key={point} className="flex gap-2.5 text-sm leading-6 text-[#13243c]">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#13243c] text-[11px] font-bold text-white">
-                          {index + 1}
-                        </span>
-                        {point}
-                      </li>
-                    ))}
-                  </ol>
-                )}
-
-                {(sale.certificate.sellerSignedUrl || sale.certificate.url) && (
-                  <a
-                    href={sale.certificate.sellerSignedUrl || sale.certificate.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le certificat du vendeur {isHistorical ? '(avant votre signature)' : ''}</span>
-                    {(sale.certificate.sellerSignedAt || sale.certificate.generatedAt) && (
-                      <span className="text-[11px] text-[#5a5e66]">
-                        {t('saleDetail.certificateGenerated', { date: new Date((sale.certificate.sellerSignedAt || sale.certificate.generatedAt)!).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                      </span>
-                    )}
-                  </a>
-                )}
-
-                {!isHistorical && sale.certificate.lastRejection && sale.certificate.lastRejection.rejectedBy === 'seller' && sale.certificate.lastRejection.url && (
-                  <a
-                    href={sale.certificate.lastRejection.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-red-300 bg-white px-4 py-3 transition hover:bg-[#fdece4] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#b91c1c]">↓ Télécharger votre certificat refusé</span>
-                    <span className="text-[11px] text-[#b91c1c]">
-                      Refusé le {sale.certificate.lastRejection.createdAt && formatDate(sale.certificate.lastRejection.createdAt)}
-                    </span>
-                  </a>
-                )}
-
-                {isHistorical && sale.certificate.signedUrl && (
-                  <a
-                    href={sale.certificate.signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#2f6f4f] bg-[#e9f4ee] px-4 py-3 transition hover:bg-[#d1e8da] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#2f6f4f]">↓ Télécharger votre certificat signé</span>
-                    {sale.certificate.signedAt && (
-                      <span className="text-[11px] text-[#2f6f4f]">
-                        Déposé le {formatDate(sale.certificate.signedAt)}
-                      </span>
-                    )}
-                  </a>
-                )}
-
-                {!isHistorical && (
-                  <div className="rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
-                    <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
-                      {t('saleDetail.uploadTitle')}
-                    </div>
-                    <p className="mb-3 text-[12px] text-[#5a5e66]">{t('saleDetail.uploadHint')}</p>
-
-                    <label className="mb-3 flex cursor-pointer flex-col gap-2 sm:flex-row sm:items-center">
-                      <span className="inline-flex h-10 items-center rounded-[8px] border border-[#dcd7cb] bg-white px-4 text-[12px] font-bold uppercase text-[#13243c] transition hover:bg-[#f1efe8]">
-                        {t('saleDetail.chooseFile')}
-                      </span>
-                      <input
-                        type="file"
-                        accept="application/pdf,image/*"
-                        className="hidden"
-                        onChange={(event) => setSignedFile(event.target.files?.[0] || null)}
-                      />
-                      <span className="truncate text-[13px] text-[#5a5e66]">{signedFile?.name || '—'}</span>
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={handleSubmitCertificate}
-                      disabled={submittingCertificate || !signedFile}
-                      className="btn btn-accent w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-                    >
-                      {submittingCertificate ? t('saleDetail.uploading') : t('saleDetail.submitCertificate')}
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {renderStepNumber === 7 && (
-              <>
-                <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical ? "Le vendeur a validé votre certificat de cession." : "En attente de la validation de votre document par le vendeur."}
-                </p>
-
-                {sale.certificate.signedUrl && (
-                  <a
-                    href={sale.certificate.signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="text-sm font-bold text-[#13243c]">↓ Télécharger votre certificat signé</span>
-                    {sale.certificate.signedAt && (
-                      <span className="text-[11px] text-[#5a5e66]">
-                        Déposé le {formatDate(sale.certificate.signedAt)}
-                      </span>
-                    )}
-                  </a>
-                )}
-              </>
-            )}
-            
-            {renderStepNumber === 8 && (
-              sale.bonEnlevement?.url && (
-                <a
-                  href={sale.bonEnlevement.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mb-5 flex flex-col items-start gap-1 rounded-[10px] border border-[#13243c] bg-white px-4 py-3 transition hover:bg-[#f1f4f8] sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="text-sm font-bold text-[#13243c]">↓ Télécharger le bon d’enlèvement</span>
-                </a>
-              )
+            {stepNumber === STEP.SIGNATURE && (
+              <EsignatureStep
+                side="buyer"
+                signUrl={sale.esignature?.buyerUrl}
+                sellerSignedAt={sale.esignature?.sellerSignedAt}
+                buyerSignedAt={sale.esignature?.buyerSignedAt}
+                isHistorical={isHistorical}
+                returnedFromSigning={returnedFromSigning}
+              />
             )}
                 </VerticalStep>
               </div>
