@@ -23,15 +23,12 @@ const buyerSteps = [
   ['5', 'Récupérez le véhicule', 'Dès que les deux parties ont signé, téléchargez le bon d’enlèvement et organisez la récupération avec le vendeur.'],
 ];
 
-// Miroir de la procédure d'achat : 1, 2, puis l'étape « Documents administratifs » en 3.1 à 3.3
+// Miroir de la procédure d'achat : la troisième étape regroupe les documents administratifs
 const transactionSteps = [
   'Paiement de la commission par l’acheteur',
   'Virement du prix, confirmé par le vendeur',
-  'Informations de carte grise et tampons des deux parties',
-  'Vérification des documents tamponnés par les deux parties',
-  'Signature électronique, bon d’enlèvement et clôture de la vente',
+  'Documents administratifs : préparation, validation et signature électronique, puis bon d’enlèvement',
 ];
-const TRANSACTION_STEP_NUMBERS = ['1', '2', '3.1', '3.2', '3.3'];
 
 function AudienceSteps({ steps }: { steps: string[][] }) {
   return <ol className="mt-8 space-y-5">{steps.map(([number, title, description]) => (
@@ -80,8 +77,8 @@ export default function CommentCaMarchePage() {
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#d9704f]">Après l’attribution</p>
           <h2 className="mt-3 font-heading text-3xl font-extrabold uppercase text-[#13243c] sm:text-4xl">Les étapes de la transaction</h2>
           <p className="mt-4 max-w-3xl leading-relaxed text-[#5a5e66]">Chaque partie voit l’étape actuelle, l’action attendue et les documents disponibles depuis son espace.</p>
-          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{transactionSteps.map((step, index) => (
-            <li key={step} className="rounded-2xl border border-[#e8e4da] bg-white p-5"><span className="font-mono text-xs font-bold uppercase text-[#d9704f]">Étape {TRANSACTION_STEP_NUMBERS[index]}</span><p className="mt-3 font-bold leading-snug text-[#13243c]">{step}</p></li>
+          <ol className="mt-10 grid gap-4 sm:grid-cols-3">{transactionSteps.map((step, index) => (
+            <li key={step} className="rounded-2xl border border-[#e8e4da] bg-white p-5"><span className="font-mono text-xs font-bold uppercase text-[#d9704f]">Étape {index + 1}/{transactionSteps.length}</span><p className="mt-3 font-bold leading-snug text-[#13243c]">{step}</p></li>
           ))}</ol>
         </div>
       </section>

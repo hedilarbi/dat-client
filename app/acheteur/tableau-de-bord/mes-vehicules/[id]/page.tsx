@@ -10,6 +10,7 @@ import Alert from '../../../../components/Alert';
 import { UnderReviewNotice, SuspendedNotice } from '../../../../components/RegistrationStatusNotices';
 import CommissionCheckout from '../../../../components/CommissionCheckout';
 import VerticalStep from '../../../../components/VerticalStep';
+import DocumentsSubsteps from '../../../../components/DocumentsSubsteps';
 import EsignatureStep from '../../../../components/EsignatureStep';
 import SaleDocumentsReview from '../../../../components/SaleDocumentsReview';
 import SignedDocuments from '../../../../components/SignedDocuments';
@@ -17,8 +18,10 @@ import StampRequiredBanner from '../../../../components/StampRequiredBanner';
 import { useSaleAutoRefresh } from '../../../../components/useSaleAutoRefresh';
 import { formatEuros } from '../../../../lib/format';
 import {
+  DISPLAY_STEPS,
   DISPLAYED_STEP_COUNT,
   STEP,
+  displayStepIndex,
   stepDisplayNumber,
   type SaleDocumentsState,
   type SaleEsignatureState,
@@ -373,44 +376,25 @@ export default function WonSaleDetailPage() {
         </div>
 
         <div className="mt-6 flex flex-col">
-          {sale.steps.map((stepKey, index) => {
+          {DISPLAY_STEPS.map((group, index) => {
             const stepNumber = index + 1;
-            const isCompleted = stepNumber < sale.currentStep || sale.status === 'cloturee';
-            const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
+            const isCompleted = sale.status === 'cloturee' || sale.currentStep > group.steps[group.steps.length - 1];
+            const isCurrent = sale.status !== 'cloturee' && group.steps.includes(sale.currentStep);
             const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
             const isHistorical = isCompleted;
-            const isLast = index === sale.steps.length - 1;
+            const isLast = index === DISPLAY_STEPS.length - 1;
 
-            return (
-              <div key={stepKey} ref={stepNumber === 2 ? stepTwoRef : undefined}>
-                <VerticalStep
-                  stepNumber={stepNumber}
-                  stepLabel={stepDisplayNumber(stepNumber)}
-                  title={t(`sales.step.${stepKey}`)}
-                  isOpen={isOpen}
-                  isCurrent={isCurrent}
-                  isCompleted={isCompleted}
-                  isLast={isLast}
-                  currentLabel={t('sales.currentStep')}
-                  onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
-                >
-                {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
-                {!isHistorical && sale.currentStepDueAt && (
-                  <p className={`mb-4 text-[13px] font-bold ${remaining ? 'text-red-600' : 'text-red-800'}`}>
-                    {remaining
-                      ? t('saleDetail.deadlineLeft', { time: remaining })
-                      : t('saleDetail.deadlineOver')}
-                  </p>
-                )}
-                {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('saleDetail.todo')}</h3>}
-
-            {stepNumber === STEP.COMMISSION && (
+                // Contenu d'une étape interne ; les trois sous-étapes des documents passent par
+                // DocumentsSubsteps, qui les présente sous l'étape « Documents administratifs ».
+                const renderStep = (step: number, historical: boolean) => (
+                  <>
+            {step === STEP.COMMISSION && (
               <>
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {isHistorical ? "Vous avez réglé la commission d'achat." : t('saleDetail.step1Intro')}
+                  {historical ? "Vous avez réglé la commission d'achat." : t('saleDetail.step1Intro')}
                 </p>
 
-                {!isHistorical && (
+                {!historical && (
                   <ul className="mb-5 space-y-2">
                     {[t('saleDetail.step1Point1'), t('saleDetail.step1Point2')].map((point) => (
                       <li key={point} className="flex gap-2 text-sm leading-6 text-[#13243c]">
@@ -442,7 +426,7 @@ export default function WonSaleDetailPage() {
                   </dl>
                 )}
 
-                {!isHistorical && (
+                {!historical && (
                   <>
                     <fieldset className="mb-5">
                       <legend className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">
@@ -527,7 +511,7 @@ export default function WonSaleDetailPage() {
               </>
             )}
             
-            {stepNumber === STEP.VIREMENT && (isHistorical ? (
+            {step === STEP.VIREMENT && (historical ? (
               <>
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('saleDetail.step2Done')}</p>
                 <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
@@ -563,7 +547,7 @@ export default function WonSaleDetailPage() {
               </>
             ))}
             
-            {stepNumber === STEP.PREPARATION && (isHistorical ? (
+            {step === STEP.PREPARATION && (historical ? (
               <p className="text-sm leading-6 text-[#5a5e66]">
                 {sale.documents.registrationCardSubmittedAt
                   ? t('saleDocs.preparationDoneOn', { date: formatDate(sale.documents.registrationCardSubmittedAt) })
@@ -578,12 +562,12 @@ export default function WonSaleDetailPage() {
               </div>
             ))}
 
-            {stepNumber === STEP.VERIFICATION && (
+            {step === STEP.VERIFICATION && (
               <SaleDocumentsReview<WonSaleDetail>
                 saleId={sale.id}
                 side="buyer"
                 documents={sale.documents}
-                isHistorical={isHistorical}
+                isHistorical={historical}
                 stampHref={stampHref}
                 onUpdated={(updated, updateMessage) => {
                   setSale(updated);
@@ -593,16 +577,46 @@ export default function WonSaleDetailPage() {
               />
             )}
 
-            {stepNumber === STEP.SIGNATURE && (
+            {step === STEP.SIGNATURE && (
               <EsignatureStep
                 side="buyer"
                 signUrl={sale.esignature?.buyerUrl}
                 sellerSignedAt={sale.esignature?.sellerSignedAt}
                 buyerSignedAt={sale.esignature?.buyerSignedAt}
-                isHistorical={isHistorical}
+                isHistorical={historical}
                 returnedFromSigning={returnedFromSigning}
               />
             )}
+                  </>
+                );
+
+            return (
+              <div key={group.key} ref={stepNumber === 2 ? stepTwoRef : undefined}>
+                <VerticalStep
+                  stepNumber={stepNumber}
+                  title={t(`sales.step.${group.key}`)}
+                  isOpen={isOpen}
+                  isCurrent={isCurrent}
+                  isCompleted={isCompleted}
+                  isLast={isLast}
+                  currentLabel={t('sales.currentStep')}
+                  onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : displayStepIndex(sale.currentStep)) : index)}
+                >
+                {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
+                {!isHistorical && sale.currentStepDueAt && (
+                  <p className={`mb-4 text-[13px] font-bold ${remaining ? 'text-red-600' : 'text-red-800'}`}>
+                    {remaining
+                      ? t('saleDetail.deadlineLeft', { time: remaining })
+                      : t('saleDetail.deadlineOver')}
+                  </p>
+                )}
+                {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('saleDetail.todo')}</h3>}
+
+                {group.key === 'documents_administratifs' ? (
+                  <DocumentsSubsteps currentStep={sale.currentStep} closed={sale.status === 'cloturee'}>
+                    {renderStep}
+                  </DocumentsSubsteps>
+                ) : renderStep(group.steps[0], isHistorical)}
                 </VerticalStep>
               </div>
             );

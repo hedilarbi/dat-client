@@ -1,14 +1,29 @@
-// Procédure d'achat (PURCHASE_STEPS côté serveur). Les étapes 3 à 5 forment l'étape
-// « Documents administratifs », présentée aux utilisateurs en 3.1, 3.2 et 3.3.
+// Procédure d'achat (PURCHASE_STEPS côté serveur). Les étapes 3 à 5 sont, pour les utilisateurs,
+// une seule étape « Documents administratifs » dont les sous-étapes sont nommées, sans numéro.
 export const STEP = { COMMISSION: 1, VIREMENT: 2, PREPARATION: 3, VERIFICATION: 4, SIGNATURE: 5 } as const;
 
-const DISPLAYED_NUMBERS = ['1', '2', '3.1', '3.2', '3.3'];
+/** Sous-étapes de l'étape « Documents administratifs », avec leur clé de libellé. */
+export const DOCUMENTS_SUBSTEPS: { step: number; key: string }[] = [
+  { step: STEP.PREPARATION, key: 'preparation_documents' },
+  { step: STEP.VERIFICATION, key: 'verification_documents' },
+  { step: STEP.SIGNATURE, key: 'signature_electronique' },
+];
 
-/** Numéro affiché d'une étape (1, 2, 3.1, 3.2, 3.3). */
-export const stepDisplayNumber = (step: number) => DISPLAYED_NUMBERS[step - 1] ?? String(step);
+/** Étapes présentées aux utilisateurs, et les étapes internes qu'elles regroupent. */
+export const DISPLAY_STEPS: { key: string; steps: number[] }[] = [
+  { key: 'commission', steps: [STEP.COMMISSION] },
+  { key: 'virement_carte_grise', steps: [STEP.VIREMENT] },
+  { key: 'documents_administratifs', steps: DOCUMENTS_SUBSTEPS.map((substep) => substep.step) },
+];
 
-/** Nombre d'étapes annoncé aux utilisateurs (« Étape 3.2 sur 3 »). */
-export const DISPLAYED_STEP_COUNT = 3;
+/** Rang (à partir de 0) de l'étape affichée qui contient une étape interne. */
+export const displayStepIndex = (step: number) => Math.max(0, DISPLAY_STEPS.findIndex((group) => group.steps.includes(step)));
+
+/** Numéro affiché d'une étape interne (1, 2 ou 3). */
+export const stepDisplayNumber = (step: number) => String(displayStepIndex(step) + 1);
+
+/** Nombre d'étapes annoncé aux utilisateurs (« Étape 3 sur 3 »). */
+export const DISPLAYED_STEP_COUNT = DISPLAY_STEPS.length;
 
 // Miroir de DOCUMENT_REPORT_REASONS (server/models/sale.model.js)
 export const DOCUMENT_REPORT_REASONS = [

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../../api';
@@ -9,6 +9,7 @@ import { getRoleHomePath, getRoleStampPath, localizedPath, useLanguage } from '.
 import Alert from '../../../components/Alert';
 import ConfirmModal from '../../../components/ConfirmModal';
 import VerticalStep from '../../../components/VerticalStep';
+import DocumentsSubsteps from '../../../components/DocumentsSubsteps';
 import EsignatureStep from '../../../components/EsignatureStep';
 import SaleDocumentsReview from '../../../components/SaleDocumentsReview';
 import SignedDocuments from '../../../components/SignedDocuments';
@@ -16,8 +17,10 @@ import StampRequiredBanner from '../../../components/StampRequiredBanner';
 import { useSaleAutoRefresh } from '../../../components/useSaleAutoRefresh';
 import { formatEuros } from '../../../lib/format';
 import {
+  DISPLAY_STEPS,
   DISPLAYED_STEP_COUNT,
   STEP,
+  displayStepIndex,
   stepDisplayNumber,
   type SaleDocumentsState,
   type SaleEsignatureState,
@@ -87,8 +90,10 @@ export default function SellerSaleDetailPage() {
   const [message, setMessage] = useState('');
   // Étape 2 : confirmation du virement ; étape 3.1 : données complémentaires de la carte grise
   const [transferConfirmationOpen, setTransferConfirmationOpen] = useState(false);
-  const [registrationCardOpen, setRegistrationCardOpen] = useState(false);
-  const registrationCardShownRef = useRef(false);
+  // Étape 3.1 : le modal de la carte grise s'ouvre de lui-même tant qu'elle n'est pas saisie,
+  // sauf si le vendeur l'a refermé pendant cette visite ; le bouton de l'étape le rouvre.
+  const [registrationCardRequested, setRegistrationCardRequested] = useState(false);
+  const [registrationCardDismissed, setRegistrationCardDismissed] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [formulaNumberInput, setFormulaNumberInput] = useState('');
   const [motifAbsenceInput, setMotifAbsenceInput] = useState('');
@@ -137,14 +142,10 @@ export default function SellerSaleDetailPage() {
     refreshSale,
   );
 
-  // Étape 3.1 : le modal de la carte grise s'ouvre de lui-même, une fois par visite
-  useEffect(() => {
-    if (registrationCardShownRef.current || !sale) return;
-    if (sale.status === 'en_cours' && sale.currentStep === STEP.PREPARATION && !sale.documents.registrationCardSubmittedAt) {
-      registrationCardShownRef.current = true;
-      setRegistrationCardOpen(true);
-    }
-  }, [sale]);
+  const registrationCardDue = sale?.status === 'en_cours'
+    && sale.currentStep === STEP.PREPARATION
+    && !sale.documents.registrationCardSubmittedAt;
+  const registrationCardOpen = registrationCardDue && (registrationCardRequested || !registrationCardDismissed);
 
   // Rafraîchit le compte à rebours de l'échéance
   useEffect(() => {
@@ -161,10 +162,8 @@ export default function SellerSaleDetailPage() {
       setSale(res.sale);
       setMessage(res.message || '');
       setViewedStepIndex(null);
+      // La vente passe à l'étape 3.1 : le modal de la carte grise s'ouvre aussitôt
       setTransferConfirmationOpen(false);
-      // La vente passe à l'étape 3.1 : la carte grise est demandée tout de suite
-      registrationCardShownRef.current = true;
-      setRegistrationCardOpen(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
@@ -194,7 +193,7 @@ export default function SellerSaleDetailPage() {
       setSale(res.sale);
       setMessage(res.message || '');
       setViewedStepIndex(null);
-      setRegistrationCardOpen(false);
+      setRegistrationCardRequested(false);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t('sellerSale.notFound'));
     } finally {
@@ -404,42 +403,25 @@ export default function SellerSaleDetailPage() {
             )}
 
             <div className="mt-6 flex flex-col">
-              {sale.steps.map((stepKey, index) => {
+              {DISPLAY_STEPS.map((group, index) => {
                 const stepNumber = index + 1;
-                const isCompleted = stepNumber < sale.currentStep || sale.status === 'cloturee';
-                const isCurrent = sale.status !== 'cloturee' && stepNumber === sale.currentStep;
+                const isCompleted = sale.status === 'cloturee' || sale.currentStep > group.steps[group.steps.length - 1];
+                const isCurrent = sale.status !== 'cloturee' && group.steps.includes(sale.currentStep);
                 const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
                 const isHistorical = isCompleted;
-                const isLast = index === sale.steps.length - 1;
+                const isLast = index === DISPLAY_STEPS.length - 1;
 
-                return (
-                  <VerticalStep
-                    key={stepKey}
-                    stepNumber={stepNumber}
-                    stepLabel={stepDisplayNumber(stepNumber)}
-                    title={SELLER_STEP_LABELS[stepKey] ? t(SELLER_STEP_LABELS[stepKey]) : t(`sales.step.${stepKey}`)}
-                    isOpen={isOpen}
-                    isCurrent={isCurrent}
-                    isCompleted={isCompleted}
-                    isLast={isLast}
-                    currentLabel={t('sales.currentStep')}
-                    onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : sale.currentStep - 1) : index)}
-                  >
-                    {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
-                    {!isHistorical && sale.currentStepDueAt && (
-                      <p className={`mb-4 text-[13px] font-semibold ${remaining ? 'text-[#8a6a2f]' : 'text-[#b04a2c]'}`}>
-                        {remaining ? t('sellerSale.deadlineLeft', { time: remaining }) : t('sellerSale.deadlineOver')}
-                      </p>
-                    )}
-                    {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('sellerSale.todo')}</h3>}
-
-                    {stepNumber === STEP.COMMISSION && (
+                // Contenu d'une étape interne ; les trois sous-étapes des documents passent par
+                // DocumentsSubsteps, qui les présente sous l'étape « Documents administratifs ».
+                const renderStep = (step: number, historical: boolean) => (
+                  <>
+                    {step === STEP.COMMISSION && (
                       <p className="text-sm leading-6 text-[#5a5e66]">
-                        {isHistorical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
+                        {historical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
                       </p>
                     )}
 
-                    {stepNumber === STEP.VIREMENT && (isHistorical ? (
+                    {step === STEP.VIREMENT && (historical ? (
                       <>
                         <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.step2Done')}</p>
                         <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
@@ -473,7 +455,7 @@ export default function SellerSaleDetailPage() {
                       </>
                     ))}
 
-                    {stepNumber === STEP.PREPARATION && (isHistorical ? (
+                    {step === STEP.PREPARATION && (historical ? (
                       <>
                         <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.preparationDone')}</p>
                         <dl className="overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-[#fbfaf7]">
@@ -487,7 +469,7 @@ export default function SellerSaleDetailPage() {
                         <p className="text-sm leading-6 text-[#5a5e66]">{t('sellerSale.preparationIntro')}</p>
                         <button
                           type="button"
-                          onClick={() => setRegistrationCardOpen(true)}
+                          onClick={() => setRegistrationCardRequested(true)}
                           className="btn btn-primary w-full sm:w-auto sm:px-8"
                         >
                           {t('sellerSale.registrationCardCta')}
@@ -496,12 +478,12 @@ export default function SellerSaleDetailPage() {
                       </div>
                     ))}
 
-                    {stepNumber === STEP.VERIFICATION && (
+                    {step === STEP.VERIFICATION && (
                       <SaleDocumentsReview<SellerSaleDetail>
                         saleId={sale.id}
                         side="seller"
                         documents={sale.documents}
-                        isHistorical={isHistorical}
+                        isHistorical={historical}
                         stampHref={stampHref}
                         onUpdated={(updated, updateMessage) => {
                           setSale(updated);
@@ -511,16 +493,44 @@ export default function SellerSaleDetailPage() {
                       />
                     )}
 
-                    {stepNumber === STEP.SIGNATURE && (
+                    {step === STEP.SIGNATURE && (
                       <EsignatureStep
                         side="seller"
                         signUrl={sale.esignature?.sellerUrl}
                         sellerSignedAt={sale.esignature?.sellerSignedAt}
                         buyerSignedAt={sale.esignature?.buyerSignedAt}
-                        isHistorical={isHistorical}
+                        isHistorical={historical}
                         returnedFromSigning={returnedFromSigning}
                       />
                     )}
+                  </>
+                );
+
+                return (
+                  <VerticalStep
+                    key={group.key}
+                    stepNumber={stepNumber}
+                    title={SELLER_STEP_LABELS[group.key] ? t(SELLER_STEP_LABELS[group.key]) : t(`sales.step.${group.key}`)}
+                    isOpen={isOpen}
+                    isCurrent={isCurrent}
+                    isCompleted={isCompleted}
+                    isLast={isLast}
+                    currentLabel={t('sales.currentStep')}
+                    onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : displayStepIndex(sale.currentStep)) : index)}
+                  >
+                    {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
+                    {!isHistorical && sale.currentStepDueAt && (
+                      <p className={`mb-4 text-[13px] font-semibold ${remaining ? 'text-[#8a6a2f]' : 'text-[#b04a2c]'}`}>
+                        {remaining ? t('sellerSale.deadlineLeft', { time: remaining }) : t('sellerSale.deadlineOver')}
+                      </p>
+                    )}
+                    {!isHistorical && <h3 className="mb-2 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('sellerSale.todo')}</h3>}
+
+                    {group.key === 'documents_administratifs' ? (
+                      <DocumentsSubsteps currentStep={sale.currentStep} closed={sale.status === 'cloturee'}>
+                        {renderStep}
+                      </DocumentsSubsteps>
+                    ) : renderStep(group.steps[0], isHistorical)}
                   </VerticalStep>
                 );
               })}
@@ -599,7 +609,8 @@ export default function SellerSaleDetailPage() {
         onConfirm={handleSubmitRegistrationCard}
         onCancel={() => {
           if (!confirming) {
-            setRegistrationCardOpen(false);
+            setRegistrationCardRequested(false);
+            setRegistrationCardDismissed(true);
             setFormulaNumberInput('');
             setMotifAbsenceInput('');
           }

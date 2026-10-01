@@ -915,8 +915,8 @@ const translations: Record<Language, Record<string, string>> = {
     'profil.stampLabel': 'Tampon de l\'entreprise',
     'stamp.cropTitle': 'Cadrage :',
     'stamp.cropHint': 'Le système supprimera automatiquement le fond blanc. Utilisez l\'outil de recadrage pour ajuster au plus près de votre tampon.',
-    'sales.step.preparation_documents': 'Documents administratifs · Préparation',
-    'sales.step.verification_documents': 'Documents administratifs · Vérification des tampons',
+    'sales.step.preparation_documents': 'Documents administratifs · Préparation des documents',
+    'sales.step.verification_documents': 'Documents administratifs · Validation des documents',
     'sellerSale.preparationIntro': 'Complétez les informations de la carte grise : elles figurent sur le certificat de cession et la déclaration d’achat, qui sont ensuite générés automatiquement avec les tampons des deux parties.',
     'sellerSale.registrationCardCta': 'Saisir les informations de la carte grise',
     'sellerSale.preparationDone': 'Vous avez complété les informations de la carte grise.',
@@ -988,6 +988,10 @@ const translations: Record<Language, Record<string, string>> = {
     'saleAction.upload_stamp': 'Déposer votre tampon',
     'saleAction.review_documents': 'Vérifier les documents',
     'saleAction.sign': 'En attente de votre signature',
+    'sales.step.documents_administratifs': 'Documents administratifs',
+    'saleSubstep.preparation_documents': 'Préparation des documents',
+    'saleSubstep.verification_documents': 'Validation des documents',
+    'saleSubstep.signature_electronique': 'Signature',
   },
   en: {
     'nav.home': 'Home',
@@ -1858,8 +1862,8 @@ const translations: Record<Language, Record<string, string>> = {
     'notifications.time5min': '5 min ago',
     'notifications.timeYesterday': 'Yesterday',
     'notifications.time2days': '2 days ago',
-    'sales.step.preparation_documents': 'Administrative documents · Preparation',
-    'sales.step.verification_documents': 'Administrative documents · Stamp review',
+    'sales.step.preparation_documents': 'Administrative documents · Document preparation',
+    'sales.step.verification_documents': 'Administrative documents · Document validation',
     'sellerSale.preparationIntro': 'Complete the registration card details: they appear on the transfer certificate and the purchase declaration, which are then generated automatically with both parties’ stamps.',
     'sellerSale.registrationCardCta': 'Enter the registration card details',
     'sellerSale.preparationDone': 'You completed the registration card details.',
@@ -1931,6 +1935,10 @@ const translations: Record<Language, Record<string, string>> = {
     'saleAction.upload_stamp': 'Upload your stamp',
     'saleAction.review_documents': 'Review the documents',
     'saleAction.sign': 'Awaiting your signature',
+    'sales.step.documents_administratifs': 'Administrative documents',
+    'saleSubstep.preparation_documents': 'Document preparation',
+    'saleSubstep.verification_documents': 'Document validation',
+    'saleSubstep.signature_electronique': 'Signature',
   }
 };
 
