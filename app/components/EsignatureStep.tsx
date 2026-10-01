@@ -14,6 +14,8 @@ interface EsignatureStepProps {
   isHistorical: boolean;
   // Retour depuis la plateforme de signature (?signature=retour), avant confirmation par OpenAPI
   returnedFromSigning: boolean;
+  // La session de signature n'a pas pu être créée ; le serveur réessaie automatiquement
+  setupFailed?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export default function EsignatureStep({
   buyerSignedAt,
   isHistorical,
   returnedFromSigning,
+  setupFailed = false,
 }: EsignatureStepProps) {
   const { t } = useLanguage();
   const otherSide: Side = side === 'seller' ? 'buyer' : 'seller';
@@ -89,6 +92,10 @@ export default function EsignatureStep({
                 >
                   {t(returnedFromSigning ? 'esign.resume' : 'esign.sign')}
                 </a>
+              ) : setupFailed ? (
+                <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-[13px] font-semibold leading-6 text-[#8a4b24]" role="alert">
+                  {t('esign.setupFailed')}
+                </p>
               ) : (
                 <p className="text-[13px] italic text-[#5a5e66]">{t('esign.linkPending')}</p>
               )}

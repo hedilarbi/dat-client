@@ -501,6 +501,7 @@ export default function SellerSaleDetailPage() {
                         buyerSignedAt={sale.esignature?.buyerSignedAt}
                         isHistorical={historical}
                         returnedFromSigning={returnedFromSigning}
+                        setupFailed={Boolean(sale.esignature?.setupErrorAt)}
                       />
                     )}
                   </>

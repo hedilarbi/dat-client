@@ -78,4 +78,6 @@ export interface SaleEsignatureState {
   signedPurchaseDeclarationUrl: string | null;
   auditUrl: string | null;
   completedAt: string | null;
+  // Dernier échec de création de la session de signature (le serveur réessaie)
+  setupErrorAt?: string | null;
 }
