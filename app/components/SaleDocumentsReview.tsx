@@ -15,10 +15,18 @@ import {
   type SaleSide,
 } from '../lib/saleSteps';
 
+/** Identité de l'autre partie, à comparer avec celle portée sur les documents. */
+export interface ReviewParty {
+  companyName?: string | null;
+  siret?: string | null;
+  address?: { street?: string; postalCode?: string; city?: string; country?: string } | null;
+}
+
 interface SaleDocumentsReviewProps<TSale> {
   saleId: string;
   side: SaleSide;
   documents: SaleDocumentsState;
+  otherParty?: ReviewParty | null;
   isHistorical: boolean;
   stampHref: string;
   // Le serveur renvoie la vente telle que la voit l'utilisateur, avec un message de confirmation
@@ -36,6 +44,7 @@ export default function SaleDocumentsReview<TSale>({
   saleId,
   side,
   documents,
+  otherParty,
   isHistorical,
   stampHref,
   onUpdated,
@@ -127,6 +136,32 @@ export default function SaleDocumentsReview<TSale>({
   return (
     <div>
       <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t(isHistorical ? 'saleDocs.historical' : 'saleDocs.intro')}</p>
+
+      {otherParty && (
+        <div className="mb-4 overflow-hidden rounded-[10px] border border-[#dcd7cb] bg-white">
+          <div className="border-b border-[#efece3] bg-[#f8f7f2] px-4 py-3">
+            <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t(`saleDocs.otherParty.${otherSide}`)}</div>
+            {!isHistorical && <p className="mt-0.5 text-[12px] text-[#5a5e66]">{t('saleDocs.otherPartyHint')}</p>}
+          </div>
+          <dl className="divide-y divide-[#f1efe8]">
+            {[
+              { label: t('saleDocs.companyName'), value: otherParty.companyName },
+              { label: t('saleDocs.siret'), value: otherParty.siret, mono: true },
+              {
+                label: t('saleDocs.address'),
+                value: otherParty.address
+                  ? [otherParty.address.street, [otherParty.address.postalCode, otherParty.address.city].filter(Boolean).join(' '), otherParty.address.country].filter(Boolean).join(', ')
+                  : null,
+              },
+            ].map((row) => (
+              <div key={row.label} className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <dt className="text-[11px] font-bold uppercase tracking-wide text-[#7a756a]">{row.label}</dt>
+                <dd className={`text-sm text-[#13243c] sm:text-right ${row.mono ? 'font-mono font-bold' : 'font-semibold'}`}>{row.value || '—'}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         {REVIEW_DOCUMENTS.map((document) => {

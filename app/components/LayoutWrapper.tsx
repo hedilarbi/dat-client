@@ -285,6 +285,8 @@ interface MobileNavLink {
   href?: string;
   label: string;
   active?: boolean;
+  // Mis en avant (couleur d'accent) : lien vers l'espace de l'utilisateur connecté
+  highlight?: boolean;
 }
 
 function MobileMenu({
@@ -357,7 +359,7 @@ function MobileMenu({
                     key={link.label}
                     href={link.href}
                     onClick={close}
-                    className={`px-4 py-3 rounded-[9px] text-[14px] font-semibold transition ${link.active ? 'bg-[#1c3050] text-white' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}
+                    className={`px-4 py-3 rounded-[9px] text-[14px] transition ${link.highlight ? 'font-bold text-[#d9704f] hover:bg-[#1a2b44]' : link.active ? 'font-semibold bg-[#1c3050] text-white' : 'font-semibold text-[#9fb0c9] hover:bg-[#1a2b44]'}`}
                   >
                     {link.label}
                   </Link>
@@ -664,6 +666,11 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     );
   }
 
+  // Utilisateur connecté : lien vers son espace (vendeur ou acheteur), affiché avant « Accueil »
+  const spaceLink = user && (user.role === 'vendeur' || user.role === 'acheteur')
+    ? { href: localizedPath(getRoleHomePath(user.role), language), label: t(user.role === 'vendeur' ? 'nav.sellerSpace' : 'nav.buyerSpace') }
+    : null;
+
   // ACHETEUR / GUEST LAYOUT (Top Header Layout) — shared by every page outside the vendeur space,
   // logged in or not: home, login, register, forgot-password, profil, sessions, offres, support.
   return (
@@ -676,6 +683,9 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
           </Link>
 
           <div className="hidden md:flex items-center gap-[22px] text-[13px] font-bold text-white shrink-0">
+            {spaceLink && (
+              <Link href={spaceLink.href} className="text-[#d9704f] hover:text-[#eaa083] transition">{spaceLink.label}</Link>
+            )}
             <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
             <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
             <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">Acheter</Link>
@@ -701,6 +711,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <MobileMenu
               onLanguageChange={persistLanguage}
               navLinks={[
+                ...(spaceLink ? [{ href: spaceLink.href, label: spaceLink.label, highlight: true }] : []),
                 { href: homePath, label: t('nav.home'), active: currentPath === '/' },
                 { href: localizedPath('/vehicules', language), label: t('nav.vehicles'), active: currentPath === '/vehicules' },
                 { href: localizedPath('/acheter', language), label: 'Acheter', active: currentPath === '/acheter' },

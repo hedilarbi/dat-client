@@ -4,9 +4,8 @@ import { useLanguage } from '../i18n';
 import type { SaleEsignatureState } from '../lib/saleSteps';
 
 /**
- * Vente finalisée : bon d'enlèvement et documents signés et tamponnés, identiques pour les
- * deux parties. La signature électronique vaut pour le dossier complet ; le certificat et la
- * déclaration sont aussi proposés séparément pour la consultation.
+ * Vente clôturée : le bon d'enlèvement, mis en avant puisqu'il sert à récupérer le véhicule,
+ * puis le certificat de cession et la déclaration d'achat signés. Identique pour les deux parties.
  */
 export default function SignedDocuments({ esignature, bonEnlevementUrl }: {
   esignature: SaleEsignatureState | null;
@@ -14,29 +13,46 @@ export default function SignedDocuments({ esignature, bonEnlevementUrl }: {
 }) {
   const { t } = useLanguage();
   const documents = [
-    { key: 'bonEnlevement', url: bonEnlevementUrl },
     { key: 'certificate', url: esignature?.signedCertificateUrl },
     { key: 'purchaseDeclaration', url: esignature?.signedPurchaseDeclarationUrl },
-    { key: 'bundle', url: esignature?.signedDocumentUrl },
     { key: 'audit', url: esignature?.auditUrl },
   ].filter((document): document is { key: string; url: string } => Boolean(document.url));
 
-  if (documents.length === 0) return null;
-
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {documents.map((document) => (
+    <div className="space-y-3">
+      {bonEnlevementUrl && (
         <a
-          key={document.key}
-          href={document.url}
+          href={bonEnlevementUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-between gap-3 rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]"
+          className="flex flex-col gap-3 rounded-[12px] bg-[#2f6f4f] px-5 py-4 text-white transition hover:bg-[#25593f] sm:flex-row sm:items-center sm:justify-between"
         >
-          <span>{t(`saleDocs.signed.${document.key}`)}</span>
-          <span aria-hidden="true">↓</span>
+          <span>
+            <span className="block text-[16px] font-bold">{t('saleDocs.signed.bonEnlevement')}</span>
+            <span className="mt-0.5 block text-[13px] text-white/80">{t('saleDocs.signed.bonEnlevementHint')}</span>
+          </span>
+          <span className="inline-flex h-11 shrink-0 items-center justify-center rounded-[9px] bg-white px-5 text-[13px] font-bold uppercase text-[#2f6f4f]">
+            {t('saleDocs.download')} ↓
+          </span>
         </a>
-      ))}
+      )}
+
+      {documents.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {documents.map((document) => (
+            <a
+              key={document.key}
+              href={document.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-3 rounded-[10px] border border-[#dcd7cb] bg-white px-4 py-3 text-[13px] font-bold text-[#13243c] transition hover:bg-[#f1f4f8]"
+            >
+              <span>{t(`saleDocs.signed.${document.key}`)}</span>
+              <span aria-hidden="true">↓</span>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

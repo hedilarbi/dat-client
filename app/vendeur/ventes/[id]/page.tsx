@@ -51,7 +51,7 @@ interface SellerSaleDetail {
   vehicle: { id: string; brand: string; model: string; year: number | null; mileage: number | null; photoUrl: string | null; registrationNumber: string | null; registrationCardAvailable: boolean | null; formulaNumber?: string | null; registrationCardMissingMotif?: string | null; } | null;
   session: { id: string; name: string; endDate: string } | null;
   /** Révélé par le serveur une fois la commission réglée */
-  buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
+  buyer: { companyName: string; firstName: string; lastName: string; email: string; phone: string; siret?: string | null; address?: { street?: string; city?: string; postalCode?: string; country?: string } } | null;
   offers?: Array<{ id: string; amount: number; selectable: boolean; buyer: { companyName: string; firstName: string; lastName: string } | null }>;
 }
 
@@ -483,6 +483,7 @@ export default function SellerSaleDetailPage() {
                         saleId={sale.id}
                         side="seller"
                         documents={sale.documents}
+                        otherParty={sale.buyer}
                         isHistorical={historical}
                         stampHref={stampHref}
                         onUpdated={(updated, updateMessage) => {

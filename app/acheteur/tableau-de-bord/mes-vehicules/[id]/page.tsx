@@ -58,6 +58,7 @@ interface WonSaleDetail {
     phone: string;
     email: string;
     address: { street?: string; postalCode?: string; city?: string; country?: string } | null;
+    siret?: string | null;
     bankInfo: { bankName: string; accountHolder: string; iban: string; bic: string } | null;
   } | null;
 }
@@ -567,6 +568,7 @@ export default function WonSaleDetailPage() {
                 saleId={sale.id}
                 side="buyer"
                 documents={sale.documents}
+                otherParty={sale.seller}
                 isHistorical={historical}
                 stampHref={stampHref}
                 onUpdated={(updated, updateMessage) => {
