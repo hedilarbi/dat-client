@@ -160,7 +160,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
           <input required aria-label="Immatriculation" readOnly={isEditing || checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
           {!isEditing && <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>}
         </div>
-        {isEditing && <p className="mt-2 text-[11px] text-[#5a5e66]">Le matricule ne peut pas être modifié après la création du dossier.</p>}
+        {isEditing && <p className="mt-2 text-[11px] text-[#5a5e66]">L’immatriculation ne peut pas être modifiée après la création du dossier.</p>}
         {lookupError && <Alert variant="error" className="mt-3">{lookupError}</Alert>}
 
       {detailsVisible && (

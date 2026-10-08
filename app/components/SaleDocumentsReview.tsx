@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { apiRequest } from '../api';
 import { uploadFile } from '../lib/uploadFile';
 import { useLanguage } from '../i18n';
+import { useUser } from './LayoutWrapper';
 import ConfirmModal from './ConfirmModal';
 import Spinner from './Spinner';
 import StampRequiredBanner from './StampRequiredBanner';
@@ -50,6 +51,9 @@ export default function SaleDocumentsReview<TSale>({
   onUpdated,
 }: SaleDocumentsReviewProps<TSale>) {
   const { t } = useLanguage();
+  // Dans la liste des parties, l'utilisateur est désigné par sa raison sociale plutôt que par « Vous »
+  const { user } = useUser();
+  const selfName = user?.companyName || t('saleDocs.you');
   const otherSide: SaleSide = side === 'seller' ? 'buyer' : 'seller';
   const { review } = documents;
   const mine = review[side];
@@ -188,7 +192,7 @@ export default function SaleDocumentsReview<TSale>({
 
       <ul className="mb-4 grid gap-2 sm:grid-cols-2">
         {[
-          { key: side, label: t('saleDocs.you'), decision: mine },
+          { key: side, label: selfName, decision: mine },
           { key: otherSide, label: t(`saleDocs.party.${otherSide}`), decision: other },
         ].map((party) => (
           <li key={party.key} className="rounded-[9px] border border-[#eceadf] bg-white px-3 py-2 text-[13px]">

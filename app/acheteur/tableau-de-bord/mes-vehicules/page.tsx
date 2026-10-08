@@ -15,7 +15,7 @@ import Spinner from '../../../components/Spinner';
 interface WonSale {
   id: string;
   amount: number | null;
-  status: 'en_cours' | 'cloturee';
+  status: 'en_cours' | 'cloturee' | 'annulee';
   currentStep: number;
   stepKey: string | null;
   stepCount: number;
@@ -29,7 +29,7 @@ interface WonSale {
   session: { id: string; name: string; endDate: string } | null;
 }
 
-type SaleFilter = 'ongoing' | 'closed';
+type SaleFilter = 'ongoing' | 'closed' | 'cancelled';
 
 /** Compte à rebours lisible ; null une fois l'échéance dépassée. */
 function timeLeft(dueAt: string | null): string | null {
@@ -52,6 +52,7 @@ export default function WonSalesPage() {
 
   const [ongoing, setOngoing] = useState<WonSale[]>([]);
   const [closed, setClosed] = useState<WonSale[]>([]);
+  const [cancelled, setCancelled] = useState<WonSale[]>([]);
   const [filter, setFilter] = useState<SaleFilter>('ongoing');
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +64,7 @@ export default function WonSalesPage() {
     .then((res) => {
       setOngoing(res.ongoing || []);
       setClosed(res.closed || []);
+      setCancelled(res.cancelled || []);
       setError('');
     })
     .catch((requestError) => {
@@ -88,7 +90,7 @@ export default function WonSalesPage() {
     return <UnderReviewNotice />;
   }
 
-  const sales = filter === 'ongoing' ? ongoing : closed;
+  const sales = filter === 'ongoing' ? ongoing : filter === 'closed' ? closed : cancelled;
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
@@ -107,6 +109,7 @@ export default function WonSalesPage() {
         {([
           { value: 'ongoing' as const, label: t('sales.filterOngoing'), count: ongoing.length },
           { value: 'closed' as const, label: t('sales.filterClosed'), count: closed.length },
+          { value: 'cancelled' as const, label: t('sales.filterCancelled'), count: cancelled.length },
         ]).map((option) => {
           const isActive = filter === option.value;
           return (
@@ -130,7 +133,7 @@ export default function WonSalesPage() {
         <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : sales.length === 0 ? (
         <p className="rounded-[12px] bg-[#f8f7f2] p-8 text-center text-sm text-[#5a5e66]">
-          {filter === 'ongoing' ? t('sales.emptyOngoing') : t('sales.emptyClosed')}
+          {filter === 'ongoing' ? t('sales.emptyOngoing') : filter === 'closed' ? t('sales.emptyClosed') : t('sales.emptyCancelled')}
         </p>
       ) : (
         <div className="space-y-4">
@@ -230,6 +233,11 @@ function SaleCard({
 
         {/* Bouton d'action principal */}
         <div className="shrink-0 pt-2 sm:pt-0">
+          {sale.status === 'annulee' ? (
+            <span className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#fdece4] px-5 text-[12px] font-bold uppercase tracking-[0.03em] text-[#b91c1c]">
+              {t('sales.cancelledLabel')}
+            </span>
+          ) : (
           <Link
             href={localizedPath(`${paths.purchases}/${sale.id}`, language)}
             className={`inline-flex h-11 items-center justify-center rounded-[10px] px-5 text-[12px] font-bold uppercase tracking-[0.03em] transition cursor-pointer ${
@@ -240,6 +248,7 @@ function SaleCard({
           >
             {sale.status === 'cloturee' ? t('sales.viewSale') : `${t('sales.continuePurchase')} →`}
           </Link>
+          )}
         </div>
       </div>
 

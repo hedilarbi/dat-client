@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useLanguage } from '../i18n';
+import { useUser } from './LayoutWrapper';
 
 type Side = 'seller' | 'buyer';
 
@@ -33,12 +34,15 @@ export default function EsignatureStep({
   setupFailed = false,
 }: EsignatureStepProps) {
   const { t } = useLanguage();
+  // Dans la liste des parties, l'utilisateur est désigné par sa raison sociale plutôt que par « Vous »
+  const { user } = useUser();
+  const selfName = user?.companyName || t('esign.you');
   const otherSide: Side = side === 'seller' ? 'buyer' : 'seller';
   const mySignedAt = side === 'seller' ? sellerSignedAt : buyerSignedAt;
   const otherSignedAt = side === 'seller' ? buyerSignedAt : sellerSignedAt;
 
   const parties = [
-    { key: side, label: t('esign.you'), signed: Boolean(mySignedAt) },
+    { key: side, label: selfName, signed: Boolean(mySignedAt) },
     { key: otherSide, label: t(`esign.party.${otherSide}`), signed: Boolean(otherSignedAt) },
   ];
 
@@ -81,14 +85,28 @@ export default function EsignatureStep({
                 </p>
               ) : null}
 
-              <p className="mb-4 text-[13px] leading-6 text-[#5a5e66]">{t('esign.instructions')}</p>
+              <div className="mb-5 rounded-[12px] border-2 border-[#13243c] bg-[#f4f7fb] p-4 sm:p-5">
+                <p className="mb-3 text-[13px] font-extrabold uppercase tracking-[0.06em] text-[#13243c]">{t('esign.steps.title')}</p>
+                <ol className="space-y-3.5">
+                  {[
+                    t('esign.steps.1'),
+                    t('esign.steps.2'),
+                    otherSignedAt ? t('esign.steps.3.last') : t(`esign.steps.3.${otherSide}`),
+                  ].map((text, index) => (
+                    <li key={index} className="flex items-start gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#d9704f] text-[13px] font-extrabold text-white" aria-hidden="true">{index + 1}</span>
+                      <span className="pt-0.5 text-[14px] font-semibold leading-6 text-[#13243c]">{text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
 
               {signUrl ? (
                 <a
                   href={signUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-12 items-center justify-center rounded-[9px] bg-[#13243c] px-6 text-[13px] font-bold text-white transition hover:bg-[#203a61]"
+                  className="inline-flex h-14 w-full items-center justify-center rounded-[10px] bg-[#2f6f4f] px-8 text-[14px] font-extrabold uppercase tracking-[0.03em] text-white shadow-md transition hover:bg-[#245a40] sm:w-auto"
                 >
                   {t(returnedFromSigning ? 'esign.resume' : 'esign.sign')}
                 </a>
@@ -100,16 +118,6 @@ export default function EsignatureStep({
                 <p className="text-[13px] italic text-[#5a5e66]">{t('esign.linkPending')}</p>
               )}
 
-              {!otherSignedAt && (
-                <div className="mt-4 border-t border-[#eceadf] pt-3">
-                  <p className="mb-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('esign.help.title')}</p>
-                  <ol className="list-decimal space-y-1 pl-5 text-[13px] leading-6 text-[#5a5e66]">
-                    <li>{t('esign.help.otp')}</li>
-                    <li>{t(`esign.help.waiting.${otherSide}`)}</li>
-                    <li>{t(`esign.help.leave.${otherSide}`)}</li>
-                  </ol>
-                </div>
-              )}
             </>
           )}
         </>

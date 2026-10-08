@@ -17,7 +17,7 @@ import StampReminderBanner from '../../components/StampReminderBanner';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, type Rejection } from '../../components/RegistrationStatusNotices';
 import TopOffers from '../../components/TopOffers';
 import { formatEuros } from '../../lib/format';
-import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
+import { DISPLAYED_STEP_COUNT, SELLER_DISPLAYED_STEP_COUNT, stepDisplayNumber, sellerStepDisplayNumber } from '../../lib/saleSteps';
 import { formatTimeLeft } from '../../lib/currentSales';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
 
@@ -672,7 +672,7 @@ export default function VendeurTableauDeBordPage() {
                         <span className="hidden sm:inline">•</span>
                       )}
                       {sale.currentStep != null && sale.stepCount != null && (
-                        <span>{t('dashboard.step', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}</span>
+                        <span>{t('dashboard.step', { current: sellerStepDisplayNumber(sale.currentStep), total: String(SELLER_DISPLAYED_STEP_COUNT) })}</span>
                       )}
                     </div>
                     <div className="mt-2">

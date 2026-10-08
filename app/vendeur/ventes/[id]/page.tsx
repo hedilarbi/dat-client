@@ -17,11 +17,11 @@ import StampRequiredBanner from '../../../components/StampRequiredBanner';
 import { useSaleAutoRefresh } from '../../../components/useSaleAutoRefresh';
 import { formatEuros } from '../../../lib/format';
 import {
-  DISPLAY_STEPS,
-  DISPLAYED_STEP_COUNT,
+  SELLER_DISPLAY_STEPS,
+  SELLER_DISPLAYED_STEP_COUNT,
   STEP,
-  displayStepIndex,
-  stepDisplayNumber,
+  sellerDisplayStepIndex,
+  sellerStepDisplayNumber,
   type SaleDocumentsState,
   type SaleEsignatureState,
 } from '../../../lib/saleSteps';
@@ -56,12 +56,11 @@ interface SellerSaleDetail {
 }
 
 /**
- * Étapes dont le libellé diffère côté vendeur : ce qui est un « paiement de la commission »
- * pour l'acheteur est, vu du vendeur, la vérification de son acheteur avant que la procédure
- * ne s'engage. Les autres étapes gardent le libellé commun `sales.step.<clé>`.
+ * Étapes dont le libellé diffère côté vendeur : le paiement de la commission de l'acheteur ne le
+ * concerne pas, il voit une seule étape « En attente de virement ». Les autres étapes gardent le
+ * libellé commun `sales.step.<clé>`.
  */
 const SELLER_STEP_LABELS: Record<string, string> = {
-  commission: 'sellerSale.step.commission',
   virement_carte_grise: 'sellerSale.step.virement_carte_grise',
 };
 
@@ -374,7 +373,7 @@ export default function SellerSaleDetailPage() {
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('sellerSale.progressTitle')}</h2>
               <span className="text-[12px] font-semibold text-[#13243c]">
-                {t('sellerSale.stepOf', { current: stepDisplayNumber(sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
+                {t('sellerSale.stepOf', { current: sellerStepDisplayNumber(sale.currentStep), total: String(SELLER_DISPLAYED_STEP_COUNT) })}
               </span>
             </div>
 
@@ -403,22 +402,31 @@ export default function SellerSaleDetailPage() {
             )}
 
             <div className="mt-6 flex flex-col">
-              {DISPLAY_STEPS.map((group, index) => {
+              {SELLER_DISPLAY_STEPS.map((group, index) => {
                 const stepNumber = index + 1;
                 const isCompleted = sale.status === 'cloturee' || sale.currentStep > group.steps[group.steps.length - 1];
                 const isCurrent = sale.status !== 'cloturee' && group.steps.includes(sale.currentStep);
                 const isOpen = viewedStepIndex !== null ? viewedStepIndex === index : isCurrent;
                 const isHistorical = isCompleted;
-                const isLast = index === DISPLAY_STEPS.length - 1;
+                const isLast = index === SELLER_DISPLAY_STEPS.length - 1;
 
                 // Contenu d'une étape interne ; les trois sous-étapes des documents passent par
                 // DocumentsSubsteps, qui les présente sous l'étape « Documents administratifs ».
                 const renderStep = (step: number, historical: boolean) => (
                   <>
                     {step === STEP.COMMISSION && (
-                      <p className="text-sm leading-6 text-[#5a5e66]">
-                        {historical ? t('sellerSale.step1Done') : t('sellerSale.step1Waiting')}
-                      </p>
+                      <>
+                        <p className="mb-4 text-sm leading-6 text-[#5a5e66]">{t('sellerSale.transferPending')}</p>
+                        {sale.amount != null && (
+                          <div className="mb-4 flex items-baseline justify-between gap-3 rounded-[10px] bg-[#13243c] px-4 py-3.5">
+                            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#c3cedd]">{t('sellerSale.amountExpected')}</span>
+                            <span className="font-mono text-lg font-bold text-white">{formatEuros(sale.amount, language)}</span>
+                          </div>
+                        )}
+                        <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                          {t('sellerSale.step2Note')}
+                        </p>
+                      </>
                     )}
 
                     {step === STEP.VIREMENT && (historical ? (
@@ -451,7 +459,7 @@ export default function SellerSaleDetailPage() {
                         >
                           {confirming ? t('sellerSale.confirming') : t('sellerSale.confirmTransfer')}
                         </button>
-                        <p className="mt-2.5 text-[12px] leading-5 text-[#5a5e66]">{t('sellerSale.confirmWarning')}</p>
+                        <p className="mt-3 rounded-[10px] border-2 border-[#13243c] bg-[#fff8e6] p-3.5 text-[14px] font-extrabold leading-6 text-black">{t('sellerSale.confirmWarning')}</p>
                       </>
                     ))}
 
@@ -518,10 +526,10 @@ export default function SellerSaleDetailPage() {
                     isCompleted={isCompleted}
                     isLast={isLast}
                     currentLabel={t('sales.currentStep')}
-                    onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : displayStepIndex(sale.currentStep)) : index)}
+                    onClick={() => setViewedStepIndex(isOpen ? (sale.status === 'cloturee' ? null : sellerDisplayStepIndex(sale.currentStep)) : index)}
                   >
                     {error && isOpen && <Alert variant="error" className="mb-4">{error}</Alert>}
-                    {!isHistorical && sale.currentStepDueAt && (
+                    {!isHistorical && sale.currentStep !== STEP.COMMISSION && sale.currentStepDueAt && (
                       <p className={`mb-4 text-[13px] font-semibold ${remaining ? 'text-[#8a6a2f]' : 'text-[#b04a2c]'}`}>
                         {remaining ? t('sellerSale.deadlineLeft', { time: remaining }) : t('sellerSale.deadlineOver')}
                       </p>
@@ -532,7 +540,12 @@ export default function SellerSaleDetailPage() {
                       <DocumentsSubsteps currentStep={sale.currentStep} closed={sale.status === 'cloturee'}>
                         {renderStep}
                       </DocumentsSubsteps>
-                    ) : renderStep(group.steps[0], isHistorical)}
+                    ) : renderStep(
+                      // « En attente de virement » regroupe deux étapes internes : une fois terminée,
+                      // on montre le virement reçu ; sinon, celle où en est la vente.
+                      group.key === 'virement_carte_grise' ? (isHistorical ? STEP.VIREMENT : sale.currentStep) : group.steps[0],
+                      isHistorical,
+                    )}
                   </VerticalStep>
                 );
               })}

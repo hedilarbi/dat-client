@@ -363,6 +363,17 @@ export default function WonSaleDetailPage() {
           <p className="mt-1 mb-4 text-sm text-[#2f6f4f]">
             {sale.closedAt ? t('saleDocs.closedOn', { date: formatDate(sale.closedAt) }) : t('saleDetail.closedText')}
           </p>
+          <div className="mb-4 rounded-[10px] border border-[#cbe3d5] bg-white p-4">
+            <h3 className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#2f6f4f]">{t('saleDetail.pickupTitle')}</h3>
+            <p className="mt-1.5 text-[13px] leading-6 text-[#13243c]">{t('saleDetail.pickupText')}</p>
+            {sale.seller && (
+              <p className="mt-2 text-[13px] font-bold leading-6 text-[#13243c]">
+                {t('saleDetail.pickupContact', {
+                  contact: [sale.seller.companyName, [sale.seller.firstName, sale.seller.lastName].filter(Boolean).join(' '), sale.seller.phone, sale.seller.email].filter(Boolean).join(' · '),
+                })}
+              </p>
+            )}
+          </div>
           <SignedDocuments esignature={sale.esignature} bonEnlevementUrl={sale.bonEnlevement?.url} />
         </section>
       )}

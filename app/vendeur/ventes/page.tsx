@@ -9,7 +9,7 @@ import { getRoleHomePath, localizedPath, useLanguage } from '../../i18n';
 import Alert from '../../components/Alert';
 import PageHeader from '../../components/PageHeader';
 import { formatEuros } from '../../lib/format';
-import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
+import { SELLER_DISPLAYED_STEP_COUNT, sellerStepDisplayNumber } from '../../lib/saleSteps';
 import Spinner from '../../components/Spinner';
 import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from '../../components/SellerListFilters';
 
@@ -46,9 +46,10 @@ type Counts = Record<VehicleState, number>;
 
 const EMPTY_COUNTS: Counts = { vente_en_cours: 0, vendu: 0, vente_annulee: 0 };
 
-// Étapes dont le libellé diffère côté vendeur ; les autres gardent `sales.step.<clé>`
+// Étapes dont le libellé diffère côté vendeur ; les autres gardent `sales.step.<clé>`.
+// La commission de l'acheteur ne le concerne pas : il attend le virement dès le début.
 const SELLER_STEP_LABELS: Record<string, string> = {
-  commission: 'sellerSale.step.commission',
+  commission: 'sellerSale.step.virement_carte_grise',
   virement_carte_grise: 'sellerSale.step.virement_carte_grise',
 };
 
@@ -225,7 +226,7 @@ function VehicleRowCard({
             {row.state === 'vente_en_cours' && row.sale?.currentStep != null && row.sale.stepKey && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fdf3ec] px-2.5 py-1 text-[10px] font-bold uppercase text-[#d9704f] ring-1 ring-inset ring-[#f4c9b9]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#d9704f]" aria-hidden="true" />
-                {t('dashboard.step', { current: stepDisplayNumber(row.sale.currentStep), total: String(DISPLAYED_STEP_COUNT) })}
+                {t('dashboard.step', { current: sellerStepDisplayNumber(row.sale.currentStep), total: String(SELLER_DISPLAYED_STEP_COUNT) })}
                 <span aria-hidden="true">·</span>
                 {t(SELLER_STEP_LABELS[row.sale.stepKey] || `sales.step.${row.sale.stepKey}`)}
               </span>

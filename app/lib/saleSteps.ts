@@ -16,6 +16,25 @@ export const DISPLAY_STEPS: { key: string; steps: number[] }[] = [
   { key: 'documents_administratifs', steps: DOCUMENTS_SUBSTEPS.map((substep) => substep.step) },
 ];
 
+/**
+ * Étapes présentées au vendeur : la vérification de l'acheteur (commission) ne le concerne pas,
+ * il attend simplement le virement. Les deux premières étapes internes forment donc une seule
+ * étape « En attente de virement ».
+ */
+export const SELLER_DISPLAY_STEPS: { key: string; steps: number[] }[] = [
+  { key: 'virement_carte_grise', steps: [STEP.COMMISSION, STEP.VIREMENT] },
+  { key: 'documents_administratifs', steps: DOCUMENTS_SUBSTEPS.map((substep) => substep.step) },
+];
+
+/** Rang (à partir de 0) de l'étape vendeur qui contient une étape interne. */
+export const sellerDisplayStepIndex = (step: number) => Math.max(0, SELLER_DISPLAY_STEPS.findIndex((group) => group.steps.includes(step)));
+
+/** Numéro affiché au vendeur d'une étape interne (1 ou 2). */
+export const sellerStepDisplayNumber = (step: number) => String(sellerDisplayStepIndex(step) + 1);
+
+/** Nombre d'étapes annoncé au vendeur (« Étape 2 sur 2 »). */
+export const SELLER_DISPLAYED_STEP_COUNT = SELLER_DISPLAY_STEPS.length;
+
 /** Rang (à partir de 0) de l'étape affichée qui contient une étape interne. */
 export const displayStepIndex = (step: number) => Math.max(0, DISPLAY_STEPS.findIndex((group) => group.steps.includes(step)));
 
