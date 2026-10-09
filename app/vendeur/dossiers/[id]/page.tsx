@@ -61,7 +61,7 @@ export default function DossierVehiculeDetailPage() {
     ['Immatriculation', dossier.registrationNumber], ['Pays d’immatriculation', dossier.registrationCountry],
     ['Première circulation', dossier.firstRegistrationDate], ['N° de série (VIN)', dossier.vin],
     ['Énergie', dossier.energyLabel || dossier.fuelType], ['Moteur', dossier.engine],
-    ['Boîte de vitesse', dossier.gearbox === 'M' ? 'Manuelle' : dossier.gearbox === 'A' ? 'Automatique' : dossier.gearbox],
+    ['Boîte de vitesse', dossier.gearbox === 'M' ? 'Manuelle' : dossier.gearbox === 'A' ? 'Automatique' : dossier.gearbox === 'S' ? 'Semi-automatique' : dossier.gearbox],
     ['CO₂', dossier.co2 ? `${dossier.co2} g/km` : undefined], ['Genre', dossier.vehicleGenre],
     ['Puissance fiscale', dossier.fiscalPower], ['Carrosserie', dossier.bodyType],
     ['Passagers', dossier.passengerCount], ['Portes', dossier.doorCount], ['Couleur', dossier.color],

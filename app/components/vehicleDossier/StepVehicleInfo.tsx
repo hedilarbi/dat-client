@@ -31,7 +31,9 @@ const apiVehicleValues = (data: Record<string, unknown>) => ({
   fiscalPower: String(data.puisFisc || ''),
   bodyType: String(data.carrosserieCG || ''),
   vin: String(data.vin || ''),
-  gearbox: String(data.boite_vitesse || '').toUpperCase() === 'X' ? '' : String(data.boite_vitesse || ''),
+  // Seuls M, A et S sont proposés : toute autre valeur de l'API (X = inconnue, code imprévu) laisse le
+  // champ vide et modifiable, pour que l'utilisateur choisisse lui-même la boîte.
+  gearbox: ['M', 'A', 'S'].includes(String(data.boite_vitesse || '').toUpperCase()) ? String(data.boite_vitesse).toUpperCase() : '',
   passengerCount: String(data.nr_passagers || ''),
   doorCount: String(data.nb_portes || ''),
   color: String(data.couleur || ''),
@@ -172,7 +174,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
           <label key={key} className="block">
             <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{label}{required && <span className="text-[#b42318]"> *</span>}</span>
             {key === 'gearbox' ? (
-              <select required aria-label={label} disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">Sélectionner</option><option value="M">M — Manuelle</option><option value="A">A — Automatique</option></select>
+              <select required aria-label={label} disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">Sélectionner</option><option value="M">M — Manuelle</option><option value="A">A — Automatique</option><option value="S">S — Semi-automatique</option></select>
             ) : (
               <input required={required} aria-label={label} readOnly={checkingApiFields || lockedApiFields.has(key)} value={String(values[key] ?? '')} onChange={(e) => onChange({ [key]: e.target.value } as Partial<VehicleDossierPayload>)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
             )}

@@ -5,6 +5,7 @@ export const PROCEDURE_OPTIONS = ['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'];
 export const GEARBOX_OPTIONS = [
   { value: 'M', fr: 'Manuelle', en: 'Manual' },
   { value: 'A', fr: 'Automatique', en: 'Automatic' },
+  { value: 'S', fr: 'Semi-automatique', en: 'Semi-automatic' },
 ];
 
 export const ENERGY_OPTIONS = [

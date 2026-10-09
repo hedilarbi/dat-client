@@ -69,7 +69,7 @@ export default function StepSummary({
           <SummaryField label="Modèle" value={values.model} />
           <SummaryField label="Première circulation" value={values.firstRegistrationDate} />
           <SummaryField label="Énergie" value={values.energyLabel} />
-          <SummaryField label="Boîte de vitesse" value={values.gearbox === 'M' ? 'M — Manuelle' : values.gearbox === 'A' ? 'A — Automatique' : values.gearbox} />
+          <SummaryField label="Boîte de vitesse" value={values.gearbox === 'M' ? 'M — Manuelle' : values.gearbox === 'A' ? 'A — Automatique' : values.gearbox === 'S' ? 'S — Semi-automatique' : values.gearbox} />
           <SummaryField label="VIN" value={values.vin} />
           <SummaryField label="Kilométrage" value={values.mileage != null ? `${values.mileage.toLocaleString('fr-FR')} km` : undefined} />
           <SummaryField label="VRADE" value={values.vrade} />
