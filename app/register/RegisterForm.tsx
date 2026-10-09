@@ -634,6 +634,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.passwordLabel')}</label>
               <PasswordInput
                 required
+                name="new-password"
+                autoComplete="new-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
@@ -644,6 +646,8 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
               <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">{t('register.confirmPassword')}</label>
               <PasswordInput
                 required
+                name="confirm-password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"

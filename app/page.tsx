@@ -133,8 +133,15 @@ export default function Home() {
           }}
         />
         <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-[40px] pointer-events-none">
-          <div className="inline-flex items-center gap-2 font-bold text-[11px] tracking-[0.28em] uppercase text-[#0c1626] bg-[#e2a175] px-4 py-2.5 rounded-full w-fit mb-5">
-            ● {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}
+          {/* Tag de la session en cours : élément le plus visible du hero */}
+          <div className="inline-flex max-w-full items-center gap-3 font-extrabold text-[13px] sm:text-[18px] leading-snug tracking-[0.1em] uppercase text-[#0c1626] bg-[#f0a067] px-4 sm:px-7 py-3 sm:py-4 rounded-[18px] sm:rounded-full w-fit mb-6 sm:mb-8 shadow-[0_0_0_4px_rgba(240,160,103,0.3),0_12px_32px_rgba(0,0,0,0.4)]">
+            {currentSession && (
+              <span className="relative flex h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#0c1626] opacity-60" />
+                <span className="relative inline-flex h-full w-full rounded-full bg-[#0c1626]" />
+              </span>
+            )}
+            <span>{currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}</span>
           </div>
           <h1 className="m-0 mb-5 font-extrabold text-[46px] sm:text-[76px] leading-[.94] uppercase text-white max-w-[840px] font-heading tracking-[-.01em]">
             {t('home.heroTitleLine1')}<br />{t('home.heroTitleLine2')}

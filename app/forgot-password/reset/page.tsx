@@ -123,8 +123,13 @@ function ResetPasswordForm() {
           <label className="block text-[12px] font-semibold text-[#4c5058] mb-2">
             {t('forgotPassword.newPasswordTitle')}
           </label>
+          {/* Identifiant du compte, invisible : le gestionnaire de mots de passe du navigateur sait
+              ainsi quel mot de passe enregistré mettre à jour avec le nouveau */}
+          <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
           <PasswordInput
             required
+            name="new-password"
+            autoComplete="new-password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
             className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"
@@ -138,6 +143,8 @@ function ResetPasswordForm() {
           </label>
           <PasswordInput
             required
+            name="confirm-password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm text-[#1a2230] focus:outline-none"

@@ -102,6 +102,8 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
               </label>
               <input
                 type="email"
+                name="email"
+                autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -116,6 +118,8 @@ export default function LoginForm({ role }: { role: 'acheteur' | 'vendeur' }) {
               </label>
               <PasswordInput
                 required
+                name="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full h-[48px] border border-[#dcd7cb] rounded-[9px] px-[16px] text-[14px] text-[#1a2230] focus:outline-none focus:ring-1 focus:ring-[#d9704f]"

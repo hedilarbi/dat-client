@@ -6,6 +6,7 @@ import { countries } from '../../lib/countries';
 import type { FuelType, VehicleAddressDetails, VehicleDossierPayload } from '../../lib/vehicleDossier';
 import Alert from '../Alert';
 import Spinner from '../Spinner';
+import { parseRegistrationDate } from '../../lib/registrationDate';
 
 interface Props {
   values: VehicleDossierPayload;
@@ -114,11 +115,12 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
         throw new Error("Aucune information véhicule n'a été retournée pour cette immatriculation.");
       }
       const apiValues = apiVehicleValues(data as Record<string, unknown>);
-      const year = apiValues.firstRegistrationDate.split('-')[2];
+      const registration = parseRegistrationDate(apiValues.firstRegistrationDate);
       onChange({
         ...apiValues,
+        firstRegistrationDate: registration?.date ?? apiValues.firstRegistrationDate,
         registrationNumber: apiValues.registrationNumber || values.registrationNumber,
-        year: year ? Number(year) : values.year,
+        year: registration ? registration.year : values.year,
         fuelType: fuelFromLabel(apiValues.energyLabel),
       });
       setLockedApiFields(new Set(

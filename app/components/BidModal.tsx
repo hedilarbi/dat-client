@@ -199,13 +199,10 @@ export default function BidModal({ vehicleId, vehicleTitle, offerId, initialAmou
 
           {step === 'recap' && quote && (
             <div className="space-y-4">
-              <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
-                {t('bid.feesWarning')}
-              </p>
-
-              <p className="rounded-[10px] border-l-4 border-red-500 bg-red-50 p-3.5 text-sm font-semibold leading-6 text-red-700">
-                {t('bid.paymentCommitmentWarning')}
-              </p>
+              <div className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                <p>{t('bid.feesWarning')}</p>
+                <p className="mt-2 font-bold">{t('bid.paymentCommitmentWarning')}</p>
+              </div>
 
               <div>
                 <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[.08em] text-[#5a5e66]">{t('bid.recapTitle')}</h3>
