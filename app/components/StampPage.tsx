@@ -163,14 +163,19 @@ export default function StampPage() {
         throw new Error(data.message || t('stamp.uploadError'));
       }
 
-      await apiRequest('/auth/me/stamp', {
+      const saved = await apiRequest('/auth/me/stamp', {
         method: 'PUT',
         body: JSON.stringify({ stampUrl: data.url }),
       });
 
-      setStampUrl(data.url);
       setFile(null);
-      setMessage(data.backgroundRemoved === false ? t('stamp.savedWithoutRemoval') : t('stamp.saved'));
+      if (saved?.user?.profileChangePending && saved.user.stampUrl !== data.url) {
+        // Remplacement d'un tampon existant : le nouveau tampon part en validation, l'ancien reste utilisé
+        setMessage(t('profil.updateRequestSent'));
+      } else {
+        setStampUrl(data.url);
+        setMessage(data.backgroundRemoved === false ? t('stamp.savedWithoutRemoval') : t('stamp.saved'));
+      }
       await refreshProfile();
       // Retour à la vente qui attendait ce tampon (étape 3 : acheteur comme vendeur)
       const returnTo = searchParams.get('returnTo');

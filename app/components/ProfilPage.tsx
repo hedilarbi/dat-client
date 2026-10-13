@@ -356,7 +356,7 @@ export default function ProfilPage() {
     setLoading(true);
 
     try {
-      await apiRequest('/auth/me', {
+      const response = await apiRequest('/auth/me', {
         method: 'PUT',
         body: JSON.stringify({
           firstName,
@@ -375,7 +375,8 @@ export default function ProfilPage() {
         })
       });
 
-      setMessage(t('profil.updateSuccess'));
+      // Compte validé : les modifications partent en validation au lieu de s'appliquer tout de suite
+      setMessage(response?.user?.profileChangePending ? t('profil.updateRequestSent') : t('profil.updateSuccess'));
       await refreshProfile();
     } catch (err: any) {
       setError(err.message || t('profil.updateError'));
@@ -616,7 +617,7 @@ export default function ProfilPage() {
           {error && <Alert variant="error">{error}</Alert>}
           {message && <Alert variant="success">{message}</Alert>}
         </div>
-        {!hasChanges && <p className="text-xs text-gray-400 text-center">{t('profil.noChanges')}</p>}
+        {!hasChanges && !isProfileReviewPending(user) && <p className="text-xs text-gray-400 text-center">{t('profil.noChanges')}</p>}
 
         <button
           type="submit"
