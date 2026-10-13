@@ -46,6 +46,8 @@ interface UserProfile {
   /** Compte validé qui a modifié son profil : en attente de validation de ces modifications */
   profileChangePending?: boolean;
   hasBeenValidated?: boolean;
+  /** Modifications de profil demandées, en attente de validation (non encore intégrées au profil) */
+  pendingProfile?: { changes?: Record<string, unknown>; submittedAt?: string };
   emailVerified?: boolean;
   address?: {
     street: string;

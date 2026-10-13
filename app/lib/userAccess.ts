@@ -29,3 +29,19 @@ export const isModificationReview = (user: AccessUser | null | undefined) =>
  */
 export const hasSpaceAccess = (user: AccessUser | null | undefined) =>
   Boolean(user && (user.status === 'valide' || user.status === 'suspendu' || isProfileReviewPending(user)));
+
+/**
+ * Profil tel que le titulaire l'a demandé : le profil en vigueur, avec par-dessus ses modifications
+ * en attente de validation (qui ne sont pas encore intégrées côté serveur). Sert à lui montrer ce
+ * qu'il a soumis plutôt que l'ancien profil.
+ */
+export function withPendingProfile<T extends { address?: object; bankInfo?: object; pendingProfile?: { changes?: Record<string, unknown> } }>(user: T): T {
+  const changes = user.pendingProfile?.changes;
+  if (!changes) return user;
+  return {
+    ...user,
+    ...changes,
+    address: { ...(user.address || {}), ...((changes.address as object) || {}) },
+    bankInfo: { ...(user.bankInfo || {}), ...((changes.bankInfo as object) || {}) },
+  } as T;
+}

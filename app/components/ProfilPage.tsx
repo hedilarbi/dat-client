@@ -17,7 +17,7 @@ import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression
 import { formatEuros } from '../lib/format';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, ProfileReviewBanner, type Rejection } from './RegistrationStatusNotices';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
-import { hasSpaceAccess, isProfileReviewPending } from '../lib/userAccess';
+import { hasSpaceAccess, isProfileReviewPending, withPendingProfile } from '../lib/userAccess';
 import ConfirmModal from './ConfirmModal';
 
 // SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
@@ -105,46 +105,48 @@ export default function ProfilPage() {
 
   useEffect(() => {
     if (user) {
-      setFirstName(user.firstName || '');
-      setLastName(user.lastName || '');
-      setCompanyName(user.companyName || '');
-      setActivityType(user.activityType || '');
-      setPhone(user.phone || '');
-      if (user.address) {
-        setStreet(user.address.street || '');
-        setCity(user.address.city || '');
-        setCountry(user.address.country || 'France');
-        setPostalCode(user.address.postalCode || '');
+      // Pendant l'attente, le formulaire montre ce que le titulaire a demandé
+      const view = withPendingProfile(user);
+      setFirstName(view.firstName || '');
+      setLastName(view.lastName || '');
+      setCompanyName(view.companyName || '');
+      setActivityType(view.activityType || '');
+      setPhone(view.phone || '');
+      if (view.address) {
+        setStreet(view.address.street || '');
+        setCity(view.address.city || '');
+        setCountry(view.address.country || 'France');
+        setPostalCode(view.address.postalCode || '');
       }
-      setSiret(user.siret || '');
-      setKbisUrl(user.kbisUrl || '');
-      setCinRectoUrl(user.cinRectoUrl || '');
-      setCinVersoUrl(user.cinVersoUrl || '');
-      setBankName(user.bankInfo?.bankName || '');
-      setAccountHolder(user.bankInfo?.accountHolder || '');
-      setIban(user.bankInfo?.iban || '');
-      setBic(user.bankInfo?.bic || '');
-      setRibUrl(user.bankInfo?.ribUrl || '');
+      setSiret(view.siret || '');
+      setKbisUrl(view.kbisUrl || '');
+      setCinRectoUrl(view.cinRectoUrl || '');
+      setCinVersoUrl(view.cinVersoUrl || '');
+      setBankName(view.bankInfo?.bankName || '');
+      setAccountHolder(view.bankInfo?.accountHolder || '');
+      setIban(view.bankInfo?.iban || '');
+      setBic(view.bankInfo?.bic || '');
+      setRibUrl(view.bankInfo?.ribUrl || '');
 
       initialValuesRef.current = {
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        companyName: user.companyName || '',
-        activityType: user.activityType || '',
-        phone: user.phone || '',
-        street: user.address?.street || '',
-        city: user.address?.city || '',
-        country: user.address?.country || 'France',
-        postalCode: user.address?.postalCode || '',
-        siret: user.siret || '',
-        kbisUrl: user.kbisUrl || '',
-        cinRectoUrl: user.cinRectoUrl || '',
-        cinVersoUrl: user.cinVersoUrl || '',
-        bankName: user.bankInfo?.bankName || '',
-        accountHolder: user.bankInfo?.accountHolder || '',
-        iban: user.bankInfo?.iban || '',
-        bic: user.bankInfo?.bic || '',
-        ribUrl: user.bankInfo?.ribUrl || '',
+        firstName: view.firstName || '',
+        lastName: view.lastName || '',
+        companyName: view.companyName || '',
+        activityType: view.activityType || '',
+        phone: view.phone || '',
+        street: view.address?.street || '',
+        city: view.address?.city || '',
+        country: view.address?.country || 'France',
+        postalCode: view.address?.postalCode || '',
+        siret: view.siret || '',
+        kbisUrl: view.kbisUrl || '',
+        cinRectoUrl: view.cinRectoUrl || '',
+        cinVersoUrl: view.cinVersoUrl || '',
+        bankName: view.bankInfo?.bankName || '',
+        accountHolder: view.bankInfo?.accountHolder || '',
+        iban: view.bankInfo?.iban || '',
+        bic: view.bankInfo?.bic || '',
+        ribUrl: view.bankInfo?.ribUrl || '',
       };
     }
   }, [user]);
