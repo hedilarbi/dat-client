@@ -126,7 +126,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    const wasSeller = user?.role === 'vendeur';
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
     } catch (e) {
@@ -135,9 +134,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       localStorage.removeItem('userRole');
       const locale = getLocaleFromPath(pathname) || 'fr';
-      // Un vendeur déconnecté retombe sur l'accueil public plutôt que sur /login/vendeur :
-      // il quitte son espace privé, il ne s'apprête pas forcément à s'y reconnecter aussitôt.
-      router.push(wasSeller ? localizedPath('/', locale) : localizedPath(getRoleLoginPath(user?.role || 'acheteur'), locale));
+      // Un utilisateur déconnecté (acheteur comme vendeur) retombe sur l'accueil public plutôt que
+      // sur la page de connexion : il quitte son espace privé, il ne s'apprête pas forcément à
+      // s'y reconnecter aussitôt.
+      router.push(localizedPath('/', locale));
     }
   };
 
