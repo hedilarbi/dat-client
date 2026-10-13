@@ -52,6 +52,8 @@ interface PublicVehicle {
   lotNumber: number | null;
   photos: VehiclePhoto[];
   /** Offre active de l'acheteur connecté sur ce véhicule, s'il en a déjà déposé une */
+  /** Rapport d'expert : renvoyé par le serveur seulement à un utilisateur connecté */
+  expertReport?: { url: string; mimeType: string | null } | null;
   myOffer: { id: string; amount: number; fees: { total: number }; createdAt: string } | null;
   session: { id: string; name: string; startDate: string; endDate: string; status: string } | null;
 }
@@ -283,6 +285,24 @@ export default function VehicleDetailPage() {
             <div className="mb-5">
               <h2 className="mb-2 font-heading text-base font-bold uppercase text-[#13243c]">{t('vehicle.condition')}</h2>
               <p className="whitespace-pre-wrap rounded-[12px] bg-[#f8f7f2] p-4 text-sm leading-6 text-[#13243c]">{vehicle.conditionDetails}</p>
+            </div>
+          )}
+
+          {vehicle.expertReport?.url && (
+            <div className="mb-5">
+              <h2 className="mb-2 font-heading text-base font-bold uppercase text-[#13243c]">{t('vehicle.expertReport')}</h2>
+              <a
+                href={vehicle.expertReport.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 rounded-[12px] border border-[#dcd7cb] bg-white p-4 transition hover:border-[#13243c] hover:shadow-sm"
+              >
+                <span className="flex items-center gap-3">
+                  <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-[9px] bg-[#eef1f5] text-lg">📄</span>
+                  <span className="text-sm font-semibold text-[#13243c]">{t('vehicle.expertReportView')}</span>
+                </span>
+                <span aria-hidden="true" className="text-sm font-bold text-[#d9704f]">→</span>
+              </a>
             </div>
           )}
 
