@@ -602,7 +602,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                   { href: localizedPath('/vendeur/en-vente', language), label: t('nav.forSale'), active: currentPath === '/vendeur/en-vente' },
                   { href: localizedPath('/vendeur/ventes', language), label: t('nav.sales'), active: currentPath === '/vendeur/ventes' },
                   // Un compte suspendu ne peut plus déposer d'offres : ses achats en cours restent suivis
-                  ...(user?.status === 'valide' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
+                  ...(user?.status !== 'suspendu' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
                   { href: localizedPath('/vendeur/mes-achats', language), label: t('nav.myPurchases'), active: currentPath.startsWith('/vendeur/mes-achats') },
                 ] : []),
                 { href: localizedPath('/vendeur/tableau-de-bord/profil', language), label: t('nav.profile'), active: currentPath === '/vendeur/tableau-de-bord/profil' },
@@ -639,7 +639,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                   <Link href={localizedPath('/vendeur/ventes', language)} className={`mt-3 flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/ventes' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                     {t('nav.sales')}
                   </Link>
-                  {user?.status === 'valide' && (
+                  {user?.status !== 'suspendu' && (
                   <Link href={localizedPath('/vendeur/mes-offres', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/mes-offres' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                     {t('nav.myOffers')}
                   </Link>

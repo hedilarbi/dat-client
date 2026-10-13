@@ -18,6 +18,7 @@ import { formatEuros } from '../lib/format';
 import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, ProfileReviewBanner, type Rejection } from './RegistrationStatusNotices';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
 import { hasSpaceAccess, isProfileReviewPending } from '../lib/userAccess';
+import ConfirmModal from './ConfirmModal';
 
 // SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
 const SIRET_REGEX = /^\d{14}$/;
@@ -320,6 +321,8 @@ export default function ProfilPage() {
     }
   };
 
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
+
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -340,6 +343,14 @@ export default function ProfilPage() {
       return;
     }
 
+    // Dernière étape : le titulaire confirme, en sachant que ses offres en cours seront supprimées
+    setConfirmUpdateOpen(true);
+  };
+
+  const submitProfileUpdate = async () => {
+    setConfirmUpdateOpen(false);
+    setError('');
+    setMessage('');
     setLoading(true);
 
     try {
@@ -614,6 +625,17 @@ export default function ProfilPage() {
           {loading ? t('profil.saving') : t('profil.saveChanges')}
         </button>
       </form>
+
+      <ConfirmModal
+        open={confirmUpdateOpen}
+        title={t('profil.updateConfirmTitle')}
+        message={t('profil.updateConfirmMessage')}
+        confirmLabel={t('profil.updateConfirmAction')}
+        cancelLabel={t('profil.updateConfirmCancel')}
+        danger
+        onConfirm={submitProfileUpdate}
+        onCancel={() => setConfirmUpdateOpen(false)}
+      />
 
       <div className="bg-[#f8f9fa] border border-[#eceadf] rounded-[12px] p-6 sm:p-8 mt-6">
         <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em] mb-6 border-b border-[#eceadf] pb-2">

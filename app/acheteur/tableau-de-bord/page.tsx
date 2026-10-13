@@ -11,7 +11,7 @@ import { formatEuros } from '../../lib/format';
 import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
 import { UnderReviewNotice, SuspendedNotice, ProfileReviewBanner } from '../../components/RegistrationStatusNotices';
 import Spinner from '../../components/Spinner';
-import { hasSpaceAccess } from '../../lib/userAccess';
+import { hasSpaceAccess, isProfileReviewPending } from '../../lib/userAccess';
 
 interface BuyerOfferPreview {
   id: string;
@@ -52,7 +52,8 @@ export default function BuyerDashboardPage() {
     if (!user || !hasSpaceAccess(user)) return;
     
     const promises: Promise<any>[] = [
-      user.status === 'valide'
+      // Compte en attente de validation de modifications : ses offres restent affichées (lecture seule)
+      (user.status === 'valide' || isProfileReviewPending(user))
         ? apiRequest('/offers/mine').catch(() => ({ ongoing: [], past: [] }))
         : Promise.resolve({ ongoing: [], past: [] }),
       apiRequest('/sales/mine').catch(() => ({ ongoing: [], closed: [] }))

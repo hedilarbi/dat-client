@@ -297,6 +297,14 @@ export default function VehicleDetailPage() {
           </dl>
 
           <div className="mt-7 rounded-[14px] border border-[#eceadf] bg-[#f8f7f2] p-4 sm:p-5">
+            {!canBid && myOffer && (
+              <div className="rounded-[10px] border border-[#bcd8c8] bg-[#f2f8f4] p-4 text-center">
+                <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#2f6f4f]">{t('bid.alreadyPlaced')}</div>
+                <div className="mt-1.5 font-heading text-2xl font-bold text-[#13243c]">{formatEuros(myOffer.amount, language)}</div>
+                <div className="mt-1 text-xs text-[#5a5e66]">{t('bid.alreadyPlacedTotal', { total: formatEuros(myOffer.fees.total, language) })}</div>
+              </div>
+            )}
+
             {canBid && myOffer && (
               <>
                 <div className="rounded-[10px] border border-[#bcd8c8] bg-[#f2f8f4] p-4 text-center">

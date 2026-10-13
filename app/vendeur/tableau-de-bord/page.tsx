@@ -20,7 +20,7 @@ import { formatEuros } from '../../lib/format';
 import { DISPLAYED_STEP_COUNT, SELLER_DISPLAYED_STEP_COUNT, stepDisplayNumber, sellerStepDisplayNumber } from '../../lib/saleSteps';
 import { formatTimeLeft } from '../../lib/currentSales';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
-import { hasSpaceAccess } from '../../lib/userAccess';
+import { hasSpaceAccess, isProfileReviewPending } from '../../lib/userAccess';
 
 type SellerSaleStatus = 'en_session' | 'en_cours' | 'suspendue' | 'cloturee' | 'sans_gagnant';
 
@@ -191,7 +191,7 @@ export default function VendeurTableauDeBordPage() {
       // Achats du vendeur en tant qu'acheteur : leur échec ne doit pas masquer le reste du tableau
       apiRequest('/sales/mine').catch(() => ({ ongoing: [] })),
       // Offres déposées par le vendeur sur les véhicules des autres (interdit si suspendu)
-      user.status === 'valide'
+      (user.status === 'valide' || isProfileReviewPending(user))
         ? apiRequest('/offers/mine').catch(() => ({ ongoing: [] }))
         : Promise.resolve({ ongoing: [] }),
     ])

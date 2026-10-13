@@ -9,7 +9,8 @@ import { getBuyingPaths, localizedPath, useLanguage } from '../../../i18n';
 import Alert from '../../../components/Alert';
 import BidModal from '../../../components/BidModal';
 import ConfirmModal from '../../../components/ConfirmModal';
-import { UnderReviewNotice, SuspendedNotice } from '../../../components/RegistrationStatusNotices';
+import { UnderReviewNotice, SuspendedNotice, ProfileReviewBanner } from '../../../components/RegistrationStatusNotices';
+import { isProfileReviewPending } from '../../../lib/userAccess';
 import { formatTimeLeft } from '../../../lib/currentSales';
 import { formatEuros } from '../../../lib/format';
 import Spinner from '../../../components/Spinner';
@@ -73,7 +74,7 @@ export default function MyOffersPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user && ['acheteur', 'vendeur'].includes(user.role) && user.status === 'valide') fetchOffers();
+    if (user && ['acheteur', 'vendeur'].includes(user.role) && (user.status === 'valide' || isProfileReviewPending(user))) fetchOffers();
   }, [fetchOffers, user]);
 
   // Rafraîchit les comptes à rebours de clôture de session
@@ -102,12 +103,15 @@ export default function MyOffersPage() {
     return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
-  if (user.status !== 'valide') {
+  if (user.status !== 'valide' && !isProfileReviewPending(user)) {
     return <UnderReviewNotice />;
   }
+  // Modifications de profil en attente : les offres restent consultables, mais plus modifiables
+  const canModifyOffers = user.status === 'valide';
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
+      <ProfileReviewBanner />
       <Link href={localizedPath(paths.dashboard, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Retour au tableau de bord
@@ -158,8 +162,8 @@ export default function MyOffersPage() {
                     offer={offer}
                     language={language}
                     t={t}
-                    onEdit={() => setEditingOffer(offer)}
-                    onCancel={() => { setMessage(''); setOfferToCancel(offer); }}
+                    onEdit={canModifyOffers ? () => setEditingOffer(offer) : undefined}
+                    onCancel={canModifyOffers ? () => { setMessage(''); setOfferToCancel(offer); } : undefined}
                   />
                 ))}
               </div>
