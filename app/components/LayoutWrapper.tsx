@@ -131,13 +131,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error(e);
     } finally {
-      setUser(null);
       localStorage.removeItem('userRole');
       const locale = getLocaleFromPath(pathname) || 'fr';
       // Un utilisateur déconnecté (acheteur comme vendeur) retombe sur l'accueil public plutôt que
       // sur la page de connexion : il quitte son espace privé, il ne s'apprête pas forcément à
       // s'y reconnecter aussitôt.
-      router.push(localizedPath('/', locale));
+      // Changement de page complet, sans effacer `user` avant : sinon la page privée affichée (profil,
+      // tableau de bord…) constate qu'il n'y a plus d'utilisateur et renvoie elle-même vers la
+      // connexion, avant que la navigation vers l'accueil n'aboutisse.
+      window.location.assign(localizedPath('/', locale));
     }
   };
 
