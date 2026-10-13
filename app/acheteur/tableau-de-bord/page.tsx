@@ -9,8 +9,9 @@ import StampReminderBanner from '../../components/StampReminderBanner';
 import StatCard from '../../components/StatCard';
 import { formatEuros } from '../../lib/format';
 import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../lib/saleSteps';
-import { UnderReviewNotice, SuspendedNotice } from '../../components/RegistrationStatusNotices';
+import { UnderReviewNotice, SuspendedNotice, ProfileReviewBanner } from '../../components/RegistrationStatusNotices';
 import Spinner from '../../components/Spinner';
+import { hasSpaceAccess } from '../../lib/userAccess';
 
 interface BuyerOfferPreview {
   id: string;
@@ -48,7 +49,7 @@ export default function BuyerDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!user || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || !hasSpaceAccess(user)) return;
     
     const promises: Promise<any>[] = [
       user.status === 'valide'
@@ -76,7 +77,7 @@ export default function BuyerDashboardPage() {
     );
   }
   if (!user) return null;
-  if (user.status !== 'valide' && user.status !== 'suspendu') return <UnderReviewNotice />;
+  if (!hasSpaceAccess(user)) return <UnderReviewNotice />;
 
   return (
     <div className="p-6 sm:p-8 w-full font-sans bg-white min-h-full">
@@ -85,6 +86,7 @@ export default function BuyerDashboardPage() {
           <SuspendedNotice />
         </div>
       )}
+      <ProfileReviewBanner />
       <div className="mb-6">
         <div>
           <div className="text-[12px] font-bold tracking-[0.2em] uppercase text-[#111827] mb-2">

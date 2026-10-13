@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Language, LanguageSelector, getRoleHomePath, getRoleLoginPath, getRoleProfilePath, getRoleRegisterPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
 import DropdownMenu from './DropdownMenu';
 import Footer from './Footer';
+import { hasSpaceAccess } from '../lib/userAccess';
 
 /**
  * Page d'origine transmise via `/login?next=...`, à privilégier sur le tableau de bord par
@@ -42,6 +43,8 @@ interface UserProfile {
   // rôle : les gardes qui l'écartent ne sont pas du code mort.
   role: 'acheteur' | 'vendeur' | 'admin';
   status: string;
+  /** Compte validé qui a modifié son profil : en attente de validation de ces modifications */
+  profileChangePending?: boolean;
   emailVerified?: boolean;
   address?: {
     street: string;
@@ -359,7 +362,7 @@ function MobileMenu({
                     key={link.label}
                     href={link.href}
                     onClick={close}
-                    className={`px-4 py-3 rounded-[9px] text-[14px] transition ${link.highlight ? 'font-bold text-[#d9704f] hover:bg-[#1a2b44]' : link.active ? 'font-semibold bg-[#1c3050] text-white' : 'font-semibold text-[#9fb0c9] hover:bg-[#1a2b44]'}`}
+                    className={`px-4 py-3 rounded-[9px] text-[14px] transition ${link.highlight ? 'font-bold bg-[#f0a067] text-[#13243c] hover:bg-[#e8924f]' : link.active ? 'font-semibold bg-[#1c3050] text-white' : 'font-semibold text-[#9fb0c9] hover:bg-[#1a2b44]'}`}
                   >
                     {link.label}
                   </Link>
@@ -448,7 +451,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // mais sans attendre la vérification de session (son contenu ne dépend pas de l'utilisateur).
   const isHomePage = currentPath === '/';
   const homePath = localizedPath('/', language);
-  const isValidatedSeller = user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu');
+  const isValidatedSeller = user?.role === 'vendeur' && hasSpaceAccess(user);
 
   const isSellerSpacePage = currentPath.startsWith('/vendeur/') || currentPath === '/sessions';
 
@@ -495,7 +498,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   }, [buyerInSellerSpace, language, router]);
 
   useEffect(() => {
-    if (!user || user.role === 'admin' || user.status === 'valide' || user.status === 'suspendu') return;
+    if (!user || user.role === 'admin' || hasSpaceAccess(user)) return;
     // Hors de son espace, un compte en attente navigue librement : le header ne doit jamais
     // renvoyer vers le profil.
     if (!isOwnSpacePage || isAuthPage) return;
@@ -553,7 +556,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // Écran d'attente pendant que la redirection ci-dessus s'applique. Même périmètre
   // exactement : sinon une page publique afficherait un chargement qui ne finit jamais,
   // puisqu'aucune redirection ne viendrait le remplacer.
-  if (user && user.role !== 'admin' && user.status !== 'valide' && user.status !== 'suspendu' && isOwnSpacePage && !isAuthPage) {
+  if (user && user.role !== 'admin' && !hasSpaceAccess(user) && isOwnSpacePage && !isAuthPage) {
     const profilPath = `${roleSpacePrefix}tableau-de-bord/profil`;
     const supportPath = `${roleSpacePrefix}tableau-de-bord/support`;
 
@@ -598,7 +601,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                   { href: localizedPath('/vendeur/en-vente', language), label: t('nav.forSale'), active: currentPath === '/vendeur/en-vente' },
                   { href: localizedPath('/vendeur/ventes', language), label: t('nav.sales'), active: currentPath === '/vendeur/ventes' },
                   // Un compte suspendu ne peut plus déposer d'offres : ses achats en cours restent suivis
-                  ...(user?.status !== 'suspendu' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
+                  ...(user?.status === 'valide' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
                   { href: localizedPath('/vendeur/mes-achats', language), label: t('nav.myPurchases'), active: currentPath.startsWith('/vendeur/mes-achats') },
                 ] : []),
                 { href: localizedPath('/vendeur/tableau-de-bord/profil', language), label: t('nav.profile'), active: currentPath === '/vendeur/tableau-de-bord/profil' },
@@ -635,7 +638,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                   <Link href={localizedPath('/vendeur/ventes', language)} className={`mt-3 flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/ventes' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                     {t('nav.sales')}
                   </Link>
-                  {user?.status !== 'suspendu' && (
+                  {user?.status === 'valide' && (
                   <Link href={localizedPath('/vendeur/mes-offres', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/mes-offres' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
                     {t('nav.myOffers')}
                   </Link>
@@ -684,7 +687,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
 
           <div className="hidden md:flex items-center gap-[22px] text-[13px] font-bold text-white shrink-0">
             {spaceLink && (
-              <Link href={spaceLink.href} className="text-[#d9704f] hover:text-[#eaa083] transition">{spaceLink.label}</Link>
+              <Link href={spaceLink.href} className="inline-flex items-center rounded-full bg-[#f0a067] px-4 py-2 text-[13px] font-bold text-[#13243c] shadow-sm transition hover:bg-[#e8924f] whitespace-nowrap">{spaceLink.label}</Link>
             )}
             <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
             <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>

@@ -11,6 +11,7 @@ import { UnderReviewNotice, SuspendedNotice } from '../../../components/Registra
 import { formatEuros } from '../../../lib/format';
 import { DISPLAYED_STEP_COUNT, stepDisplayNumber } from '../../../lib/saleSteps';
 import Spinner from '../../../components/Spinner';
+import { hasSpaceAccess } from '../../../lib/userAccess';
 
 interface WonSale {
   id: string;
@@ -79,14 +80,14 @@ export default function WonSalesPage() {
   }, [userLoading, user, router, language]);
 
   useEffect(() => {
-    if (user && ['acheteur', 'vendeur'].includes(user.role) && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
+    if (user && ['acheteur', 'vendeur'].includes(user.role) && hasSpaceAccess(user)) fetchSales();
   }, [fetchSales, user]);
 
   if (userLoading || !user) {
     return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
-  if (user.status !== 'valide' && user.status !== 'suspendu') {
+  if (!hasSpaceAccess(user)) {
     return <UnderReviewNotice />;
   }
 

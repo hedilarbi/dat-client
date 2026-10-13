@@ -14,6 +14,8 @@ import { formatEuros } from '../lib/format';
 import Spinner from './Spinner';
 import ConfirmModal from './ConfirmModal';
 import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from './SellerListFilters';
+import { hasSpaceAccess } from '../lib/userAccess';
+import { ProfileReviewBanner } from './RegistrationStatusNotices';
 
 /** États calculés par le serveur (SELLER_PHASES dans sale.service.js). */
 export type SellerPhase = 'depot' | 'en_vente';
@@ -106,7 +108,7 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
   // Un vendeur suspendu garde l'accès à /sales/seller (ses ventes en cours) : sans ce chargement,
   // la liste restait indéfiniment sur son indicateur de chargement.
   useEffect(() => {
-    if (user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu')) fetchVehicles();
+    if (user?.role === 'vendeur' && hasSpaceAccess(user)) fetchVehicles();
   }, [fetchVehicles, user]);
 
   // Les comptes à rebours de clôture s'égrènent à la seconde
@@ -122,7 +124,8 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
   // Le serveur réserve la création, la consultation, la modification et la suppression des
   // dossiers aux vendeurs validés : pour un compte suspendu, ces actions sont masquées plutôt
   // que de mener à une erreur.
-  const readOnly = user.status === 'suspendu';
+  // Suspendu ou modifications de profil en attente de validation : aucune nouvelle action
+  const readOnly = user.status !== 'valide';
 
   // Ce qui demande une action remonte : c'est la seule chose sur laquelle le vendeur peut agir.
   const sorted = [...rows].sort((a, b) => {
@@ -163,7 +166,8 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
         {t(`sellerVehicles.intro.${phase}`)}
       </p>
 
-      {readOnly && <Alert variant="error" className="mb-5">{t('sellerVehicles.suspendedNotice')}</Alert>}
+      {user.status === 'suspendu' && <Alert variant="error" className="mb-5">{t('sellerVehicles.suspendedNotice')}</Alert>}
+      <ProfileReviewBanner />
       {error && <Alert variant="error" className="mb-5">{error}</Alert>}
 
       <SellerListFilters

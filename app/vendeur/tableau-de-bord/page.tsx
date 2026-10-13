@@ -14,12 +14,13 @@ import { Badge, getVehicleDossierStatusBadge } from '../../components/StatusBadg
 import IdentityFieldsSection from '../../components/IdentityFieldsSection';
 import DocumentUploadRow from '../../components/DocumentUploadRow';
 import StampReminderBanner from '../../components/StampReminderBanner';
-import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, type Rejection } from '../../components/RegistrationStatusNotices';
+import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, SuspendedNotice, ProfileReviewBanner, type Rejection } from '../../components/RegistrationStatusNotices';
 import TopOffers from '../../components/TopOffers';
 import { formatEuros } from '../../lib/format';
 import { DISPLAYED_STEP_COUNT, SELLER_DISPLAYED_STEP_COUNT, stepDisplayNumber, sellerStepDisplayNumber } from '../../lib/saleSteps';
 import { formatTimeLeft } from '../../lib/currentSales';
 import type { DossierPhoto } from '../../lib/vehicleDossier';
+import { hasSpaceAccess } from '../../lib/userAccess';
 
 type SellerSaleStatus = 'en_session' | 'en_cours' | 'suspendue' | 'cloturee' | 'sans_gagnant';
 
@@ -176,7 +177,7 @@ export default function VendeurTableauDeBordPage() {
   }, [userLoading, user, router, language]);
 
   useEffect(() => {
-    if (user?.role !== 'vendeur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (user?.role !== 'vendeur' || !hasSpaceAccess(user)) return;
     
     Promise.all([
       apiRequest('/sales/seller'),
@@ -492,7 +493,7 @@ export default function VendeurTableauDeBordPage() {
     );
   }
 
-  if (user.status !== 'valide' && user.status !== 'suspendu') {
+  if (!hasSpaceAccess(user)) {
     return <UnderReviewNotice />;
   }
 
@@ -528,11 +529,12 @@ export default function VendeurTableauDeBordPage() {
           <SuspendedNotice />
         </div>
       )}
+      <ProfileReviewBanner />
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[28px] sm:text-[36px] font-bold font-heading uppercase text-[#13243c]">
           {t('vendeurDashboard.title')}
         </h1>
-        {user.status !== 'suspendu' && (
+        {user.status === 'valide' && (
           <Link
             href={localizedPath('/vendeur/dossiers/nouveau', language)}
             className="h-11 flex items-center justify-center rounded-[9px] bg-[#d9704f] px-6 text-[13px] font-bold uppercase tracking-[0.03em] text-white transition hover:bg-[#c26040]"

@@ -12,6 +12,7 @@ import { formatEuros } from '../../lib/format';
 import { SELLER_DISPLAYED_STEP_COUNT, sellerStepDisplayNumber } from '../../lib/saleSteps';
 import Spinner from '../../components/Spinner';
 import SellerListFilters, { EMPTY_SELLER_LIST_FILTERS, matchesSellerListFilters, type SellerListFilterValues } from '../../components/SellerListFilters';
+import { hasSpaceAccess } from '../../lib/userAccess';
 
 /**
  * États d'un véhicule côté vendeur, calculés par le serveur (SELLER_VEHICLE_STATES).
@@ -91,7 +92,7 @@ export default function SellerSalesPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role === 'vendeur' && (user.status === 'valide' || user.status === 'suspendu')) fetchSales();
+    if (user?.role === 'vendeur' && hasSpaceAccess(user)) fetchSales();
   }, [fetchSales, user]);
 
   // Les comptes à rebours de clôture s'égrènent à la seconde

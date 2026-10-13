@@ -26,6 +26,7 @@ import {
   type SaleEsignatureState,
 } from '../../../lib/saleSteps';
 import Spinner from '../../../components/Spinner';
+import { hasSpaceAccess } from '../../../lib/userAccess';
 
 interface SellerSaleDetail {
   id: string;
@@ -119,7 +120,7 @@ export default function SellerSaleDetailPage() {
   }, [user, router, language]);
 
   useEffect(() => {
-    if (user?.role !== 'vendeur' || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (user?.role !== 'vendeur' || !hasSpaceAccess(user)) return;
     apiRequest(`/sales/seller/${params.id}`)
       .then((res) => { setSale(res.sale); setError(''); })
       .catch((requestError) => {
@@ -153,7 +154,8 @@ export default function SellerSaleDetailPage() {
   }, []);
 
   const handleConfirmTransfer = async () => {
-    if (!sale) return;
+    // Tant que l'acheteur n'a pas réglé sa commission, la vente ne peut pas avancer
+    if (!sale || sale.currentStep === STEP.COMMISSION) return;
     setConfirming(true);
     setError('');
     try {
@@ -423,9 +425,18 @@ export default function SellerSaleDetailPage() {
                             <span className="font-mono text-lg font-bold text-white">{formatEuros(sale.amount, language)}</span>
                           </div>
                         )}
-                        <p className="rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
+                        <p className="mb-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-sm leading-6 text-[#8a4b24]">
                           {t('sellerSale.step2Note')}
                         </p>
+                        {/* Le vendeur peut cliquer dès maintenant : la modale lui explique qu'il doit attendre l'acheteur */}
+                        <button
+                          type="button"
+                          onClick={() => setTransferConfirmationOpen(true)}
+                          className="h-12 w-full cursor-pointer rounded-[9px] bg-[#2f6f4f] px-6 text-xs font-bold uppercase tracking-[.03em] text-white transition hover:bg-emerald-800 sm:w-auto sm:px-10"
+                        >
+                          {t('sellerSale.confirmTransfer')}
+                        </button>
+                        <p className="mt-3 rounded-[10px] border-2 border-[#13243c] bg-[#fff8e6] p-3.5 text-[14px] font-extrabold leading-6 text-black">{t('sellerSale.confirmWarning')}</p>
                       </>
                     )}
 
@@ -557,8 +568,10 @@ export default function SellerSaleDetailPage() {
       <ConfirmModal
         open={transferConfirmationOpen}
         title={t('sellerSale.confirmTransferTitle')}
-        message={t('sellerSale.confirmTransferMessage')}
+        message={sale?.currentStep === STEP.COMMISSION ? t('sellerSale.transferNotValidated') : t('sellerSale.confirmTransferMessage')}
         confirmLabel={t('sellerSale.confirmTransferAction')}
+        cancelLabel={sale?.currentStep === STEP.COMMISSION ? t('sellerSale.close') : undefined}
+        hideConfirm={sale?.currentStep === STEP.COMMISSION}
         loading={confirming}
         onConfirm={handleConfirmTransfer}
         onCancel={() => { if (!confirming) setTransferConfirmationOpen(false); }}

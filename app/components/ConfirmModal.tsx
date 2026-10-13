@@ -12,6 +12,8 @@ interface ConfirmModalProps {
   danger?: boolean;
   loading?: boolean;
   confirmDisabled?: boolean;
+  /** Modale d'information : seul le bouton d'annulation (« Fermer ») est affiché */
+  hideConfirm?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,6 +27,7 @@ export default function ConfirmModal({
   danger = false,
   loading = false,
   confirmDisabled = false,
+  hideConfirm = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -47,14 +50,14 @@ export default function ConfirmModal({
           >
             {cancelLabel}
           </button>
-          <button
+          {!hideConfirm && <button
             type="button"
             onClick={onConfirm}
             disabled={loading || confirmDisabled}
             className={`px-4 py-2 flex items-center gap-2 text-white font-bold rounded-[8px] text-xs uppercase cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#13243c] hover:bg-slate-800'}`}
           >
             {loading ? <Spinner /> : confirmLabel}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

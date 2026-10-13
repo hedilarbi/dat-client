@@ -28,6 +28,7 @@ import {
 } from '../../../../lib/saleSteps';
 import { isStripeConfigured } from '../../../../lib/stripe';
 import Spinner from '../../../../components/Spinner';
+import { hasSpaceAccess } from '../../../../lib/userAccess';
 
 interface WonSaleDetail {
   id: string;
@@ -130,7 +131,7 @@ export default function WonSaleDetailPage() {
   }, [userLoading, user, router, language, params.id]);
 
   useEffect(() => {
-    if (!user || !['acheteur', 'vendeur'].includes(user.role) || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || !['acheteur', 'vendeur'].includes(user.role) || !hasSpaceAccess(user)) return;
     apiRequest(`/sales/${params.id}`)
       .then((res) => { setSale(res.sale); setError(''); })
       .catch((requestError) => {
@@ -237,7 +238,7 @@ export default function WonSaleDetailPage() {
     return <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white"><Spinner className="h-10 w-10 text-[#13243c]" /></div>;
   }
 
-  if (user.status !== 'valide' && user.status !== 'suspendu') {
+  if (!hasSpaceAccess(user)) {
     return <UnderReviewNotice />;
   }
 

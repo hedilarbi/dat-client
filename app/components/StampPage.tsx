@@ -12,6 +12,7 @@ import Alert from './Alert';
 import Spinner from './Spinner';
 import DocumentUploadRow from './DocumentUploadRow';
 import { UnderReviewNotice } from './RegistrationStatusNotices';
+import { isProfileReviewPending } from '../lib/userAccess';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 import getCroppedImg from '../lib/cropImage';
 
@@ -206,7 +207,7 @@ export default function StampPage() {
   };
 
   if (userLoading || !user) return null;
-  if (user.status !== 'valide') return <UnderReviewNotice />;
+  if (user.status !== 'valide' && !isProfileReviewPending(user)) return <UnderReviewNotice />;
 
   const backPath = getRoleHomePath(user.role);
   const busy = saving || removing;

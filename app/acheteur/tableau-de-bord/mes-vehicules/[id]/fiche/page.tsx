@@ -132,7 +132,7 @@ export default function WonVehicleSheetPage() {
     { label: t('vehicle.field.vrade') || 'VRADE', value: vehicle.vrade },
     { label: t('vehicle.field.registrationCard') || 'Carte grise', value: yesNo(vehicle.registrationCardAvailable) },
     { label: t('vehicle.field.identificationSheet') || 'Fiche ident.', value: yesNo(vehicle.identificationSheetAvailable) },
-  ].filter((spec) => spec.value);
+  ];
 
   return (
     <main className="min-h-screen bg-white font-sans text-black">
@@ -198,7 +198,7 @@ export default function WonVehicleSheetPage() {
               {specs.map((spec) => (
                 <div key={spec.label} className="border-b border-[#eceadf] pb-3">
                   <dt className="mb-1 text-[11px] font-bold uppercase tracking-[0.05em] text-[#7a756a]">{spec.label}</dt>
-                  <dd className="text-sm font-semibold text-[#13243c]">{spec.value}</dd>
+                  <dd className="text-sm font-semibold text-[#13243c]">{spec.value || '—'}</dd>
                 </div>
               ))}
             </dl>

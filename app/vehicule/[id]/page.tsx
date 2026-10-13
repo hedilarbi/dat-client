@@ -115,7 +115,9 @@ export default function VehicleDetailPage() {
 
   const title = [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || '—';
   const coverPhoto = vehicle.photos[0] || null;
-  const canBid = Boolean(user && ['acheteur', 'vendeur'].includes(user.role) && user.status === 'valide' && !vehicle.isOwnVehicle);
+  // Un véhicule de la vitrine hors session peut être consulté, mais pas recevoir d'offre
+  const inSession = Boolean(vehicle.session);
+  const canBid = Boolean(inSession && user && ['acheteur', 'vendeur'].includes(user.role) && user.status === 'valide' && !vehicle.isOwnVehicle);
   // Une offre déjà déposée se modifie, elle ne se double pas
   const myOffer = vehicle.myOffer;
   // Chemin localisé pour revenir sur cette fiche après connexion (le formulaire de connexion
@@ -123,6 +125,8 @@ export default function VehicleDetailPage() {
   const returnPath = localizedPath(`/vehicule/${vehicle.id}`, language);
   const yesNo = (value: boolean | null) => (value === null ? '' : value ? t('vehicle.yes') : t('vehicle.no'));
 
+  // Toujours les mêmes champs, dans le même ordre : un champ non renseigné affiche « — » au lieu
+  // d'être retiré, sinon les champs suivants se décalent dans la grille d'un véhicule à l'autre.
   const specs: Array<{ label: string; value: string }> = [
     { label: t('vehicle.field.year'), value: vehicle.year != null ? String(vehicle.year) : '' },
     { label: t('vehicle.field.mileage'), value: vehicle.mileage != null ? `${vehicle.mileage.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB')} km` : '' },
@@ -143,7 +147,7 @@ export default function VehicleDetailPage() {
     { label: t('vehicle.field.registrationCard'), value: yesNo(vehicle.registrationCardAvailable) },
     { label: t('vehicle.field.identificationSheet'), value: yesNo(vehicle.identificationSheetAvailable) },
     { label: t('vehicle.field.listingCount'), value: vehicle.listingCount > 0 ? String(vehicle.listingCount) : '' },
-  ].filter((spec) => spec.value);
+  ];
 
   return (
     <main className="min-h-screen bg-white font-sans text-black">
@@ -287,7 +291,7 @@ export default function VehicleDetailPage() {
             {specs.map((spec) => (
               <div key={spec.label} className="rounded-[10px] bg-[#f8f7f2] p-3">
                 <dt className="text-[10px] font-bold uppercase tracking-wide text-[#7a756a]">{spec.label}</dt>
-                <dd className="mt-1 text-sm font-semibold text-[#13243c]">{spec.value}</dd>
+                <dd className="mt-1 text-sm font-semibold text-[#13243c]">{spec.value || '—'}</dd>
               </div>
             ))}
           </dl>
@@ -330,7 +334,11 @@ export default function VehicleDetailPage() {
               </>
             )}
 
-            {!user && (
+            {!inSession && (
+              <p className="text-center text-sm font-semibold leading-6 text-[#13243c]">{t('showcase.comingSoon')}</p>
+            )}
+
+            {inSession && !user && (
               <>
                 <Link
                   href={localizedPath(`${getRoleLoginPath('acheteur')}?next=${encodeURIComponent(returnPath)}`, language)}
@@ -342,15 +350,15 @@ export default function VehicleDetailPage() {
               </>
             )}
 
-            {user && user.status === 'suspendu' && (
+            {inSession && user && user.status === 'suspendu' && (
               <p className="text-center text-sm font-semibold leading-6 text-red-600 bg-red-50 p-3 rounded-[8px] border border-red-200">{t('bid.accountSuspended')}</p>
             )}
 
-            {user && user.status !== 'valide' && user.status !== 'suspendu' && (
+            {inSession && user && user.status !== 'valide' && user.status !== 'suspendu' && (
               <p className="text-center text-sm leading-6 text-[#5a5e66]">{t('bid.accountPending')}</p>
             )}
 
-            {user && user.status === 'valide' && vehicle.isOwnVehicle && (
+            {inSession && user && user.status === 'valide' && vehicle.isOwnVehicle && (
               <p className="text-center text-sm leading-6 text-[#5a5e66]">{t('bid.sellerNotice')}</p>
             )}
           </div>

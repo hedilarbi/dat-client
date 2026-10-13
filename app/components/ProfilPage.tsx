@@ -15,8 +15,9 @@ import DocumentUploadRow from './DocumentUploadRow';
 import StampReminderBanner from './StampReminderBanner';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 import { formatEuros } from '../lib/format';
-import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, type Rejection } from './RegistrationStatusNotices';
+import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, ProfileReviewBanner, type Rejection } from './RegistrationStatusNotices';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
+import { hasSpaceAccess, isProfileReviewPending } from '../lib/userAccess';
 
 // SIRET : 14 chiffres (SIREN sur 9 + NIC sur 5)
 const SIRET_REGEX = /^\d{14}$/;
@@ -157,7 +158,7 @@ export default function ProfilPage() {
   // Le composant est désormais accessible aux deux rôles (acheteur et vendeur)
 
   useEffect(() => {
-    if (!user || !['acheteur', 'vendeur'].includes(user.role) || (user.status !== 'valide' && user.status !== 'suspendu')) return;
+    if (!user || !['acheteur', 'vendeur'].includes(user.role) || !hasSpaceAccess(user)) return;
     apiRequest('/offers/mine')
       .then((res) => {
         setOngoingOffers(res.ongoing || []);
@@ -515,7 +516,7 @@ export default function ProfilPage() {
     );
   }
 
-  if (user.status !== 'valide' && user.status !== 'suspendu') {
+  if (!hasSpaceAccess(user)) {
     return <UnderReviewNotice />;
   }
 
@@ -539,6 +540,7 @@ export default function ProfilPage() {
         </Link>
       </div>
 
+      <ProfileReviewBanner />
       {!user.stampUrl && <StampReminderBanner />}
 
       <form onSubmit={handleProfileUpdate} className="bg-[#f8f9fa] border border-[#eceadf] rounded-[12px] p-6 sm:p-8 space-y-6">
@@ -605,7 +607,7 @@ export default function ProfilPage() {
 
         <button
           type="submit"
-          disabled={loading || uploading !== null || !hasChanges}
+          disabled={loading || uploading !== null || !hasChanges || isProfileReviewPending(user)}
           className="w-full sm:w-auto h-12 px-8 bg-[#d9704f] hover:bg-[#c26040] text-white font-bold rounded-[9px] uppercase text-xs disabled:opacity-50 select-none cursor-pointer flex items-center justify-center gap-2 transition-all"
         >
           {loading && <Spinner />}

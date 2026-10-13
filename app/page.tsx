@@ -6,11 +6,13 @@ import Link from "next/link";
 import { localizedPath, useLanguage } from "./i18n";
 import { formatTimeLeft, useCurrentSales } from "./lib/currentSales";
 import { formatEuros } from "./lib/format";
+import { isProfileReviewPending } from "./lib/userAccess";
+import { DISPLAYED_STEP_COUNT, SELLER_DISPLAYED_STEP_COUNT, sellerStepDisplayNumber, stepDisplayNumber } from "./lib/saleSteps";
 import { apiRequest } from "./api";
 import { useUser } from "./components/LayoutWrapper";
-import Spinner from "./components/Spinner";
 import JsonLd from "./components/JsonLd";
 import ShowcaseGallery from './components/ShowcaseGallery';
+import ShowcaseLots from './components/ShowcaseLots';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
@@ -61,8 +63,11 @@ export default function Home() {
   const [saleReminders, setSaleReminders] = useState<HomeSaleReminder[]>([]);
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
-  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
+  const { sessions, brands, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
   const currentSession = sessions[0];
+  // Le tag de session du hero n'existe que pour un utilisateur connecté. On ne conclut à « aucune
+  // session » qu'une fois la réponse reçue (sinon le tag l'affichait pendant le chargement).
+  const sessionReady = !userLoading && Boolean(user) && !salesLoading && !salesError;
   const currentSessionName = currentSession?.name || (language === 'fr' ? 'Aucune session ouverte' : 'No open session');
   const closingIn = formatTimeLeft(currentSession?.endDate);
 
@@ -75,7 +80,7 @@ export default function Home() {
   }, [language, router]);
 
   useEffect(() => {
-    if (!user || user.status !== 'valide' || !['acheteur', 'vendeur'].includes(user.role)) {
+    if (!user || (user.status !== 'valide' && !isProfileReviewPending(user)) || !['acheteur', 'vendeur'].includes(user.role)) {
       setSaleReminders([]);
       return;
     }
@@ -134,7 +139,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-[40px] pointer-events-none">
           {/* Tag de la session en cours : élément le plus visible du hero */}
-          <div className="inline-flex max-w-full items-center gap-3 font-extrabold text-[13px] sm:text-[18px] leading-snug tracking-[0.1em] uppercase text-[#0c1626] bg-[#f0a067] px-4 sm:px-7 py-3 sm:py-4 rounded-[18px] sm:rounded-full w-fit mb-6 sm:mb-8 shadow-[0_0_0_4px_rgba(240,160,103,0.3),0_12px_32px_rgba(0,0,0,0.4)]">
+          {user && <div className={`${sessionReady ? '' : 'invisible '}inline-flex max-w-full items-center gap-3 font-extrabold text-[13px] sm:text-[18px] leading-snug tracking-[0.1em] uppercase text-[#0c1626] bg-[#f0a067] px-4 sm:px-7 py-3 sm:py-4 rounded-[18px] sm:rounded-full w-fit mb-6 sm:mb-8 shadow-[0_0_0_4px_rgba(240,160,103,0.3),0_12px_32px_rgba(0,0,0,0.4)]`}>
             {currentSession && (
               <span className="relative flex h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#0c1626] opacity-60" />
@@ -142,7 +147,7 @@ export default function Home() {
               </span>
             )}
             <span>{currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}</span>
-          </div>
+          </div>}
           <h1 className="m-0 mb-5 font-extrabold text-[46px] sm:text-[76px] leading-[.94] uppercase text-white max-w-[840px] font-heading tracking-[-.01em]">
             {t('home.heroTitleLine1')}<br />{t('home.heroTitleLine2')}
           </h1>
@@ -160,7 +165,7 @@ export default function Home() {
         </div>
       </div>
 
-      {user?.status === 'valide' && saleReminders.length > 0 && (
+      {user && (user.status === 'valide' || isProfileReviewPending(user)) && saleReminders.length > 0 && (
         <div className="px-4 sm:px-[40px] pt-8 sm:pt-10">
           <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -202,7 +207,9 @@ export default function Home() {
                     <div className="mt-1 truncate text-[12px] text-[#5a5e66]">{sale.session?.name || '—'}</div>
                     {sale.currentStep != null && sale.stepCount != null && (
                       <div className="mt-2 inline-flex rounded-full bg-[#f8f7f2] px-2.5 py-1 text-[11px] font-bold text-[#13243c]">
-                        {t('dashboard.step', { current: String(sale.currentStep), total: String(sale.stepCount) })}
+                        {user.role === 'vendeur'
+                          ? t('dashboard.step', { current: sellerStepDisplayNumber(Number(sale.currentStep)), total: String(SELLER_DISPLAYED_STEP_COUNT) })
+                          : t('dashboard.step', { current: stepDisplayNumber(Number(sale.currentStep)), total: String(DISPLAYED_STEP_COUNT) })}
                       </div>
                     )}
                   </div>
@@ -236,56 +243,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Lots grid */}
-      <div id="ventes-en-cours" className="scroll-mt-[70px] px-4 sm:px-[40px] pt-10 sm:pt-12 pb-5 flex flex-col sm:flex-row justify-between sm:items-end gap-3">
-        <div>
-          <div className="font-semibold text-[11px] tracking-[0.18em] uppercase text-[#a3987f] mb-2">
-            {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : currentSessionName}
-          </div>
-          <div className="font-bold text-2xl sm:text-[28px] uppercase text-[#13243c] font-heading">
-            {t('home.lotsCount', { count: String(total) })}
-          </div>
-        </div>
-        <Link href={localizedPath('/vehicules', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
-          {t('home.viewAllVehicles')}
-        </Link>
-      </div>
-
-      <div className="px-4 sm:px-[40px] pb-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {salesLoading && <div className="col-span-full flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>}
-        {!salesLoading && salesError && <div className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{salesError}</div>}
-        {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Aucun véhicule dans une session en cours.</div>}
-        {vehicles.map((lot) => (
-          <Link
-            key={lot.id}
-            href={localizedPath(`/vehicule/${lot.id}`, language)}
-            className="group border border-[#eceadf] rounded-[14px] overflow-hidden flex flex-col shadow-[0_2px_10px_rgba(19,36,60,.05)] transition hover:shadow-[0_10px_26px_rgba(19,36,60,.14)]"
-          >
-            <div className="relative aspect-[4/3] bg-[#eef1f5] overflow-hidden">
-              {lot.photoUrl ? <img src={lot.photoUrl} alt={`${lot.brand} ${lot.model}`} className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center font-heading text-2xl font-bold text-[#8ea0bd]">{lot.brand.slice(0, 2).toUpperCase()}</div>}
-              {lot.hasActiveOffer && <span className="absolute left-2.5 top-2.5 rounded-[7px] bg-[#e9f4ee] px-2.5 py-1.5 text-[11px] font-bold text-[#20754c] shadow-sm">✓ {t('vehicle.offerPlaced')}{lot.offerAmount != null ? ` · ${formatEuros(lot.offerAmount, language)}` : ''}</span>}
-              <span className="absolute top-2.5 right-2.5 font-bold text-[11px] text-white bg-[rgba(19,36,60,.78)] px-2.5 py-1.5 rounded-[7px] font-mono">
-                {formatTimeLeft(lot.session?.endDate)}
-              </span>
-            </div>
-            <div className="p-4 pb-[18px] flex flex-col flex-1">
-              {lot.lotNumber && (
-                <div className="mb-1.5">
-                  <span className="rounded-[5px] bg-[#faf1e4] px-2 py-0.5 font-mono text-[11px] font-bold text-[#b3893f]">
-                    {t('vehicle.lot', { number: String(lot.lotNumber) })}
-                  </span>
-                </div>
-              )}
-              <div className="font-bold text-[17px] uppercase text-[#13243c] mb-4 font-heading">{[lot.brand, lot.model].filter(Boolean).join(' ')}</div>
-              <div className="mt-auto">
-                <span className="block w-full text-center font-bold text-xs text-white bg-[#13243c] group-hover:bg-slate-800 py-[11px] px-4 rounded-[8px] uppercase tracking-[0.02em] transition">
-                  {t('home.bidButton')}
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Vitrine (utilisateur connecté) : mêmes cartes que les ventes en cours, véhicules choisis par l'admin */}
+      <ShowcaseLots language={language} />
       </>}
 
       {/* How it works */}

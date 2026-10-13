@@ -29,18 +29,37 @@ export function DraftPendingNotice({ onResume }: DraftPendingNoticeProps) {
 
 export function UnderReviewNotice() {
   const { t } = useLanguage();
+  const { user } = useUser();
+  // Un compte déjà validé qui a modifié son profil n'est pas « en cours d'inscription »
+  const modification = isProfileReviewPending(user);
   return (
     <div className="flex-1 w-full p-6 sm:p-12 text-black font-sans text-center bg-white">
       <div className="w-[60px] h-[60px] rounded-full bg-[#eef1f5] text-[#13243c] flex items-center justify-center text-2xl mx-auto mb-4 font-bold">
         ⏳
       </div>
-      <h3 className="text-xl font-bold uppercase text-[#13243c] mb-2">{t('notice.reviewTitle')}</h3>
+      <h3 className="text-xl font-bold uppercase text-[#13243c] mb-2">{t(modification ? 'notice.profileReviewTitle' : 'notice.reviewTitle')}</h3>
       <p className="text-sm text-[#5a5e66] leading-[1.6] mb-4">
-        {t('notice.reviewDescription')}
+        {t(modification ? 'notice.profileReviewDescription' : 'notice.reviewDescription')}
       </p>
       <p className="text-xs text-gray-400">
-        {t('notice.reviewFooter')}
+        {t(modification ? 'notice.profileReviewFooter' : 'notice.reviewFooter')}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Bandeau affiché dans l'espace d'un compte validé dont les modifications de profil attendent la
+ * décision de l'admin : il peut finir ses ventes en cours, pas lancer de nouvelle action.
+ */
+export function ProfileReviewBanner() {
+  const { t } = useLanguage();
+  const { user } = useUser();
+  if (!isProfileReviewPending(user)) return null;
+  return (
+    <div className="mb-6 rounded-[12px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-4 sm:p-5" role="status">
+      <div className="text-[13px] font-extrabold uppercase tracking-[0.05em] text-[#8a4b24]">⏳ {t('notice.profileReviewTitle')}</div>
+      <p className="mt-1.5 text-[13px] leading-6 text-[#8a4b24]">{t('notice.profileReviewDescription')}</p>
     </div>
   );
 }
@@ -89,6 +108,7 @@ import Link from 'next/link';
 import { useUser } from './LayoutWrapper';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
 import { formatEuros } from '../lib/format';
+import { isProfileReviewPending } from '../lib/userAccess';
 import { localizedPath } from '../i18n';
 
 export function SuspendedNotice() {
