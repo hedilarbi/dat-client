@@ -11,8 +11,9 @@ import { DISPLAYED_STEP_COUNT, SELLER_DISPLAYED_STEP_COUNT, sellerStepDisplayNum
 import { apiRequest } from "./api";
 import { useUser } from "./components/LayoutWrapper";
 import JsonLd from "./components/JsonLd";
+import Spinner from "./components/Spinner";
 import ShowcaseGallery from './components/ShowcaseGallery';
-import ShowcaseLots from './components/ShowcaseLots';
+import ShowcaseLots, { LotCards } from './components/ShowcaseLots';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
@@ -63,7 +64,7 @@ export default function Home() {
   const [saleReminders, setSaleReminders] = useState<HomeSaleReminder[]>([]);
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
-  const { sessions, brands, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
+  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
   const currentSession = sessions[0];
   // Le tag de session du hero n'existe que pour un utilisateur connecté. On ne conclut à « aucune
   // session » qu'une fois la réponse reçue (sinon le tag l'affichait pendant le chargement).
@@ -243,8 +244,33 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Vitrine (utilisateur connecté) : mêmes cartes que les ventes en cours, véhicules choisis par l'admin */}
-      <ShowcaseLots language={language} />
+      {/* Session en cours : les premiers véhicules en vente ; sinon, la vitrine choisie par l'admin */}
+      {salesLoading || currentSession ? (
+        <>
+          <div id="ventes-en-cours" className="scroll-mt-[70px] px-4 sm:px-[40px] pt-10 sm:pt-12 pb-5 flex flex-col sm:flex-row justify-between sm:items-end gap-3">
+            <div>
+              <div className="font-semibold text-[11px] tracking-[0.18em] uppercase text-[#a3987f] mb-2">
+                {currentSession ? t('home.sessionStatus', { session: currentSessionName, time: closingIn }) : ''}
+              </div>
+              <div className="font-bold text-2xl sm:text-[28px] uppercase text-[#13243c] font-heading">
+                {t('home.lotsCount', { count: String(total) })}
+              </div>
+            </div>
+            <Link href={localizedPath('/vehicules', language)} className="font-bold text-[13px] text-[#d9704f] whitespace-nowrap hover:underline">
+              {t('home.viewAllVehicles')}
+            </Link>
+          </div>
+
+          <div className="px-4 sm:px-[40px] pb-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {salesLoading && <div className="col-span-full flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>}
+            {!salesLoading && salesError && <div className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{salesError}</div>}
+            {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Aucun véhicule dans une session en cours.</div>}
+            <LotCards lots={vehicles} language={language} />
+          </div>
+        </>
+      ) : (
+        <ShowcaseLots language={language} />
+      )}
       </>}
 
       {/* How it works */}

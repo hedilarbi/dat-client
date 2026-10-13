@@ -31,7 +31,7 @@ export function UnderReviewNotice() {
   const { t } = useLanguage();
   const { user } = useUser();
   // Un compte déjà validé qui a modifié son profil n'est pas « en cours d'inscription »
-  const modification = isProfileReviewPending(user);
+  const modification = isModificationReview(user);
   return (
     <div className="flex-1 w-full p-6 sm:p-12 text-black font-sans text-center bg-white">
       <div className="w-[60px] h-[60px] rounded-full bg-[#eef1f5] text-[#13243c] flex items-center justify-center text-2xl mx-auto mb-4 font-bold">
@@ -108,7 +108,7 @@ import Link from 'next/link';
 import { useUser } from './LayoutWrapper';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
 import { formatEuros } from '../lib/format';
-import { isProfileReviewPending } from '../lib/userAccess';
+import { isModificationReview, isProfileReviewPending } from '../lib/userAccess';
 import { localizedPath } from '../i18n';
 
 export function SuspendedNotice() {

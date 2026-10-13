@@ -3,6 +3,7 @@
 interface AccessUser {
   status: string;
   profileChangePending?: boolean;
+  hasBeenValidated?: boolean;
 }
 
 /**
@@ -12,6 +13,14 @@ interface AccessUser {
  */
 export const isProfileReviewPending = (user: AccessUser | null | undefined) =>
   Boolean(user && user.status === 'soumis' && user.profileChangePending);
+
+/**
+ * Attente de validation qui concerne un compte déjà validé auparavant (modification de profil, ou
+ * nouvelle soumission après une correction) : les textes parlent d'une « demande de modification de
+ * compte », jamais d'une inscription.
+ */
+export const isModificationReview = (user: AccessUser | null | undefined) =>
+  Boolean(user && user.status === 'soumis' && (user.profileChangePending || user.hasBeenValidated));
 
 /**
  * Le compte peut ouvrir son espace et poursuivre ses ventes en cours : compte validé, suspendu, ou

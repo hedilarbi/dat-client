@@ -45,6 +45,7 @@ interface UserProfile {
   status: string;
   /** Compte validé qui a modifié son profil : en attente de validation de ces modifications */
   profileChangePending?: boolean;
+  hasBeenValidated?: boolean;
   emailVerified?: boolean;
   address?: {
     street: string;
