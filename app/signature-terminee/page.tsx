@@ -29,12 +29,36 @@ function SignatureReturn() {
   useEffect(() => {
     if (loading || !user || !saleId || startedRef.current) return;
     startedRef.current = true;
-    apiRequest(`/sales/${encodeURIComponent(saleId)}/esignature/sync`, { method: 'POST' })
-      .then((res) => {
-        const salesPath = res.side === 'seller' ? '/vendeur/ventes' : getBuyingPaths(user.role).purchases;
-        router.replace(localizedPath(`${salesPath}/${saleId}?signature=retour`, languageRef.current));
-      })
-      .catch(() => setFailed(true));
+
+    const goToSale = (side: 'seller' | 'buyer') => {
+      const salesPath = side === 'seller' ? '/vendeur/ventes' : getBuyingPaths(user.role).purchases;
+      router.replace(localizedPath(`${salesPath}/${saleId}?signature=retour`, languageRef.current));
+    };
+
+    // La relecture de la signature peut tarder ou échouer (plateforme de signature lente) : dans tous
+    // les cas l'utilisateur est renvoyé sur sa vente, qui affiche l'état connu.
+    const sync = Promise.race([
+      apiRequest(`/sales/${encodeURIComponent(saleId)}/esignature/sync`, { method: 'POST' }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000)),
+    ]);
+    sync
+      .then((res) => goToSale(res.side === 'seller' ? 'seller' : 'buyer'))
+      .catch(async () => {
+        // Côté inconnu : un vendeur peut être acheteur de cette vente. Elle est « côté vendeur » si le
+        // détail vendeur existe pour lui.
+        if (user.role === 'acheteur') return goToSale('buyer');
+        try {
+          await apiRequest(`/sales/seller/${encodeURIComponent(saleId)}`);
+          goToSale('seller');
+        } catch {
+          try {
+            await apiRequest(`/sales/${encodeURIComponent(saleId)}`);
+            goToSale('buyer');
+          } catch {
+            setFailed(true);
+          }
+        }
+      });
   }, [loading, user, saleId, router]);
 
   if (!failed && (loading || (user && saleId))) {
