@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { formatEuros } from '../lib/format';
 import { localizedPath, useLanguage } from '../i18n';
@@ -9,36 +8,17 @@ import { formatTimeLeft, useCurrentSales, type SalesAccessReason } from '../lib/
 import { useUser } from '../components/LayoutWrapper';
 import SalesAccessBanner from '../components/SalesAccessBanner';
 import SalesAccessModal from '../components/SalesAccessModal';
-import vehicleCatalog from '../lib/vehicleCatalog.json';
-import { ENERGY_OPTIONS, GEARBOX_OPTIONS, PROCEDURE_OPTIONS } from '../lib/vehicleLabels';
+import SalesFilterCard, { EMPTY_SALE_FILTERS, type SaleFilters } from '../components/SalesFilterCard';
 import Spinner from '../components/Spinner';
 import JsonLd from '../components/JsonLd';
 import ShowcaseGallery from '../components/ShowcaseGallery';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
-const CURRENT_YEAR = new Date().getFullYear();
-
-interface SaleFilters {
-  brand: string;
-  model: string;
-  energy: string;
-  procedure: string;
-  gearbox: string;
-  registrationCardAvailable: string;
-  yearFrom: string;
-  yearTo: string;
-  mileageFrom: string;
-  mileageTo: string;
-}
-
-const EMPTY_FILTERS: SaleFilters = { brand: '', model: '', energy: '', procedure: '', gearbox: '', registrationCardAvailable: '', yearFrom: '', yearTo: '', mileageFrom: '', mileageTo: '' };
 
 export default function CurrentSalesPage() {
   const { language, t } = useLanguage();
   const { user, loading: userLoading } = useUser();
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [draftFilters, setDraftFilters] = useState<SaleFilters>(EMPTY_FILTERS);
-  const [filters, setFilters] = useState<SaleFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<SaleFilters>(EMPTY_SALE_FILTERS);
   const fr = language === 'fr';
 
   // Le filtrage est appliqué en base : sans ça il ne porterait que sur les pages déjà chargées.
@@ -106,11 +86,6 @@ export default function CurrentSalesPage() {
     accessModalShownRef.current = false;
   }, [filters]);
 
-  const brands = vehicleCatalog.map((entry) => entry.brand);
-  const models = vehicleCatalog.find((entry) => entry.brand === draftFilters.brand)?.models || [];
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const updateDraft = (key: keyof SaleFilters, value: string) => setDraftFilters((current) => ({ ...current, [key]: value }));
-  const resetFilters = () => { setDraftFilters(EMPTY_FILTERS); setFilters(EMPTY_FILTERS); };
   const currentSession = sessions[0];
   const sessionName = currentSession?.name || (fr ? 'Aucune session ouverte' : 'No open session');
   const sessionTimeLeft = formatTimeLeft(currentSession?.endDate);
@@ -146,35 +121,7 @@ export default function CurrentSalesPage() {
       {!userLoading && !user && <ShowcaseGallery language={language} compact />}
 
       <div className={!userLoading && !user ? 'hidden' : undefined}>
-      <section className="relative z-2 -mt-[38px] mb-5 px-4 sm:px-10">
-        <div className="rounded-[14px] border border-[#eceadf] bg-white shadow-[0_16px_34px_rgba(19,36,60,.16)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-6">
-            <div><p className="text-[11px] font-bold uppercase tracking-[.12em] text-[#13243c]">{fr ? 'Affiner les véhicules' : 'Refine vehicles'}</p>{activeFilterCount > 0 && <p className="mt-1 text-xs text-[#d9704f]">{activeFilterCount} {fr ? 'filtre(s) appliqué(s)' : 'active filter(s)'}</p>}</div>
-            <div className="flex gap-2">
-              {activeFilterCount > 0 && <button type="button" onClick={resetFilters} className="btn btn-secondary">{fr ? 'Réinitialiser' : 'Reset'}</button>}
-              <button type="button" onClick={() => setFiltersOpen((open) => !open)} className="flex h-10 items-center gap-2 rounded-[8px] bg-[#13243c] px-5 text-[11px] font-bold uppercase text-white hover:bg-[#1a3050]"><span aria-hidden="true">☷</span>{filtersOpen ? (fr ? 'Fermer' : 'Close') : (fr ? 'Afficher les filtres' : 'Show filters')}</button>
-            </div>
-          </div>
-
-          {filtersOpen && <div className="border-t border-[#efece3] p-5 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              <Filter label={fr ? 'Marque' : 'Brand'} value={draftFilters.brand} onChange={(value) => setDraftFilters((current) => ({ ...current, brand: value, model: '' }))}><option value="">{fr ? 'Toutes les marques' : 'All brands'}</option>{brands.map((item) => <option key={item}>{item}</option>)}</Filter>
-              <Filter label={fr ? 'Modèle' : 'Model'} value={draftFilters.model} onChange={(value) => updateDraft('model', value)} disabled={!draftFilters.brand}><option value="">{draftFilters.brand ? (fr ? 'Tous les modèles' : 'All models') : (fr ? 'Choisir une marque' : 'Choose a brand')}</option>{models.map((item) => <option key={item}>{item}</option>)}</Filter>
-              <Filter label={fr ? 'Énergie' : 'Energy'} value={draftFilters.energy} onChange={(value) => updateDraft('energy', value)}><option value="">{fr ? 'Toutes les énergies' : 'All energies'}</option>{ENERGY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
-              <Filter label={fr ? 'Procédure' : 'Procedure'} value={draftFilters.procedure} onChange={(value) => updateDraft('procedure', value)}><option value="">{fr ? 'Toutes les procédures' : 'All procedures'}</option>{PROCEDURE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</Filter>
-              <Filter label={fr ? 'Boîte de vitesse' : 'Gearbox'} value={draftFilters.gearbox} onChange={(value) => updateDraft('gearbox', value)}><option value="">{fr ? 'Toutes' : 'All'}</option>{GEARBOX_OPTIONS.map((item) => <option key={item.value} value={item.value}>{fr ? item.fr : item.en}</option>)}</Filter>
-              <Filter label={fr ? 'Carte grise disponible' : 'Registration document available'} value={draftFilters.registrationCardAvailable} onChange={(value) => updateDraft('registrationCardAvailable', value)}><option value="">{fr ? 'Toutes' : 'All'}</option><option value="true">{fr ? 'Oui' : 'Yes'}</option><option value="false">{fr ? 'Non' : 'No'}</option></Filter>
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <NumberFilter label={fr ? 'Année de' : 'Year from'} value={draftFilters.yearFrom} onChange={(value) => updateDraft('yearFrom', value)} placeholder="2015" />
-              <NumberFilter label={fr ? 'Année à' : 'Year to'} value={draftFilters.yearTo} onChange={(value) => updateDraft('yearTo', value)} placeholder={String(CURRENT_YEAR)} />
-              <NumberFilter label={fr ? 'Kilométrage de' : 'Mileage from'} value={draftFilters.mileageFrom} onChange={(value) => updateDraft('mileageFrom', value)} placeholder="0" />
-              <NumberFilter label={fr ? 'Kilométrage à' : 'Mileage to'} value={draftFilters.mileageTo} onChange={(value) => updateDraft('mileageTo', value)} placeholder="200000" />
-            </div>
-            <div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" onClick={resetFilters} className="btn btn-secondary">{fr ? 'Effacer' : 'Clear'}</button><button type="button" onClick={() => { setFilters(draftFilters); setFiltersOpen(false); }} className="h-11 rounded-[9px] bg-[#d9704f] px-7 text-xs font-bold uppercase text-white hover:bg-[#c66042]">{t('home.searchButton')}</button></div>
-          </div>}
-        </div>
-      </section>
+      <SalesFilterCard filters={filters} onApply={setFilters} className="relative z-2 -mt-[38px] mb-5 px-4 sm:px-10" />
 
       <section className="flex items-end justify-between px-4 pb-[22px] pt-2 sm:px-10">
         <div>
@@ -259,19 +206,4 @@ export default function CurrentSalesPage() {
       </div>
     </main>
   );
-}
-
-function Filter({ label, value, onChange, children, disabled = false }: { label: string; value: string; onChange: (value: string) => void; children: ReactNode; disabled?: boolean }) {
-  return (
-    <label className="min-w-[170px] flex-1">
-      <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[.06em] text-[#5a5e66]">{label}</span>
-      <select disabled={disabled} value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-[9px] border border-[#dcd7cb] bg-white px-3.5 text-sm font-medium text-[#5a5e66] outline-none focus:border-[#13243c] disabled:cursor-not-allowed disabled:bg-[#f1efe8] disabled:text-[#9a917d]">
-        {children}
-      </select>
-    </label>
-  );
-}
-
-function NumberFilter({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
-  return <label><span className="mb-2 block text-[10px] font-semibold uppercase tracking-[.06em] text-[#5a5e66]">{label}</span><input type="number" min="0" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-12 w-full rounded-[9px] border border-[#dcd7cb] bg-white px-3.5 text-sm font-medium text-[#5a5e66] outline-none focus:border-[#13243c]" /></label>;
 }

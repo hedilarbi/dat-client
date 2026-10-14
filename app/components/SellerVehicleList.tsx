@@ -83,6 +83,15 @@ export default function SellerVehicleList({ phase, path }: SellerVehicleListProp
 
   const states = PHASE_STATES[phase];
 
+  // Lien de l'e-mail de clôture (?etat=offres_a_decider) : la liste s'ouvre directement sur les
+  // véhicules dont le vendeur doit décider.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get('etat');
+    if (wanted && (states as readonly string[]).includes(wanted)) setFilter(wanted as VehicleState);
+    // Lu une seule fois à l'ouverture de la page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const fetchVehicles = useCallback(() => apiRequest('/sales/seller')
     .then((res) => {
       const all: SellerVehicleRow[] = res.vehicleStates?.vehicles || [];
