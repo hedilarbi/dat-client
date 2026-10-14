@@ -14,7 +14,7 @@ import JsonLd from "./components/JsonLd";
 import Spinner from "./components/Spinner";
 import ShowcaseGallery from './components/ShowcaseGallery';
 import ShowcaseLots, { LotCards } from './components/ShowcaseLots';
-import SalesFilterCard, { EMPTY_SALE_FILTERS, type SaleFilters } from './components/SalesFilterCard';
+import SalesFilterCard, { EMPTY_SALE_FILTERS, filtersToQueryString, type SaleFilters } from './components/SalesFilterCard';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 const HOW_IT_WORKS_IMAGE = 'https://images.unsplash.com/photo-1772440223098-cc23f6f01209?q=80&w=1200&auto=format&fit=crop';
@@ -63,12 +63,14 @@ export default function Home() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
   const [saleReminders, setSaleReminders] = useState<HomeSaleReminder[]>([]);
-  // Filtre des véhicules en vente (affiché quand une session est ouverte)
-  const [filters, setFilters] = useState<SaleFilters>(EMPTY_SALE_FILTERS);
-  const hasActiveFilters = Object.values(filters).some(Boolean);
+  // « Rechercher » ouvre la page des ventes en cours avec ces filtres déjà configurés
+  const searchWithFilters = (selected: SaleFilters) => {
+    const query = filtersToQueryString(selected);
+    router.push(localizedPath(`/vehicules${query ? `?${query}` : ''}`, language));
+  };
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
-  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, filters, enabled: !userLoading && Boolean(user) });
+  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
   const currentSession = sessions[0];
   // Le tag de session du hero n'existe que pour un utilisateur connecté. On ne conclut à « aucune
   // session » qu'une fois la réponse reçue (sinon le tag l'affichait pendant le chargement).
@@ -266,12 +268,12 @@ export default function Home() {
           </div>
 
           {/* Filtre, comme sur la page Véhicules : seulement quand une session est ouverte */}
-          {currentSession && <SalesFilterCard filters={filters} onApply={setFilters} className="px-4 sm:px-[40px] pb-5" />}
+          {currentSession && <SalesFilterCard filters={EMPTY_SALE_FILTERS} onApply={searchWithFilters} onReset={() => undefined} className="px-4 sm:px-[40px] pb-5" />}
 
           <div className="px-4 sm:px-[40px] pb-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {salesLoading && <div className="col-span-full flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>}
             {!salesLoading && salesError && <div className="col-span-full rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{salesError}</div>}
-            {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">{hasActiveFilters ? (language === 'fr' ? 'Aucun véhicule ne correspond à vos filtres.' : 'No vehicle matches your filters.') : 'Aucun véhicule dans une session en cours.'}</div>}
+            {!salesLoading && !salesError && vehicles.length === 0 && <div className="col-span-full py-10 text-center text-sm text-[#5a5e66]">Aucun véhicule dans une session en cours.</div>}
             <LotCards lots={vehicles} language={language} />
           </div>
         </>

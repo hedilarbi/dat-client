@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatEuros } from '../lib/format';
 import { localizedPath, useLanguage } from '../i18n';
@@ -8,17 +9,27 @@ import { formatTimeLeft, useCurrentSales, type SalesAccessReason } from '../lib/
 import { useUser } from '../components/LayoutWrapper';
 import SalesAccessBanner from '../components/SalesAccessBanner';
 import SalesAccessModal from '../components/SalesAccessModal';
-import SalesFilterCard, { EMPTY_SALE_FILTERS, type SaleFilters } from '../components/SalesFilterCard';
+import SalesFilterCard, { filtersFromSearchParams, type SaleFilters } from '../components/SalesFilterCard';
 import Spinner from '../components/Spinner';
 import JsonLd from '../components/JsonLd';
 import ShowcaseGallery from '../components/ShowcaseGallery';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
 
-export default function CurrentSalesPage() {
+// Filtres préparés ailleurs (accueil) : la page s'ouvre déjà filtrée, ex. /vehicules?brand=Renault&yearFrom=2018
+export default function CurrentSalesPageWithFilters() {
+  return (
+    <Suspense fallback={null}>
+      <CurrentSalesPage />
+    </Suspense>
+  );
+}
+
+function CurrentSalesPage() {
   const { language, t } = useLanguage();
   const { user, loading: userLoading } = useUser();
-  const [filters, setFilters] = useState<SaleFilters>(EMPTY_SALE_FILTERS);
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<SaleFilters>(() => filtersFromSearchParams(searchParams));
   const fr = language === 'fr';
 
   // Le filtrage est appliqué en base : sans ça il ne porterait que sur les pages déjà chargées.

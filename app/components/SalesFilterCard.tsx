@@ -30,10 +30,28 @@ export const EMPTY_SALE_FILTERS: SaleFilters = {
   yearFrom: '', yearTo: '', mileageFrom: '', mileageTo: '',
 };
 
+const FILTER_KEYS = Object.keys(EMPTY_SALE_FILTERS) as Array<keyof SaleFilters>;
+
+/** Filtres → paramètres d'URL (seuls les filtres renseignés), pour ouvrir la page Véhicules déjà filtrée. */
+export const filtersToQueryString = (filters: SaleFilters) => {
+  const params = new URLSearchParams();
+  FILTER_KEYS.forEach((key) => { if (filters[key]) params.set(key, filters[key]); });
+  return params.toString();
+};
+
+/** Paramètres d'URL → filtres (les paramètres inconnus sont ignorés). */
+export const filtersFromSearchParams = (params: { get: (name: string) => string | null }): SaleFilters => {
+  const filters = { ...EMPTY_SALE_FILTERS };
+  FILTER_KEYS.forEach((key) => { filters[key] = params.get(key) || ''; });
+  return filters;
+};
+
 interface SalesFilterCardProps {
   /** Filtres actuellement appliqués à la liste */
   filters: SaleFilters;
   onApply: (filters: SaleFilters) => void;
+  /** Remise à zéro : par défaut elle applique des filtres vides ; l'accueil, où appliquer ouvre une autre page, la limite au formulaire. */
+  onReset?: () => void;
   /** Classes de la section englobante (position dans la page) */
   className?: string;
 }
@@ -43,7 +61,7 @@ interface SalesFilterCardProps {
  * préparent dans le panneau et ne s'appliquent qu'au clic sur « Rechercher ». L'année et le
  * kilométrage se règlent avec un curseur à deux poignées (minimum et maximum).
  */
-export default function SalesFilterCard({ filters, onApply, className = '' }: SalesFilterCardProps) {
+export default function SalesFilterCard({ filters, onApply, onReset, className = '' }: SalesFilterCardProps) {
   const { language, t } = useLanguage();
   const fr = language === 'fr';
   const [open, setOpen] = useState(false);
@@ -53,7 +71,7 @@ export default function SalesFilterCard({ filters, onApply, className = '' }: Sa
   const models = vehicleCatalog.find((entry) => entry.brand === draft.brand)?.models || [];
   const activeCount = Object.values(filters).filter(Boolean).length;
   const update = (key: keyof SaleFilters, value: string) => setDraft((current) => ({ ...current, [key]: value }));
-  const reset = () => { setDraft(EMPTY_SALE_FILTERS); onApply(EMPTY_SALE_FILTERS); };
+  const reset = () => { setDraft(EMPTY_SALE_FILTERS); if (onReset) onReset(); else onApply(EMPTY_SALE_FILTERS); };
 
   const yearLow = draft.yearFrom ? Number(draft.yearFrom) : YEAR_MIN;
   const yearHigh = draft.yearTo ? Number(draft.yearTo) : CURRENT_YEAR;
