@@ -25,6 +25,11 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
   // Identifiant de la dernière photo affichée : évite le flash de l'image précédente pendant
   // le chargement de la suivante, sans effet de bord au changement d'index.
   const [loadedPhotoId, setLoadedPhotoId] = useState<string | null>(null);
+  // Zoom : photo actuellement agrandie et point sous le curseur (en %). Lié à l'identifiant de la
+  // photo, il retombe de lui-même quand on passe à une autre photo.
+  const [zoomedPhotoId, setZoomedPhotoId] = useState<string | null>(null);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  const imageRef = useRef<HTMLImageElement | null>(null);
 
   const isOpen = index !== null && photos.length > 0;
 
@@ -53,6 +58,9 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
     };
   }, [goTo, isOpen, onClose]);
 
+  // Visionneuse fermée (par n'importe quel moyen, Échap compris) : plus aucun zoom à la réouverture
+  if (!isOpen && zoomedPhotoId !== null) setZoomedPhotoId(null);
+
   if (!isOpen) return null;
 
   const current = photos[index];
@@ -62,8 +70,38 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
     if (touchStartX.current === null) return;
     const deltaX = event.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
+    // Photo agrandie : le geste sert à la déplacer, pas à changer de photo
+    if (zoomedPhotoId === current.id) return;
     if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX) goTo(deltaX < 0 ? 1 : -1);
   };
+
+  const isZoomed = zoomedPhotoId === current.id;
+  const pointOnImage = (clientX: number, clientY: number) => {
+    const rect = imageRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return { x: 50, y: 50 };
+    return {
+      x: Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100)),
+    };
+  };
+  // Clic sur la photo : loupe + / loupe − ; l'agrandissement part du point cliqué
+  const toggleZoom = (event: React.MouseEvent) => {
+    if (isZoomed) {
+      setZoomedPhotoId(null);
+      return;
+    }
+    setZoomOrigin(pointOnImage(event.clientX, event.clientY));
+    setZoomedPhotoId(current.id);
+  };
+  // Photo agrandie : le déplacement du curseur fait glisser la photo pour en explorer chaque zone
+  const panZoom = (event: React.MouseEvent) => {
+    if (isZoomed) setZoomOrigin(pointOnImage(event.clientX, event.clientY));
+  };
+  const close = () => {
+    setZoomedPhotoId(null);
+    onClose();
+  };
+
 
   return (
     <div
@@ -80,7 +118,7 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={close}
           aria-label={t('vehicle.closeGallery')}
           className="flex h-10 w-10 items-center justify-center rounded-[9px] border border-white/25 text-xl leading-none text-white transition hover:bg-white/10 cursor-pointer"
         >
@@ -89,17 +127,21 @@ export default function PhotoLightbox({ photos, index, onIndexChange, onClose, a
       </div>
 
       <div
-        className="relative flex min-h-0 flex-1 items-center justify-center px-2 pb-2 sm:px-16"
-        onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2 pb-2 sm:px-16"
+        onClick={(event) => { if (event.target === event.currentTarget) close(); }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={current.id}
+          ref={imageRef}
           src={current.url}
           alt={alt}
           onLoad={() => setLoadedPhotoId(current.id)}
+          onClick={toggleZoom}
+          onMouseMove={panZoom}
           draggable={false}
-          className={`max-h-full max-w-full select-none object-contain transition-opacity duration-200 ${loadedPhotoId === current.id ? 'opacity-100' : 'opacity-0'}`}
+          style={isZoomed ? { transform: 'scale(2.5)', transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` } : undefined}
+          className={`max-h-full max-w-full select-none object-contain transition-[opacity,transform] duration-200 ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'} ${loadedPhotoId === current.id ? 'opacity-100' : 'opacity-0'}`}
         />
 
         {photos.length > 1 && (
