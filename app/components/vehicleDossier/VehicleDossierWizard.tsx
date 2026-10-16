@@ -98,7 +98,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     model: initialDossier?.model || '',
     year: initialDossier?.year,
     mileage: initialDossier?.mileage,
-    engine: initialDossier?.engine || '2.0 dCi 125',
+    engine: initialDossier?.engine || '',
     fuelType: initialDossier?.fuelType || 'diesel',
     vin: initialDossier?.vin || '',
     registrationNumber: initialDossier?.registrationNumber || '',

@@ -27,6 +27,13 @@ export function DraftPendingNotice({ onResume }: DraftPendingNoticeProps) {
   );
 }
 
+/** Met en gras la première phrase (« Votre demande de modification de compte a été soumise. »). */
+function FirstSentenceBold({ text }: { text: string }) {
+  const end = text.indexOf('. ');
+  if (end === -1) return <strong>{text}</strong>;
+  return <><strong className="font-bold text-[#13243c]">{text.slice(0, end + 1)}</strong>{text.slice(end + 1)}</>;
+}
+
 export function UnderReviewNotice() {
   const { t } = useLanguage();
   const { user } = useUser();
@@ -39,7 +46,7 @@ export function UnderReviewNotice() {
       </div>
       <h3 className="text-xl font-bold uppercase text-[#13243c] mb-2">{t(modification ? 'notice.profileReviewTitle' : 'notice.reviewTitle')}</h3>
       <p className="text-sm text-[#5a5e66] leading-[1.6] mb-4">
-        {t(modification ? 'notice.profileReviewDescription' : 'notice.reviewDescription')}
+        {modification ? <FirstSentenceBold text={t('notice.profileReviewDescription')} /> : t('notice.reviewDescription')}
       </p>
       <p className="text-xs text-gray-400">
         {t(modification ? 'notice.profileReviewFooter' : 'notice.reviewFooter')}
@@ -59,7 +66,7 @@ export function ProfileReviewBanner() {
   return (
     <div className="mb-6 rounded-[12px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-4 sm:p-5" role="status">
       <div className="text-[13px] font-extrabold uppercase tracking-[0.05em] text-[#8a4b24]">⏳ {t('notice.profileReviewTitle')}</div>
-      <p className="mt-1.5 text-[13px] leading-6 text-[#8a4b24]">{t('notice.profileReviewDescription')}</p>
+      <p className="mt-1.5 text-[13px] leading-6 text-[#8a4b24]"><FirstSentenceBold text={t('notice.profileReviewDescription')} /></p>
     </div>
   );
 }

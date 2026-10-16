@@ -282,6 +282,8 @@ export default function Home() {
       )}
       </>}
 
+      {!userLoading && user && <ShowcaseGallery language={language} hideWhenEmpty />}
+
       {/* How it works */}
       <div id="a-propos" className="scroll-mt-[70px] bg-[#f8f7f2] px-4 sm:px-[40px] py-12 sm:py-16 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-8 sm:gap-[52px] items-center">
         <div>

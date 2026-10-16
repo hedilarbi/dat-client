@@ -13,7 +13,7 @@ interface ShowcaseItem { id: string; imageUrl: string; brand?: string; model?: s
  * l'administrateur. Chaque carte ouvre la fiche du véhicule, où aucune offre ne peut être déposée
  * sans compte.
  */
-export default function ShowcaseGallery({ language, compact = false }: { language: 'fr' | 'en'; compact?: boolean }) {
+export default function ShowcaseGallery({ language, compact = false, hideWhenEmpty = false }: { language: 'fr' | 'en'; compact?: boolean; hideWhenEmpty?: boolean }) {
   const { t } = useLanguage();
   const [items, setItems] = useState<ShowcaseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,9 @@ export default function ShowcaseGallery({ language, compact = false }: { languag
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, []);
+
+  // Utilisateur connecté : la section ne s'affiche que s'il y a des véhicules annoncés
+  if (hideWhenEmpty && (loading || items.length === 0)) return null;
 
   return (
     <section className={`px-4 sm:px-10 ${compact ? 'py-10' : 'py-12 sm:py-16'}`}>

@@ -696,8 +696,8 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             )}
             <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
             <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
-            <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">Acheter</Link>
-            <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
+            {user?.role !== 'acheteur' && <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">{t('nav.buy')}</Link>}
+            {user?.role !== 'vendeur' && <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>}
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
@@ -722,8 +722,8 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                 ...(spaceLink ? [{ href: spaceLink.href, label: spaceLink.label, highlight: true }] : []),
                 { href: homePath, label: t('nav.home'), active: currentPath === '/' },
                 { href: localizedPath('/vehicules', language), label: t('nav.vehicles'), active: currentPath === '/vehicules' },
-                { href: localizedPath('/acheter', language), label: 'Acheter', active: currentPath === '/acheter' },
-                { href: localizedPath('/vendre', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre' },
+                ...(user?.role !== 'acheteur' ? [{ href: localizedPath('/acheter', language), label: t('nav.buy'), active: currentPath === '/acheter' }] : []),
+                ...(user?.role !== 'vendeur' ? [{ href: localizedPath('/vendre', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre' }] : []),
               ]}
             />
           </div>

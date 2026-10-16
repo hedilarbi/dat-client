@@ -29,7 +29,7 @@ export default function SignedDocuments({ esignature, bonEnlevementUrl }: {
         >
           <span>
             <span className="block text-[16px] font-bold">{t('saleDocs.signed.bonEnlevement')}</span>
-            <span className="mt-0.5 block text-[13px] text-white/80">{t('saleDocs.signed.bonEnlevementHint')}</span>
+            <span className="mt-1.5 block text-[15px] font-bold text-white">{t('saleDocs.signed.bonEnlevementHint')}</span>
           </span>
           <span className="inline-flex h-11 shrink-0 items-center justify-center rounded-[9px] bg-white px-5 text-[13px] font-bold uppercase text-[#2f6f4f]">
             {t('saleDocs.download')} ↓
