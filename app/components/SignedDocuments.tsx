@@ -4,23 +4,27 @@ import { useLanguage } from '../i18n';
 import type { SaleEsignatureState } from '../lib/saleSteps';
 
 /**
- * Vente clôturée : le bon d'enlèvement, mis en avant puisqu'il sert à récupérer le véhicule,
- * puis le certificat de cession et la déclaration d'achat signés. Identique pour les deux parties.
+ * Vente clôturée : l'acheteur voit le bon d'enlèvement mis en avant (il lui sert à récupérer le
+ * véhicule), puis le certificat de cession et la déclaration d'achat signés. Pour le vendeur, le
+ * bon d'enlèvement figure simplement parmi les autres documents.
  */
-export default function SignedDocuments({ esignature, bonEnlevementUrl }: {
+export default function SignedDocuments({ esignature, bonEnlevementUrl, side = 'buyer' }: {
   esignature: SaleEsignatureState | null;
   bonEnlevementUrl: string | null | undefined;
+  side?: 'buyer' | 'seller';
 }) {
   const { t } = useLanguage();
+  const highlightPickup = side === 'buyer';
   const documents = [
     { key: 'certificate', url: esignature?.signedCertificateUrl },
     { key: 'purchaseDeclaration', url: esignature?.signedPurchaseDeclarationUrl },
+    ...(highlightPickup ? [] : [{ key: 'bonEnlevement', url: bonEnlevementUrl }]),
     { key: 'audit', url: esignature?.auditUrl },
   ].filter((document): document is { key: string; url: string } => Boolean(document.url));
 
   return (
     <div className="space-y-3">
-      {bonEnlevementUrl && (
+      {highlightPickup && bonEnlevementUrl && (
         <a
           href={bonEnlevementUrl}
           target="_blank"
@@ -29,7 +33,7 @@ export default function SignedDocuments({ esignature, bonEnlevementUrl }: {
         >
           <span>
             <span className="block text-[16px] font-bold">{t('saleDocs.signed.bonEnlevement')}</span>
-            <span className="mt-1.5 block text-[15px] font-bold text-white">{t('saleDocs.signed.bonEnlevementHint')}</span>
+            <span className="mt-1.5 block text-[15px] font-bold text-[#c6f3d9]">{t('saleDocs.signed.bonEnlevementHint')}</span>
           </span>
           <span className="inline-flex h-11 shrink-0 items-center justify-center rounded-[9px] bg-white px-5 text-[13px] font-bold uppercase text-[#2f6f4f]">
             {t('saleDocs.download')} ↓

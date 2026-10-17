@@ -367,7 +367,7 @@ export default function SellerSaleDetailPage() {
               <p className="mt-1 mb-4 text-sm text-[#2f6f4f]">
                 {sale.closedAt ? t('saleDocs.closedOn', { date: formatDate(sale.closedAt) }) : t('sellerSale.closedText')}
               </p>
-              <SignedDocuments esignature={sale.esignature} bonEnlevementUrl={sale.bonEnlevement?.url} />
+              <SignedDocuments side="seller" esignature={sale.esignature} bonEnlevementUrl={sale.bonEnlevement?.url} />
             </section>
           )}
 
