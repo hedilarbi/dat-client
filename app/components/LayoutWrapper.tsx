@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiRequest } from '../api';
 import Link from 'next/link';
-import { Language, LanguageSelector, getRoleHomePath, getRoleLoginPath, getRoleProfilePath, getRoleRegisterPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
+import { Language, LanguageSelector, getRoleHomePath, getRoleLoginPath, getRoleRegisterPath, getLocaleFromPath, localizedPath, canonicalPathFromPathname, useLanguage } from '../i18n';
 import DropdownMenu from './DropdownMenu';
 import Footer from './Footer';
 import { hasSpaceAccess } from '../lib/userAccess';
@@ -605,7 +605,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       <div className="flex-1 min-h-screen bg-white overflow-hidden flex flex-col">
         {/* Top Navbar */}
         <header className="h-[70px] bg-[#13243c] flex items-center gap-4 sm:gap-[34px] px-4 sm:px-[34px] py-4 select-none overflow-x-auto">
-          <Link href={user ? localizedPath(getRoleProfilePath(user.role), language) : localizedPath('/', language)} className="w-[118px] h-[34px] shrink-0 border border-dashed border-[#47597a] rounded-[6px] flex items-center justify-center text-[9px] font-semibold tracking-widest uppercase text-[#8ea0bd]">
+          <Link href={homePath} className="w-[118px] h-[34px] shrink-0 border border-dashed border-[#47597a] rounded-[6px] flex items-center justify-center text-[9px] font-semibold tracking-widest uppercase text-[#8ea0bd]">
             {t('login.logo')}
           </Link>
 
