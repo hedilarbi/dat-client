@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../i18n';
 
 interface VerticalStepProps {
   stepNumber: number;
@@ -23,6 +24,7 @@ export default function VerticalStep({
   onClick,
   children,
 }: VerticalStepProps) {
+  const { t } = useLanguage();
   // Styling for the circle indicator
   const circleBg = isCurrent ? '#d9704f' : isCompleted ? '#2f6f4f' : '#fff';
   const circleColor = isCurrent || isCompleted ? '#fff' : '#9a917d';
@@ -87,7 +89,7 @@ export default function VerticalStep({
             )}
             {isCompleted && !isCurrent && (
               <span className="hidden sm:inline-flex rounded-full bg-[#e9f4ee] px-2 py-0.5 text-[10px] font-bold uppercase text-[#2f6f4f]">
-                Étape complétée
+                {t('step.completed')}
               </span>
             )}
             {isClickable && (

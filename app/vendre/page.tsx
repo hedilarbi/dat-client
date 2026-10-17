@@ -14,8 +14,10 @@ export default function SellWithUsPage() {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        "name": "Vendre un véhicule accidenté à des pros | DealAutoPro",
-        "description": "Présentez vos véhicules accidentés, sinistrés ou de flotte à des acheteurs professionnels validés et suivez la vente jusqu’à l’enlèvement."
+        "name": language === 'en' ? 'Sell a damaged vehicle to professionals | DealAutoPro' : 'Vendre un véhicule accidenté à des pros | DealAutoPro',
+        "description": language === 'en'
+          ? 'Present your damaged, written-off or fleet vehicles to approved professional buyers and follow the sale through to pick-up.'
+          : 'Présentez vos véhicules accidentés, sinistrés ou de flotte à des acheteurs professionnels validés et suivez la vente jusqu’à l’enlèvement.'
       }} />
       <section className="relative overflow-hidden bg-[#0c1626] px-4 py-16 sm:px-10 sm:py-24">
         <div className="absolute -right-28 -top-36 h-[420px] w-[420px] rounded-full bg-[#d9704f]/20 blur-3xl" />

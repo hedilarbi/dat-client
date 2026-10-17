@@ -1,5 +1,6 @@
 'use client';
 
+import { getClientLanguage } from '../lib/clientLanguage';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -322,6 +323,7 @@ export default function RegisterForm({ role }: { role: 'acheteur' | 'vendeur' })
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers: { 'X-Language': getClientLanguage() },
     });
 
     const responseText = await res.text();

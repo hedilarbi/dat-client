@@ -1,5 +1,6 @@
 'use client';
 
+import { getClientLanguage } from '../lib/clientLanguage';
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiRequest } from '../api';
@@ -213,6 +214,7 @@ export default function SupportPage() {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: { 'X-Language': getClientLanguage() },
       });
 
       const responseText = await res.text();

@@ -106,13 +106,13 @@ function CurrentSalesPage() {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "CollectionPage",
-        "name": "Véhicules accidentés et sinistrés disponibles",
-        "description": "Consultez les véhicules accidentés, sinistrés ou non roulants disponibles.",
-        "url": "https://dat-client.vercel.app/fr/vehicules"
+        "name": fr ? "Véhicules accidentés et sinistrés disponibles" : "Damaged and written-off vehicles available",
+        "description": fr ? "Consultez les véhicules accidentés, sinistrés ou non roulants disponibles." : "Browse the available damaged, written-off or non-running vehicles.",
+        "url": `https://dat-client.vercel.app/${fr ? 'fr' : 'en'}/vehicules`
       }} />
       <section className="relative h-[430px] sm:h-[460px] overflow-hidden bg-[#0b1423]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={HERO_IMAGE} alt="Véhicule proposé à la vente" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={HERO_IMAGE} alt={t('vehicles.heroAlt')} className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,20,35,.94)_0%,rgba(11,20,35,.72)_42%,rgba(11,20,35,.18)_78%)]" />
         <div className="relative flex h-full flex-col justify-center px-4 pb-14 sm:px-10 sm:pb-[70px]">
           <p className="mb-[18px] text-[11px] font-bold uppercase tracking-[.3em] text-[#e2a175] sm:text-xs">

@@ -1,5 +1,6 @@
 'use client';
 
+import { getClientLanguage } from '../lib/clientLanguage';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { isValidPhoneNumber } from 'react-phone-number-input';
@@ -15,7 +16,7 @@ import DocumentUploadRow from './DocumentUploadRow';
 import StampReminderBanner from './StampReminderBanner';
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from '../lib/imageCompression';
 import { formatEuros } from '../lib/format';
-import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, ProfileReviewBanner, type Rejection } from './RegistrationStatusNotices';
+import { DraftPendingNotice, UnderReviewNotice, RejectionReasonsBox, ProfileReviewBanner, StrongAmount, type Rejection } from './RegistrationStatusNotices';
 import PendingCommissionCheckout from './PendingCommissionCheckout';
 import { hasSpaceAccess, isProfileReviewPending, withPendingProfile } from '../lib/userAccess';
 import ConfirmModal from './ConfirmModal';
@@ -182,14 +183,14 @@ export default function ProfilPage() {
       body: JSON.stringify({ checkoutSessionId }),
     })
       .then(async () => {
-        setMessage('Commission réglée. Votre compte est réactivé.');
+        setMessage(t('suspended.paymentConfirmed'));
         setError('');
         setCheckoutOpen(false);
         await refreshProfile();
         router.replace(localizedPath(`/acheteur/tableau-de-bord/profil`, language));
       })
       .catch((requestError) => {
-        setError(requestError instanceof Error ? requestError.message : 'Erreur lors de la validation du paiement.');
+        setError(requestError instanceof Error ? requestError.message : t('suspended.paymentError'));
       })
       .finally(() => setConfirmSettled(true));
   }, [checkoutSessionId, actionParam, user, router, language, refreshProfile]);
@@ -202,6 +203,7 @@ export default function ProfilPage() {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers: { 'X-Language': getClientLanguage() },
     });
 
     const data = await res.json().catch(() => ({}));
@@ -497,13 +499,14 @@ export default function ProfilPage() {
       <div className="flex-1 w-full p-6 sm:p-8 text-black font-sans bg-white">
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 sm:p-8 shadow-sm max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-red-800 mb-4 uppercase tracking-wider font-heading">
-            Compte suspendu
+            {t('suspended.title')}
           </h2>
           <p className="text-red-700 mb-6 leading-relaxed">
-            La vente du véhicule vous a été retirée et attribuée à l’offre suivante.{' '}
-            {user.pendingCommission.reason === 'penalite_etape_2'
-              ? <>Le délai de virement de l’étape 2 ayant été dépassé, vous devez régler le montant de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong> pour réactiver votre compte.</>
-              : <>La commission de l’étape 1 n’ayant pas été réglée, vous devez payer cette commission, soit <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>, pour réactiver votre compte.</>}
+            {t('suspended.profileIntro')}{' '}
+            <StrongAmount
+              template={t(user.pendingCommission.reason === 'penalite_etape_2' ? 'suspended.profilePenaltyStep2' : 'suspended.profilePenaltyStep1')}
+              amount={formatEuros(user.pendingCommission.amount, language)}
+            />
           </p>
 
           <div ref={alertRef}>
@@ -512,7 +515,7 @@ export default function ProfilPage() {
           </div>
 
           {confirming ? (
-            <p className="font-semibold text-red-800 animate-pulse">Vérification de votre paiement en cours...</p>
+            <p className="font-semibold text-red-800 animate-pulse">{t('suspended.verifyingPayment')}</p>
           ) : checkoutOpen ? (
             <div className="mt-6">
               <PendingCommissionCheckout onCancel={() => setCheckoutOpen(false)} />
@@ -522,7 +525,7 @@ export default function ProfilPage() {
               onClick={() => setCheckoutOpen(true)}
               className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 w-full sm:w-auto"
             >
-              Régler ma dette et réactiver
+              {t('suspended.payDebt')}
             </button>
           )}
         </div>
@@ -686,7 +689,7 @@ export default function ProfilPage() {
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user.stampUrl} alt="Tampon" className="max-h-[160px] object-contain" />
+            <img src={user.stampUrl} alt={t('profil.companyStamp')} className="max-h-[160px] object-contain" />
           </div>
         ) : (
           <div className="text-[13px] text-[#5a5e66]">

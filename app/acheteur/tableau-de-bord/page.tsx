@@ -94,7 +94,7 @@ export default function BuyerDashboardPage() {
             {user.companyName}
           </div>
           <h1 className="text-[28px] sm:text-[36px] font-bold font-heading uppercase text-[#13243c]">
-            Tableau de bord
+            {t('nav.dashboard')}
           </h1>
         </div>
       </div>
@@ -186,7 +186,7 @@ export default function BuyerDashboardPage() {
         <>
           <div className="mb-4">
             <h2 className="text-[14px] font-bold text-[#111827] uppercase tracking-[0.06em]">
-              Dernières offres
+              {t('dashboard.latestOffers')}
             </h2>
             {offersLoaded && (
               <div className="mt-1 text-[13px] text-[#5a5e66]">

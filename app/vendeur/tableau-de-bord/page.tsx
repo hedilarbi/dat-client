@@ -1,5 +1,6 @@
 'use client';
 
+import { getClientLanguage } from '../../lib/clientLanguage';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -248,6 +249,7 @@ export default function VendeurTableauDeBordPage() {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers: { 'X-Language': getClientLanguage() },
     });
 
     const data = await res.json().catch(() => ({}));
@@ -944,7 +946,7 @@ export default function VendeurTableauDeBordPage() {
         <div className="mb-8">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
             <div className="text-[12px] font-bold text-red-600 uppercase tracking-[0.06em]">
-              Véhicules invendus (3 tentatives ou +)
+              {t('vendeurDashboard.unsoldVehicles')}
             </div>
             <Link href={localizedPath('/vendeur/dossiers', language)} className="text-[12px] font-bold text-[#d9704f] hover:underline">
               {t('profil.viewAll')}
@@ -956,7 +958,7 @@ export default function VendeurTableauDeBordPage() {
               <div className="grid grid-cols-[84px_2fr_1.2fr_1.4fr_120px] p-[14px_20px] bg-red-50 text-[11px] font-bold uppercase tracking-[0.05em] text-red-800">
                 <div>{t('vehicleDossier.colPhoto')}</div>
                 <div>{t('profil.vehicle')}</div>
-                <div>Tentatives</div>
+                <div>{t('vendeurDashboard.attempts')}</div>
                 <div>{t('profil.status')}</div>
                 <div />
               </div>

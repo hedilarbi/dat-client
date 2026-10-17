@@ -1,4 +1,5 @@
 import { canonicalPathFromPathname, getLocaleFromPath, localizedPath } from './routing';
+import { getClientLanguage, tr } from './lib/clientLanguage';
 
 const API_BASE_URL = '/api';
 
@@ -31,6 +32,9 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
     headers.set('Content-Type', 'application/json');
   }
 
+  // Le serveur traduit ses messages d'erreur dans la langue de l'interface
+  headers.set('X-Language', getClientLanguage());
+
   // Next.js client-side fetch credentials policy
   const fetchOptions: RequestInit = {
     ...options,
@@ -50,7 +54,7 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
       data = {
         message: response.ok
           ? responseText
-          : `Réponse serveur invalide (${response.status}). ${responseText.slice(0, 180)}`
+          : `${tr('Réponse serveur invalide', 'Invalid server response')} (${response.status}). ${responseText.slice(0, 180)}`
       };
     }
   }
@@ -80,7 +84,7 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
       }
     }
 
-    const error = new Error(data.message || 'Une erreur est survenue.');
+    const error = new Error(data.message || tr('Une erreur est survenue.', 'An error occurred.'));
     (error as any).code = data.error || 'api.error';
     (error as any).status = response.status;
     (error as any).details = data;

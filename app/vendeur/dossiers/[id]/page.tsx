@@ -40,10 +40,10 @@ export default function DossierVehiculeDetailPage() {
   if (error || !dossier) {
     return (
       <div className="flex-1 w-full bg-white p-8">
-        <Alert variant="error">{error || 'Dossier introuvable.'}</Alert>
+        <Alert variant="error">{error || t('dossierDetail.notFound')}</Alert>
         <div className="mt-4">
           <Link href={localizedPath('/vendeur/dossiers', language)} className="text-xs font-bold text-[#d9704f] underline">
-            ← Retour à la liste de mes dossiers
+            {t('dossierDetail.backToList')}
           </Link>
         </div>
       </div>
@@ -52,31 +52,30 @@ export default function DossierVehiculeDetailPage() {
 
   const isEditable = ['brouillon', 'soumis', 'en_attente_validation', 'correction_demandee', 'valide'].includes(dossier.status);
   const badge = getVehicleDossierStatusBadge(dossier.status, t);
-  const vehicleLabel = [dossier.brand, dossier.model].filter(Boolean).join(' ') || 'Sans nom';
+  const vehicleLabel = [dossier.brand, dossier.model].filter(Boolean).join(' ') || t('dossierDetail.unnamed');
   const lastRefusal = dossier.refusals?.[dossier.refusals.length - 1];
   const backPath = dossier.status === 'valide' ? '/vendeur/en-vente' : '/vendeur/dossiers';
-  const backLabel = dossier.status === 'valide' ? 'Mes véhicules en vente' : 'Mes dossiers';
+  const backLabel = dossier.status === 'valide' ? t('dossierWizard.backForSale') : t('dossierWizard.backDossiers');
+  const locale = language === 'en' ? 'en-GB' : 'fr-FR';
+  const gearboxNames: Record<string, string> = { M: t('dossierDetail.manual'), A: t('dossierDetail.automatic'), S: t('dossierDetail.semiAutomatic') };
   const vehicleDetails = [
-    ['Marque', dossier.brand], ['Modèle', dossier.model], ['Année', dossier.year],
-    ['Immatriculation', dossier.registrationNumber], ['Pays d’immatriculation', dossier.registrationCountry],
-    ['Première circulation', dossier.firstRegistrationDate], ['N° de série (VIN)', dossier.vin],
-    ['Énergie', dossier.energyLabel || dossier.fuelType], ['Moteur', dossier.engine],
-    ['Boîte de vitesse', dossier.gearbox === 'M' ? 'Manuelle' : dossier.gearbox === 'A' ? 'Automatique' : dossier.gearbox === 'S' ? 'Semi-automatique' : dossier.gearbox],
-    ['CO₂', dossier.co2 ? `${dossier.co2} g/km` : undefined], ['Genre', dossier.vehicleGenre],
-    ['Puissance fiscale', dossier.fiscalPower], ['Carrosserie', dossier.bodyType],
-    ['Passagers', dossier.passengerCount], ['Portes', dossier.doorCount], ['Couleur', dossier.color],
-    ['Kilométrage', dossier.mileage != null ? `${dossier.mileage.toLocaleString('fr-FR')} km` : undefined],
-    ['VRADE', dossier.vrade], ['Procédure', dossier.procedure],
-    ['Prix de réserve', dossier.reservePrice != null ? `${dossier.reservePrice.toLocaleString('fr-FR')} €` : undefined],
+    [t('dossierSummary.brand'), dossier.brand], [t('dossierSummary.model'), dossier.model], [t('dossierDetail.year'), dossier.year],
+    [t('dossierSummary.registration'), dossier.registrationNumber], [t('dossierSummary.country'), dossier.registrationCountry],
+    [t('dossierSummary.firstCirculation'), dossier.firstRegistrationDate], [t('dossierForm.vin'), dossier.vin],
+    [t('dossierSummary.energy'), dossier.energyLabel || dossier.fuelType], [t('dossierDetail.engine'), dossier.engine],
+    [t('dossierSummary.gearbox'), gearboxNames[dossier.gearbox || ''] || dossier.gearbox],
+    [t('vehicle.field.co2'), dossier.co2 ? `${dossier.co2} g/km` : undefined], [t('dossierSummary.genre'), dossier.vehicleGenre],
+    [t('dossierSummary.fiscalPower'), dossier.fiscalPower], [t('dossierSummary.bodyType'), dossier.bodyType],
+    [t('dossierSummary.passengers'), dossier.passengerCount], [t('dossierSummary.doors'), dossier.doorCount], [t('dossierSummary.color'), dossier.color],
+    [t('dossierSummary.mileage'), dossier.mileage != null ? `${dossier.mileage.toLocaleString(locale)} km` : undefined],
+    [t('vehicle.field.vrade'), dossier.vrade], [t('dossierSummary.procedure'), dossier.procedure],
+    [t('dossierSummary.reservePrice'), dossier.reservePrice != null ? `${dossier.reservePrice.toLocaleString(locale)} €` : undefined],
   ];
   const address = dossier.vehicleAddress || [
     dossier.vehicleAddressDetails?.street,
     [dossier.vehicleAddressDetails?.postalCode, dossier.vehicleAddressDetails?.city].filter(Boolean).join(' '),
     dossier.vehicleAddressDetails?.country,
   ].filter(Boolean).join(', ');
-  const missingReasonLabels: Record<string, string> = {
-    declaration_perte: 'Déclaration de perte', declaration_vol: 'Déclaration de vol', autre: 'Autre',
-  };
 
   if (isEditable && (dossier.status !== 'valide' || editing)) {
     return <VehicleDossierWizard initialDossier={dossier} />;
@@ -98,7 +97,7 @@ export default function DossierVehiculeDetailPage() {
         <div className="flex justify-between items-start gap-4">
           <div>
             <div className="font-semibold text-[11px] uppercase tracking-[0.2em] text-[#a3987f] mb-1.5 font-sans">
-              Dossier véhicule #{dossier._id.slice(-6).toUpperCase()}
+              {t('dossierDetail.fileNumber', { id: dossier._id.slice(-6).toUpperCase() })}
             </div>
             <h1 className="m-0 font-bold text-[34px] leading-none uppercase text-[#13243c] font-['Saira_Condensed',sans-serif]">
               {vehicleLabel}
@@ -111,7 +110,7 @@ export default function DossierVehiculeDetailPage() {
                 onClick={() => setEditing(true)}
                 className="btn btn-primary"
               >
-                Modifier
+                {t('common.edit')}
               </button>
             )}
             <Badge style={badge} className="px-3.5 py-2 shrink-0" />
@@ -124,7 +123,7 @@ export default function DossierVehiculeDetailPage() {
         <div className="mb-7 border border-[#f0c9bd] bg-[#fbeae7] rounded-[12px] p-5">
           <div className="font-bold text-[13px] uppercase tracking-wide text-[#9a3b2f] mb-2.5 flex items-center gap-2">
             <span className="w-5 h-5 rounded-full bg-[#9a3b2f] text-white flex items-center justify-center text-[10px] font-bold">×</span>
-            Dossier refusé par l'administrateur
+            {t('dossierDetail.refusedTitle')}
           </div>
           {lastRefusal?.motifsLabels && lastRefusal.motifsLabels.length > 0 && (
             <ul className="list-disc pl-5 text-[13px] text-[#1a2230] space-y-1 mb-2 font-medium">
@@ -139,7 +138,7 @@ export default function DossierVehiculeDetailPage() {
             </p>
           )}
           <p className="text-[12px] text-[#9a3b2f] mt-3 font-semibold">
-            Ce dossier a été rejeté. Il n'est plus modifiable. Pour tout renseignement, contactez le support.
+            {t('dossierDetail.refusedFooter')}
           </p>
         </div>
       )}
@@ -151,7 +150,7 @@ export default function DossierVehiculeDetailPage() {
             ✓
           </div>
           <div className="font-medium text-[13px] leading-relaxed text-[#2f6f4f]">
-            Votre dossier véhicule a été <strong className="font-bold">validé par l'administrateur</strong>. Il sera prochainement programmé dans une session de vente. Aucune modification supplémentaire n'est requise.
+            {t('dossierDetail.validatedA')}<strong className="font-bold">{t('dossierDetail.validatedB')}</strong>{t('dossierDetail.validatedC')}
           </div>
         </div>
       )}
@@ -163,14 +162,14 @@ export default function DossierVehiculeDetailPage() {
             i
           </div>
           <div className="font-medium text-[13px] leading-relaxed text-[#8a6a2f]">
-            Votre dossier véhicule est <strong className="font-bold">en cours d'inspection par notre équipe</strong>. Vous recevrez une notification et un e-mail dès qu'une décision sera prise.
+            {t('dossierDetail.pendingA')}<strong className="font-bold">{t('dossierDetail.pendingB')}</strong>{t('dossierDetail.pendingC')}
           </div>
         </div>
       )}
 
       {/* Information Grid (Read Only) */}
       <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
-        Informations du véhicule
+        {t('dossierDetail.vehicleInfo')}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
         {vehicleDetails.map(([label, value]) => (
@@ -181,20 +180,20 @@ export default function DossierVehiculeDetailPage() {
         ))}
       </div>
 
-      <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">Localisation et documents administratifs</div>
+      <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">{t('dossierDetail.locationDocs')}</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-7">
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Localisation du véhicule</div><div className="font-semibold text-[14px] text-[#13243c]">{address || '—'}</div></div>
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Carte grise disponible</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardAvailable ? 'Oui' : 'Non'}</div></div>
-        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Livre de police</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.policeBookNumber || '—'}</div></div>
-        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Motif d’absence</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardMissingReasons?.map((reason) => missingReasonLabels[reason] || reason).join(', ') || '—'}</div></div>}
-        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">Fiche d’identification</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.identificationSheetAvailable ? 'Disponible' : 'Non disponible'}</div></div>}
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">{t('dossierDetail.vehicleLocation')}</div><div className="font-semibold text-[14px] text-[#13243c]">{address || '—'}</div></div>
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">{t('dossierSummary.registrationCardAvailable')}</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardAvailable ? t('common.yes') : t('common.no')}</div></div>
+        <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">{t('dossierDetail.policeBook')}</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.policeBookNumber || '—'}</div></div>
+        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white sm:col-span-2"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">{t('dossierSummary.missingReason')}</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.registrationCardMissingReasons?.map((reason) => t(`dossierMissing.${reason}`)).join(', ') || '—'}</div></div>}
+        {!dossier.registrationCardAvailable && <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white"><div className="font-medium text-[11px] text-[#5a5e66] uppercase mb-1">{t('dossierDetail.identificationSheet')}</div><div className="font-semibold text-[14px] text-[#13243c]">{dossier.identificationSheetAvailable ? t('dossierDetail.available') : t('dossierDetail.notAvailable')}</div></div>}
       </div>
 
       {/* Description */}
       {dossier.description && (
         <div className="mb-7">
           <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-2">
-            Description
+            {t('dossierDetail.description')}
           </div>
           <div className="border border-[#eceadf] rounded-[10px] p-4 bg-white text-[13px] leading-relaxed text-[#1a2230] whitespace-pre-wrap">
             {dossier.description.split(/(\*\*.*?\*\*)/g).map((part, index) =>
@@ -208,7 +207,7 @@ export default function DossierVehiculeDetailPage() {
 
       {dossier.conditionDetails && (
         <div className="mb-7">
-          <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-2">Détails de l’état</div>
+          <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-2">{t('dossierDetail.conditionDetails')}</div>
           <div className="whitespace-pre-wrap rounded-[10px] border border-[#eceadf] bg-white p-4 text-[13px] leading-relaxed text-[#1a2230]">{dossier.conditionDetails}</div>
         </div>
       )}
@@ -216,7 +215,7 @@ export default function DossierVehiculeDetailPage() {
       {/* Photos */}
       <div className="mb-7">
         <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
-          Photos ({dossier.photos.length})
+          {t('dossierDetail.photos', { count: String(dossier.photos.length) })}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           {dossier.photos.map((p, i) => (
@@ -225,7 +224,7 @@ export default function DossierVehiculeDetailPage() {
               <img src={p.processedUrl || p.originalUrl} alt="" className="w-full h-full object-cover" />
               {p.isCover && (
                 <div className="absolute top-2 left-2 bg-[#2f6f4f] text-white font-bold text-[9px] uppercase px-2 py-0.5 rounded-full shadow">
-                  COUVERTURE
+                  {t('dossierSummary.cover')}
                 </div>
               )}
             </div>
@@ -234,19 +233,19 @@ export default function DossierVehiculeDetailPage() {
       </div>
 
       <div className="mb-7">
-        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">Documents fournis</div>
+        <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">{t('dossierDetail.documentsProvided')}</div>
         <div className="space-y-2">
           {dossier.expertReport && (
             <a href={dossier.expertReport.processedUrl || dossier.expertReport.originalUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#eceadf] p-4 text-[13px] font-semibold text-[#13243c] hover:bg-[#fbfaf7]">
-              <span>{dossier.expertReport.label || 'Rapport d’expertise'}</span><span className="text-[#d9704f]">Consulter →</span>
+              <span>{dossier.expertReport.label || t('dossierDetail.expertReport')}</span><span className="text-[#d9704f]">{t('dossierDetail.view')}</span>
             </a>
           )}
           {dossier.additionalDocuments.map((document, index) => (
             <a key={document._id || index} href={document.processedUrl || document.originalUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-[10px] border border-[#eceadf] p-4 text-[13px] font-semibold text-[#13243c] hover:bg-[#fbfaf7]">
-              <span>{document.label || `Document complémentaire ${index + 1}`}</span><span className="text-[#d9704f]">Consulter →</span>
+              <span>{document.label === 'Carte grise (recto)' ? t('dossierMedia.registrationRecto') : document.label === 'Carte grise (verso)' ? t('dossierMedia.registrationVerso') : document.label || t('dossierDetail.extraDocument', { n: String(index + 1) })}</span><span className="text-[#d9704f]">{t('dossierDetail.view')}</span>
             </a>
           ))}
-          {!dossier.expertReport && dossier.additionalDocuments.length === 0 && <div className="rounded-[10px] border border-dashed border-[#dcd7cb] p-4 text-[13px] text-[#5a5e66]">Aucun document fourni.</div>}
+          {!dossier.expertReport && dossier.additionalDocuments.length === 0 && <div className="rounded-[10px] border border-dashed border-[#dcd7cb] p-4 text-[13px] text-[#5a5e66]">{t('dossierDetail.noDocuments')}</div>}
         </div>
       </div>
     </div>

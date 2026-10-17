@@ -79,7 +79,7 @@ export default function WonVehicleSheetPage() {
           });
         }
       })
-      .catch(() => { if (!cancelled) setError(t('vehicle.notFound') || 'Véhicule introuvable'); })
+      .catch(() => { if (!cancelled) setError(t('vehicle.notFound')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [params.id, t]);
@@ -88,7 +88,7 @@ export default function WonVehicleSheetPage() {
   const backLink = (
     <button type="button" onClick={() => router.back()} className="text-[13px] font-bold text-[#d9704f] hover:underline flex items-center gap-1 cursor-pointer">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      Retour
+      {t('common.back')}
     </button>
   );
 
@@ -103,7 +103,7 @@ export default function WonVehicleSheetPage() {
   if (error || !vehicle) {
     return (
       <main className="min-h-screen bg-white px-4 py-16 sm:px-10">
-        <p className="mb-5 rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{error || 'Véhicule introuvable'}</p>
+        <p className="mb-5 rounded-lg bg-red-50 p-4 text-center text-sm text-red-700">{error || t('vehicle.notFound')}</p>
         <div className="text-center">{backLink}</div>
       </main>
     );
@@ -111,27 +111,27 @@ export default function WonVehicleSheetPage() {
 
   const title = [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || '—';
   const coverPhoto = vehicle.photos?.[0] || null;
-  const yesNo = (value: boolean | null) => (value === null ? '' : value ? t('vehicle.yes') || 'Oui' : t('vehicle.no') || 'Non');
+  const yesNo = (value: boolean | null) => (value === null ? '' : value ? t('vehicle.yes') : t('vehicle.no'));
 
   const specs: Array<{ label: string; value: string }> = [
-    { label: t('vehicle.field.year') || 'Année', value: vehicle.year != null ? String(vehicle.year) : '' },
-    { label: t('vehicle.field.mileage') || 'Kilométrage', value: vehicle.mileage != null ? `${vehicle.mileage.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB')} km` : '' },
-    { label: t('vehicle.field.energy') || 'Énergie', value: energyLabel(vehicle.fuelType, language) },
-    { label: t('vehicle.field.gearbox') || 'Boîte', value: gearboxLabel(vehicle.gearbox, language) },
-    { label: t('vehicle.field.engine') || 'Moteur', value: vehicle.engine },
-    { label: t('vehicle.field.fiscalPower') || 'Puissance fis.', value: vehicle.fiscalPower },
-    { label: t('vehicle.field.energyLabel') || 'Crit\'Air', value: vehicle.energyLabel },
-    { label: t('vehicle.field.co2') || 'CO2', value: vehicle.co2 },
-    { label: t('vehicle.field.firstRegistration') || '1re imm.', value: vehicle.firstRegistrationDate },
-    { label: t('vehicle.field.bodyType') || 'Carrosserie', value: vehicle.bodyType },
-    { label: t('vehicle.field.genre') || 'Genre', value: vehicle.vehicleGenre },
-    { label: t('vehicle.field.color') || 'Couleur', value: vehicle.color },
-    { label: t('vehicle.field.seats') || 'Places', value: vehicle.passengerCount },
-    { label: t('vehicle.field.doors') || 'Portes', value: vehicle.doorCount },
-    { label: t('vehicle.field.procedure') || 'Procédure', value: vehicle.procedure },
-    { label: t('vehicle.field.vrade') || 'VRADE', value: vehicle.vrade },
-    { label: t('vehicle.field.registrationCard') || 'Carte grise', value: yesNo(vehicle.registrationCardAvailable) },
-    { label: t('vehicle.field.identificationSheet') || 'Fiche ident.', value: yesNo(vehicle.identificationSheetAvailable) },
+    { label: t('vehicle.field.year'), value: vehicle.year != null ? String(vehicle.year) : '' },
+    { label: t('vehicle.field.mileage'), value: vehicle.mileage != null ? `${vehicle.mileage.toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB')} km` : '' },
+    { label: t('vehicle.field.energy'), value: energyLabel(vehicle.fuelType, language) },
+    { label: t('vehicle.field.gearbox'), value: gearboxLabel(vehicle.gearbox, language) },
+    { label: t('vehicle.field.engine'), value: vehicle.engine },
+    { label: t('vehicle.field.fiscalPower'), value: vehicle.fiscalPower },
+    { label: t('vehicle.field.energyLabel'), value: vehicle.energyLabel },
+    { label: t('vehicle.field.co2'), value: vehicle.co2 },
+    { label: t('vehicle.field.firstRegistration'), value: vehicle.firstRegistrationDate },
+    { label: t('vehicle.field.bodyType'), value: vehicle.bodyType },
+    { label: t('vehicle.field.genre'), value: vehicle.vehicleGenre },
+    { label: t('vehicle.field.color'), value: vehicle.color },
+    { label: t('vehicle.field.seats'), value: vehicle.passengerCount },
+    { label: t('vehicle.field.doors'), value: vehicle.doorCount },
+    { label: t('vehicle.field.procedure'), value: vehicle.procedure },
+    { label: t('vehicle.field.vrade'), value: vehicle.vrade },
+    { label: t('vehicle.field.registrationCard'), value: yesNo(vehicle.registrationCardAvailable) },
+    { label: t('vehicle.field.identificationSheet'), value: yesNo(vehicle.identificationSheetAvailable) },
   ];
 
   return (
@@ -146,7 +146,7 @@ export default function WonVehicleSheetPage() {
                 type="button"
                 className="h-full w-full cursor-zoom-in outline-none"
                 onClick={() => setLightboxIndex(0)}
-                aria-label={t('vehicle.viewPhotos') || 'Voir les photos'}
+                aria-label={t('vehicle.viewPhotos')}
               >
                 <img
                   src={coverPhoto.url}
@@ -192,7 +192,7 @@ export default function WonVehicleSheetPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <section>
             <h2 className="mb-6 font-heading text-[20px] font-bold uppercase tracking-wide text-[#111827]">
-              {t('vehicle.features') || 'Caractéristiques'}
+              {t('vehicle.features')}
             </h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
               {specs.map((spec) => (
@@ -208,7 +208,7 @@ export default function WonVehicleSheetPage() {
             {vehicle.description && (
               <div>
                 <h2 className="mb-4 font-heading text-[20px] font-bold uppercase tracking-wide text-[#111827]">
-                  {t('vehicle.description') || 'Description'}
+                  {t('vehicle.description')}
                 </h2>
                 <div className="prose prose-sm prose-p:text-[#4c5058] prose-p:leading-relaxed max-w-none whitespace-pre-wrap">
                   {vehicle.description}
@@ -218,7 +218,7 @@ export default function WonVehicleSheetPage() {
             {vehicle.conditionDetails && (
               <div>
                 <h2 className="mb-4 font-heading text-[20px] font-bold uppercase tracking-wide text-[#111827]">
-                  {t('vehicle.condition') || 'État / Frais'}
+                  {t('vehicle.condition')}
                 </h2>
                 <div className="rounded-[12px] bg-[#faf1e4] p-5 text-sm text-[#8a7249] whitespace-pre-wrap leading-relaxed shadow-inner">
                   {vehicle.conditionDetails}

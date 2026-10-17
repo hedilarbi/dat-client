@@ -382,13 +382,13 @@ export default function SellerSaleDetailPage() {
             {sale.documentsDelivery && (
               <div className="mb-6 rounded-[10px] bg-[#f9fafb] p-4 border border-[#e5e7eb]">
                 <h3 className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058] mb-2">
-                  Mode de récupération des papiers
+                  {t('sellerSale.deliveryMode')}
                 </h3>
                 {sale.documentsDelivery === 'main_propre' ? (
-                  <p className="text-sm font-semibold text-[#2f6f4f]">En main propre</p>
+                  <p className="text-sm font-semibold text-[#2f6f4f]">{t('sellerSale.deliveryInPerson')}</p>
                 ) : (
                   <div>
-                    <p className="text-sm font-semibold text-[#13243c]">Par voie postale à l&apos;adresse de l&apos;acheteur :</p>
+                    <p className="text-sm font-semibold text-[#13243c]">{t('sellerSale.deliveryPostal')}</p>
                     {sale.buyer?.address ? (
                       <address className="mt-1 text-[13px] text-[#5a5e66] not-italic leading-relaxed">
                         {sale.buyer.address.street && <div>{sale.buyer.address.street}</div>}

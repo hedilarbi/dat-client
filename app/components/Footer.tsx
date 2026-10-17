@@ -36,7 +36,7 @@ export default function Footer() {
           <div className="flex flex-col gap-2.5 text-[13px] font-medium text-[#5a5e66]">
             <Link href={localizedPath('/comment-ca-marche', language)} className="hover:text-[#d9704f] transition">{t('nav.how')}</Link>
             <Link href={localizedPath('/a-propos', language)} className="hover:text-[#d9704f] transition">{t('nav.about')}</Link>
-            <Link href={localizedPath('/securite-conformite', language)} className="hover:text-[#d9704f] transition">Sécurité & Conformité</Link>
+            <Link href={localizedPath('/securite-conformite', language)} className="hover:text-[#d9704f] transition">{t('footer.security')}</Link>
           </div>
         </div>
 

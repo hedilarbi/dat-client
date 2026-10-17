@@ -264,12 +264,23 @@ function UserNotificationsBell({ role }: { role: 'acheteur' | 'vendeur' }) {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  // Compteur à jour sans recharger la page : rafraîchissement périodique et au retour sur l'onglet
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   const destination = (notification: SellerNotification) => notificationDestination(notification, role);
 
   return (
     <DropdownMenu
+      onOpen={refresh}
       panelClassName="w-[min(380px,calc(100vw-24px))] bg-white border border-[#dcd7cb] shadow-[0_14px_35px_rgba(0,0,0,0.16)] text-left"
       trigger={({ onClick }) => (
         <button type="button" onClick={onClick} className="relative h-10 w-10 rounded-[8px] border border-[#2c4266] bg-[#1c3050] text-white flex items-center justify-center hover:bg-slate-800 transition" aria-label={t('notifications.title')}>
@@ -285,7 +296,7 @@ function UserNotificationsBell({ role }: { role: 'acheteur' | 'vendeur' }) {
             <button type="button" className="text-[11px] font-semibold text-[#d9704f] hover:underline" onClick={async () => { await apiRequest('/notifications/read-all', { method: 'PUT' }); await refresh(); }}>{t('notifications.markAllRead')}</button>
           </div>
           <div className="max-h-[300px] overflow-y-auto">
-            {notifications.length === 0 ? <div className="p-5 text-center text-sm text-[#5a5e66]">{t('notifications.empty')}</div> : notifications.slice(0, 5).map(notification => (
+            {notifications.length === 0 ? <div className="p-5 text-center text-sm text-[#5a5e66]">{t('notifications.empty')}</div> : notifications.slice(0, 20).map(notification => (
               <button key={notification._id} type="button" onClick={async () => { await apiRequest(`/notifications/${notification._id}/read`, { method: 'PUT' }); close(); router.push(localizedPath(destination(notification), language)); }} className={`w-full p-4 text-left border-b border-[#efece3] hover:bg-[#fbfaf7] ${notification.readAt ? 'bg-white' : 'bg-[#fff7f1]'}`}>
                 <div className="flex justify-between gap-3"><strong className="text-[13px] text-[#13243c]">{notification.title}</strong>{!notification.readAt && <span className="w-2 h-2 rounded-full bg-[#d9704f] shrink-0 mt-1.5" />}</div>
                 <div className="text-[12px] text-[#5a5e66] mt-1">{notification.message}</div>
@@ -403,7 +414,7 @@ function MobileMenu({
                       onClick={close}
                       className="h-12 flex items-center justify-center rounded-[9px] text-[13px] font-bold uppercase tracking-[0.03em] text-[#1c3050] bg-[#faf1e4] border-2 border-transparent hover:border-[#b3893f] transition"
                     >
-                      Tableau de bord
+                      {t('nav.dashboard')}
                     </Link>
                   )}
                   <button

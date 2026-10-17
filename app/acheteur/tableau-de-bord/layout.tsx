@@ -22,11 +22,11 @@ export default function BuyerDashboardLayout({ children }: { children: React.Rea
   if (loading || !user) return null;
 
   const navItems = [
-    { href: '/acheteur/tableau-de-bord', label: 'Tableau de bord', exact: true },
-    ...(user.status !== 'suspendu' ? [{ href: '/acheteur/tableau-de-bord/mes-offres', label: 'Mes offres', exact: false }] : []),
-    { href: '/acheteur/tableau-de-bord/mes-vehicules', label: 'Mes véhicules', exact: false },
-    { href: '/acheteur/tableau-de-bord/profil', label: 'Mon profil', exact: false },
-    { href: '/acheteur/tableau-de-bord/support', label: 'Support', exact: false },
+    { href: '/acheteur/tableau-de-bord', label: t('nav.dashboard'), exact: true },
+    ...(user.status !== 'suspendu' ? [{ href: '/acheteur/tableau-de-bord/mes-offres', label: t('nav.myOffers'), exact: false }] : []),
+    { href: '/acheteur/tableau-de-bord/mes-vehicules', label: t('nav.myVehicles'), exact: false },
+    { href: '/acheteur/tableau-de-bord/profil', label: t('nav.profile'), exact: false },
+    { href: '/acheteur/tableau-de-bord/support', label: t('nav.support'), exact: false },
   ];
 
   return (

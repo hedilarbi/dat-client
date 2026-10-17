@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useLanguage } from '../i18n';
 import Spinner from './Spinner';
 
 interface ConfirmModalProps {
@@ -22,8 +23,8 @@ export default function ConfirmModal({
   open,
   title,
   message,
-  confirmLabel = 'Confirmer',
-  cancelLabel = 'Annuler',
+  confirmLabel,
+  cancelLabel,
   danger = false,
   loading = false,
   confirmDisabled = false,
@@ -31,6 +32,7 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const { t } = useLanguage();
   if (!open) return null;
 
   return (
@@ -48,7 +50,7 @@ export default function ConfirmModal({
             disabled={loading}
             className="btn btn-secondary disabled:opacity-50"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </button>
           {!hideConfirm && <button
             type="button"
@@ -56,7 +58,7 @@ export default function ConfirmModal({
             disabled={loading || confirmDisabled}
             className={`px-4 py-2 flex items-center gap-2 text-white font-bold rounded-[8px] text-xs uppercase cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#13243c] hover:bg-slate-800'}`}
           >
-            {loading ? <Spinner /> : confirmLabel}
+            {loading ? <Spinner /> : (confirmLabel ?? t('common.confirm'))}
           </button>}
         </div>
       </div>

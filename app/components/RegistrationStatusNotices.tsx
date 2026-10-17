@@ -34,6 +34,12 @@ function FirstSentenceBold({ text }: { text: string }) {
   return <><strong className="font-bold text-[#13243c]">{text.slice(0, end + 1)}</strong>{text.slice(end + 1)}</>;
 }
 
+/** Texte d'un modèle contenant {amount}, avec le montant mis en gras. */
+export function StrongAmount({ template, amount }: { template: string; amount: string }) {
+  const [before, after = ''] = template.split('{amount}');
+  return <>{before}<strong>{amount}</strong>{after}</>;
+}
+
 export function UnderReviewNotice() {
   const { t } = useLanguage();
   const { user } = useUser();
@@ -120,7 +126,7 @@ import { localizedPath } from '../i18n';
 
 export function SuspendedNotice() {
   const { user } = useUser();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
 
   const supportPath = localizedPath(
@@ -137,10 +143,10 @@ export function SuspendedNotice() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-red-800 uppercase tracking-wider font-heading">
-              Compte suspendu
+              {t('suspended.title')}
             </h2>
             <p className="text-xs text-red-600">
-              L'accès à la plateforme est temporairement restreint.
+              {t('suspended.subtitle')}
             </p>
           </div>
         </div>
@@ -149,8 +155,8 @@ export function SuspendedNotice() {
           <div className="space-y-4">
             <p className="text-sm text-red-800 leading-relaxed">
               {user.pendingCommission.reason === 'penalite_etape_2'
-                ? <>Votre compte a été suspendu car le délai de virement de l’étape 2 a été dépassé. Pour le réactiver, vous devez régler le montant de <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.</>
-                : <>Votre compte a été suspendu car la commission de l’étape 1 n’a pas été réglée dans le délai prévu. Pour le réactiver, vous devez payer cette commission, soit <strong>{formatEuros(user.pendingCommission.amount, language)}</strong>.</>}
+                ? <StrongAmount template={t('suspended.penaltyStep2')} amount={formatEuros(user.pendingCommission.amount, language)} />
+                : <StrongAmount template={t('suspended.penaltyStep1')} amount={formatEuros(user.pendingCommission.amount, language)} />}
             </p>
 
             {checkoutOpen ? (
@@ -164,13 +170,13 @@ export function SuspendedNotice() {
                   onClick={() => setCheckoutOpen(true)}
                   className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] cursor-pointer"
                 >
-                  💳 Régler la somme due et réactiver
+                  {t('suspended.payAndReactivate')}
                 </button>
                 <Link
                   href={supportPath}
                   className="btn bg-white text-red-800 border-red-300 hover:bg-red-100 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] text-center"
                 >
-                  💬 Contacter le Support
+                  {t('suspended.contactSupport')}
                 </Link>
               </div>
             )}
@@ -178,21 +184,21 @@ export function SuspendedNotice() {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-red-800 leading-relaxed">
-              Votre compte a été suspendu par l'administration. Vos accès aux ventes et fonctionnalités sont actuellement bloqués.
+              {t('suspended.byAdmin')}
             </p>
             <div className="pt-2">
               <Link
                 href={supportPath}
                 className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 text-xs font-bold uppercase tracking-wide px-6 py-3 rounded-[9px] inline-flex items-center gap-2"
               >
-                💬 Accéder au Support & Ouvrir une requête
+                {t('suspended.openSupport')}
               </Link>
             </div>
           </div>
         )}
 
         <div className="mt-4 pt-3 border-t border-red-200 text-xs text-red-700 font-medium">
-          ℹ️ Vos ventes à l’étape 2 restent accessibles jusqu’à leur échéance. Vos ventes à l’étape 3 et au-delà peuvent être finalisées normalement.
+          {t('suspended.ongoingSalesInfo')}
         </div>
       </div>
     </div>

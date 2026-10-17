@@ -36,12 +36,12 @@ const revokeIfBlobUrl = (url?: string | null) => {
 };
 
 const STANDARD_SLOTS = [
-  { id: 'front', label: 'Face avant', icon: '/face-avant.png' },
-  { id: 'rear', label: 'Face arrière', icon: '/face-arriere.png' },
-  { id: 'left_profile', label: 'Profil gauche', icon: '/profil-gauche.png' },
-  { id: 'right_profile', label: 'Profil droit', icon: '/profil-droit.png' },
-  { id: 'odometer', label: 'Compteur kilométrique', icon: '/compteur.png' },
-  { id: 'interior', label: 'Intérieur / habitacle', icon: '/interieur.png' },
+  { id: 'front', labelKey: 'dossierPhoto.front', icon: '/face-avant.png' },
+  { id: 'rear', labelKey: 'dossierPhoto.rear', icon: '/face-arriere.png' },
+  { id: 'left_profile', labelKey: 'dossierPhoto.left', icon: '/profil-gauche.png' },
+  { id: 'right_profile', labelKey: 'dossierPhoto.right', icon: '/profil-droit.png' },
+  { id: 'odometer', labelKey: 'dossierPhoto.odometerLong', icon: '/compteur.png' },
+  { id: 'interior', labelKey: 'dossierPhoto.interiorLong', icon: '/interieur.png' },
 ] as const;
 
 export default function StepMedia({
@@ -298,10 +298,10 @@ export default function StepMedia({
       {/* 1. Section Photo de Couverture */}
       <div className="hidden">
         <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-1.5">
-          Photo de couverture
+          {t('dossierMedia.coverPhoto')}
         </div>
         <p className="font-normal text-[12px] text-[#5a5e66] mb-3">
-          Photo principale affichée sur la carte du véhicule lors des ventes et offres.
+          {t('dossierMedia.coverHelp')}
         </p>
 
         <div className="w-full max-w-[500px]">
@@ -317,7 +317,7 @@ export default function StepMedia({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverPhoto.processedUrl || coverPhoto.originalUrl}
-                  alt="Photo de couverture"
+                  alt={t('dossierMedia.coverPhoto')}
                   className="w-full h-full object-cover"
                 />
                 {coverPhoto.uploading && (
@@ -345,7 +345,7 @@ export default function StepMedia({
                     onClick={() => setEditingTarget({ kind: 'photo', localId: coverPhoto.localId })}
                     className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-md text-[12px] font-semibold"
                   >
-                    Flouter
+                    {t('dossierMedia.blur')}
                   </button>
                   <label className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 rounded-md text-[12px] font-semibold cursor-pointer">
                     Remplacer
@@ -361,7 +361,7 @@ export default function StepMedia({
                     onClick={removeCoverPhoto}
                     className="btn btn-danger-solid"
                   >
-                    Suppr.
+                    {t('dossierMedia.remove')}
                   </button>
                 </div>
               </div>
@@ -373,10 +373,10 @@ export default function StepMedia({
                   </svg>
                 </div>
                 <div className="font-bold text-[13px] text-[#13243c]">
-                  Ajouter la photo de couverture
+                  {t('dossierMedia.addCover')}
                 </div>
                 <div className="font-normal text-[11px] text-[#5a5e66]">
-                  Glissez un fichier ou cliquez pour parcourir et cadrer en 16:9
+                  {t('dossierMedia.dragCover')}
                 </div>
                 <input
                   type="file"
@@ -393,18 +393,18 @@ export default function StepMedia({
       {/* 2. Section Photos du Véhicule */}
       <div className="mb-8">
         <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
-          Photos du véhicule
+          {t('dossierMedia.photosTitle')}
         </div>
 
         <div className="mb-4 flex min-h-[58px] flex-col gap-3 rounded-[10px] border border-[#e2ddd1] bg-[#fbfaf7] p-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-[12px] font-bold text-[#13243c]">
               {selectedPhotoIndex >= 0
-                ? `Photo ${selectedPhotoIndex + 1} sélectionnée sur ${photos.length}`
-                : 'Sélectionnez une photo pour modifier son ordre'}
+                ? t('dossierMedia.photoSelected', { n: String(selectedPhotoIndex + 1), total: String(photos.length) })
+                : t('dossierMedia.selectPhoto')}
             </div>
             <div className="mt-0.5 text-[11px] text-[#5a5e66]">
-              La première photo est utilisée comme photo de couverture.
+              {t('dossierMedia.firstIsCover')}
             </div>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -414,7 +414,7 @@ export default function StepMedia({
               disabled={selectedPhotoIndex <= 0 || photos[selectedPhotoIndex]?.uploading}
               className="rounded-[7px] border border-[#d3ccbd] bg-white px-3 py-2 text-[12px] font-bold text-[#13243c] transition hover:bg-[#f1efe8] disabled:cursor-not-allowed disabled:opacity-35"
             >
-              ← Déplacer à gauche
+              {t('dossierMedia.moveLeft')}
             </button>
             <button
               type="button"
@@ -422,13 +422,14 @@ export default function StepMedia({
               disabled={selectedPhotoIndex < 0 || selectedPhotoIndex >= photos.length - 1 || photos[selectedPhotoIndex]?.uploading}
               className="rounded-[7px] border border-[#d3ccbd] bg-white px-3 py-2 text-[12px] font-bold text-[#13243c] transition hover:bg-[#f1efe8] disabled:cursor-not-allowed disabled:opacity-35"
             >
-              Déplacer à droite →
+              {t('dossierMedia.moveRight')}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4">
-          {STANDARD_SLOTS.map((slot, index) => {
+          {STANDARD_SLOTS.map((standardSlot, index) => {
+            const slot = { ...standardSlot, label: t(standardSlot.labelKey) };
             const photo = photos[index];
             const hasPhoto = Boolean(photo && (photo.originalUrl || photo.processedUrl));
 
@@ -450,7 +451,7 @@ export default function StepMedia({
                   </div>
                 )}
                 {hasPhoto && index === 0 && (
-                  <div className="absolute top-2 left-2 z-10 rounded-full bg-[#2f6f4f] px-2 py-1 text-[9px] font-bold uppercase text-white shadow">Couverture</div>
+                  <div className="absolute top-2 left-2 z-10 rounded-full bg-[#2f6f4f] px-2 py-1 text-[9px] font-bold uppercase text-white shadow">{t('dossierMedia.cover')}</div>
                 )}
 
                 {hasPhoto ? (
@@ -474,14 +475,14 @@ export default function StepMedia({
                           onClick={(event) => { event.stopPropagation(); setEditingTarget({ kind: 'photo', localId: photo.localId }); }}
                           className="px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-[11px] font-semibold"
                         >
-                          Flouter
+                          {t('dossierMedia.blur')}
                         </button>
                         <button
                           type="button"
                           onClick={(event) => { event.stopPropagation(); removeSlotPhoto(photo.localId); }}
                           className="px-2 py-1 bg-red-600/80 hover:bg-red-700 rounded text-[11px] font-semibold"
                         >
-                          Suppr.
+                          {t('dossierMedia.remove')}
                         </button>
                       </div>
                     </div>
@@ -517,11 +518,11 @@ export default function StepMedia({
                 className={`relative aspect-[4/3] cursor-pointer overflow-hidden rounded-[10px] border bg-[#f2f8f4] group ${selectedPhotoId === photo.localId ? 'border-[#d9704f] ring-2 ring-[#d9704f]/25' : 'border-[#eceadf]'}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.processedUrl || photo.originalUrl} alt={`Photo supplémentaire ${offset + 1}`} className="h-full w-full object-cover" />
+                <img src={photo.processedUrl || photo.originalUrl} alt={t('dossierPhoto.extra', { n: String(offset + 1) })} className="h-full w-full object-cover" />
                 {photo.uploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white"><Spinner /></div>}
                 <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-2 bg-black/60 p-2 opacity-0 transition group-hover:opacity-100">
-                  <button type="button" onClick={(event) => { event.stopPropagation(); setEditingTarget({ kind: 'photo', localId: photo.localId }); }} className="rounded bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">Flouter</button>
-                  <button type="button" onClick={(event) => { event.stopPropagation(); removeSlotPhoto(photo.localId); }} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Suppr.</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); setEditingTarget({ kind: 'photo', localId: photo.localId }); }} className="rounded bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">{t('dossierMedia.blur')}</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); removeSlotPhoto(photo.localId); }} className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">{t('dossierMedia.remove')}</button>
                 </div>
               </div>
             );
@@ -530,7 +531,7 @@ export default function StepMedia({
           {photos.length < 20 && (
             <label className="relative aspect-[4/3] border-[1.5px] border-dashed border-[#d3ccbd] bg-[#fbfaf7] hover:border-[#8a8270] rounded-[10px] flex flex-col items-center justify-center p-3 text-center cursor-pointer transition-all group">
               <span className="w-12 h-12 rounded-full bg-white border border-[#e2ddd1] flex items-center justify-center text-[28px] leading-none text-[#13243c] shadow-sm transition-transform group-hover:scale-105">+</span>
-              <span className="mt-2 font-semibold text-[12px] leading-tight text-[#5a5e66]">Ajouter une photo</span>
+              <span className="mt-2 font-semibold text-[12px] leading-tight text-[#5a5e66]">{t('dossierMedia.addPhoto')}</span>
               <input type="file" accept="image/*" onChange={handleCustomPhotoUpload} className="hidden" />
             </label>
           )}
@@ -541,7 +542,7 @@ export default function StepMedia({
       {/* 3. Section Documents */}
       <div>
         <div className="font-bold text-[12px] uppercase tracking-[0.06em] text-[#4c5058] mb-3">
-          Documents du véhicule
+          {t('dossierMedia.documentsTitle')}
         </div>
 
         <div className="flex flex-col gap-3.5">
@@ -549,7 +550,7 @@ export default function StepMedia({
           <div className="hidden">
             <div className="flex items-center justify-between mb-2.5">
               <div className="font-semibold text-[14px] leading-snug text-[#13243c]">
-                Carte grise
+                {t('dossierMedia.registrationCard')}
               </div>
               <div
                 className={`font-semibold text-[11px] px-2.5 py-1 rounded-full ${
@@ -558,7 +559,7 @@ export default function StepMedia({
                     : 'bg-[#fdece4] text-[#d9704f]'
                 }`}
               >
-                {carteGriseComplete ? 'Ajouté' : 'Requis'}
+                {carteGriseComplete ? t('dossierMedia.added') : t('dossierMedia.required')}
               </div>
             </div>
 
@@ -593,7 +594,7 @@ export default function StepMedia({
                   {uploadingRecto ? (
                     <div className="flex items-center gap-2 text-[#2f6f4f] text-[12px] font-semibold">
                       <Spinner />
-                      <span>Téléversement...</span>
+                      <span>{t('dossierMedia.uploading')}</span>
                     </div>
                   ) : carteGriseRecto ? (
                     <>
@@ -601,7 +602,7 @@ export default function StepMedia({
                         ✓
                       </div>
                       <div className="flex-1 font-semibold text-[12px] leading-snug text-[#2f6f4f] truncate">
-                        Carte grise (recto)
+                        {t('dossierMedia.registrationRecto')}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <a
@@ -636,7 +637,7 @@ export default function StepMedia({
                         ↑
                       </div>
                       <div className="flex-1 font-medium text-[12px] leading-snug text-[#5a5e66] truncate">
-                        Glissez un fichier ou cliquez pour parcourir
+                        {t('dossierMedia.dragFile')}
                       </div>
                       <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
                         Parcourir
@@ -676,7 +677,7 @@ export default function StepMedia({
                   {uploadingVerso ? (
                     <div className="flex items-center gap-2 text-[#2f6f4f] text-[12px] font-semibold">
                       <Spinner />
-                      <span>Téléversement...</span>
+                      <span>{t('dossierMedia.uploading')}</span>
                     </div>
                   ) : carteGriseVerso ? (
                     <>
@@ -684,7 +685,7 @@ export default function StepMedia({
                         ✓
                       </div>
                       <div className="flex-1 font-semibold text-[12px] leading-snug text-[#2f6f4f] truncate">
-                        Carte grise (verso)
+                        {t('dossierMedia.registrationVerso')}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <a
@@ -719,7 +720,7 @@ export default function StepMedia({
                         ↑
                       </div>
                       <div className="flex-1 font-medium text-[12px] leading-snug text-[#5a5e66] truncate">
-                        Glissez un fichier ou cliquez pour parcourir
+                        {t('dossierMedia.dragFile')}
                       </div>
                       <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
                         Parcourir
@@ -739,14 +740,14 @@ export default function StepMedia({
           <div className="border border-[#eceadf] rounded-[12px] p-4 sm:p-4.5 bg-white">
             <div className="flex items-center justify-between mb-2.5">
               <div className="font-semibold text-[14px] leading-snug text-[#13243c]">
-                Rapport d'expertise sinistre
+                {t('dossierMedia.expertReport')}
               </div>
               <div
                 className={`font-semibold text-[11px] px-2.5 py-1 rounded-full ${
                   expertReport ? 'bg-[#e9f4ee] text-[#2f6f4f]' : 'bg-[#fdece4] text-[#d9704f]'
                 }`}
               >
-                {expertReport ? 'Ajouté' : 'Optionnel'}
+                {expertReport ? t('dossierMedia.added') : t('dossierMedia.optional')}
               </div>
             </div>
 
@@ -774,7 +775,7 @@ export default function StepMedia({
               {uploadingExpert ? (
                 <div className="flex items-center gap-2 text-[#2f6f4f] text-[13px] font-semibold">
                   <Spinner />
-                  <span>Téléversement du rapport d'expertise...</span>
+                  <span>{t('dossierMedia.uploadingReport')}</span>
                 </div>
               ) : expertReport ? (
                 <>
@@ -798,7 +799,7 @@ export default function StepMedia({
                       onClick={() => setEditingTarget({ kind: 'expertReport' })}
                       className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white hover:bg-gray-50 transition"
                     >
-                      Flouter
+                      {t('dossierMedia.blur')}
                     </button>
                     <label className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3 py-1.5 bg-white cursor-pointer hover:bg-gray-50 transition">
                       Remplacer
@@ -814,7 +815,7 @@ export default function StepMedia({
                       onClick={removeExpertReport}
                       className="font-semibold text-[12px] text-red-600 hover:text-red-800 px-1.5 py-1"
                     >
-                      Suppr.
+                      {t('dossierMedia.remove')}
                     </button>
                   </div>
                 </>
@@ -824,7 +825,7 @@ export default function StepMedia({
                     ↑
                   </div>
                   <div className="flex-1 font-medium text-[13px] leading-snug text-[#5a5e66] truncate">
-                    Glissez un fichier PDF ou cliquez pour parcourir
+                    {t('dossierMedia.dragPdf')}
                   </div>
                   <span className="font-semibold text-[12px] text-[#13243c] border border-[#dcd7cb] rounded-[7px] px-3.5 py-1.5 bg-white hover:bg-gray-50 transition shrink-0">
                     Parcourir
@@ -834,7 +835,7 @@ export default function StepMedia({
             </label>
 
             <div className="font-normal text-[12px] leading-relaxed text-[#5a5e66] mt-2">
-              Optionnel, mais fortement recommandé · PDF ou image
+              {t('dossierMedia.reportHint')}
             </div>
           </div>
         </div>

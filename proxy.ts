@@ -16,7 +16,10 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   url.pathname = internalPath;
 
-  const response = NextResponse.rewrite(url);
+  // La langue de l'URL est transmise aux composants serveur (pages statiques, métadonnées)
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-language', language);
+  const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   response.cookies.set('language', language, {
     path: '/',
     sameSite: 'lax'

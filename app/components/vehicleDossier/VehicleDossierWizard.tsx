@@ -40,7 +40,7 @@ interface VehicleDossierWizardProps {
   initialDossier?: VehicleDossier;
 }
 
-const STEP_LABELS = ['Informations', 'Photos & documents', 'Mise en vente', 'Récapitulatif'];
+const STEP_LABEL_KEYS = ['dossierWizard.stepInfo', 'dossierWizard.stepMedia', 'dossierWizard.stepListing', 'dossierWizard.stepSummary'];
 
 const fingerprintForm = (
   values: VehicleDossierPayload,
@@ -200,7 +200,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
       setAttachedToSession(false);
       setReturnToForSale(false);
       setSavedFingerprint(currentFingerprint);
-      setMessage(initialDossier ? 'Modifications enregistrées. Le dossier est en attente de validation.' : (t('vehicleDossier.draftSaved') || 'Brouillon enregistré avec succès.'));
+      setMessage(initialDossier ? t('dossierWizard.savedEdit') : t('vehicleDossier.draftSaved'));
     } catch (err: any) {
       setError(err.message || t('vehicleDossier.genericError'));
     } finally {
@@ -220,7 +220,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
     try {
       await persist(true, confirmed);
       setAttachedToSession(false);
-      setMessage(t('vehicleDossier.submitSuccess') || 'Dossier soumis pour validation avec succès.');
+      setMessage(t('vehicleDossier.submitSuccess'));
       setTimeout(() => {
         router.push(localizedPath('/vendeur/dossiers', language));
       }, 1200);
@@ -252,19 +252,19 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
   const currentStepIndex = step - 1;
   const backPath = returnToForSale ? '/vendeur/en-vente' : '/vendeur/dossiers';
-  const backSectionLabel = returnToForSale ? 'Mes véhicules en vente' : 'Mes dossiers';
+  const backSectionLabel = returnToForSale ? t('dossierWizard.backForSale') : t('dossierWizard.backDossiers');
 
   // Compute category / vehicle subtitle
   const subtitle = step === 1 && !initialDossier
-    ? 'MES DOSSIERS'
+    ? ''
     : [values.brand, values.model].filter(Boolean).join(' ') + (values.registrationNumber ? ` · ${values.registrationNumber}` : values.vin ? ` · ${values.vin}` : '');
 
   // Compute H1 title
   const pageTitle = (() => {
-    if (step === 1) return initialDossier ? 'Modifier le dossier véhicule' : 'Nouveau dossier véhicule';
-    if (step === 2) return 'Photos & documents';
-    if (step === 3) return 'Mise en vente';
-    return 'Récapitulatif du dossier';
+    if (step === 1) return initialDossier ? t('dossierWizard.titleEdit') : t('dossierWizard.titleNew');
+    if (step === 2) return t('dossierWizard.stepMedia');
+    if (step === 3) return t('dossierWizard.stepListing');
+    return t('dossierWizard.titleSummary');
   })();
 
   const validateStepForm = (formId: string, onValid: () => void) => {
@@ -284,11 +284,11 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
     const fieldLabel = firstInvalid.getAttribute('aria-label')
       || firstInvalid.closest('label')?.querySelector('span')?.textContent?.replace('*', '').trim()
-      || 'Ce champ';
+      || t('dossierWizard.thisField');
     const control = firstInvalid as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
     setValidationError(control.validity.valueMissing
-      ? `Le champ « ${fieldLabel} » est obligatoire.`
-      : `La valeur du champ « ${fieldLabel} » n'est pas valide.`);
+      ? t('dossierWizard.fieldRequired', { field: fieldLabel })
+      : t('dossierWizard.fieldInvalid', { field: fieldLabel }));
     firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     window.setTimeout(() => firstInvalid.focus({ preventScroll: true }), 250);
     firstInvalid.addEventListener('input', () => setValidationError(''), { once: true });
@@ -326,7 +326,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
             className="btn-back mb-3"
           >
             <span className="text-[14px]">←</span>
-            <span className="uppercase">{step === 1 || !subtitle || subtitle === 'MES DOSSIERS' ? backSectionLabel : `${backSectionLabel} · ${subtitle}`}</span>
+            <span className="uppercase">{step === 1 || !subtitle ? backSectionLabel : `${backSectionLabel} · ${subtitle}`}</span>
           </Link>
           <h1 className="m-0 font-bold text-[34px] leading-none uppercase text-[#13243c] font-['Saira_Condensed',sans-serif]">
             {pageTitle}
@@ -335,10 +335,11 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
 
         {/* Stepper Bar */}
         <div className="flex items-center gap-0 mb-[30px] overflow-x-auto pb-2 sm:pb-0">
-          {STEP_LABELS.map((label, i) => {
+          {STEP_LABEL_KEYS.map((labelKey, i) => {
+            const label = t(labelKey);
             const done = i < currentStepIndex;
             const active = i === currentStepIndex;
-            const isLast = i === STEP_LABELS.length - 1;
+            const isLast = i === STEP_LABEL_KEYS.length - 1;
 
             const circleBg = done ? '#2f6f4f' : active ? '#d9704f' : '#fff';
             const circleColor = (done || active) ? '#fff' : '#9a917d';
@@ -382,7 +383,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
           <div className="mb-7 border border-[#f0c9bd] bg-[#fdece4] rounded-[12px] p-5">
             <div className="font-bold text-[13px] uppercase tracking-wide text-[#d9704f] mb-2 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-[#d9704f] text-white flex items-center justify-center text-[10px] font-bold">!</span>
-              Correction demandée par l'administrateur
+              {t('dossierWizard.correctionTitle')}
             </div>
             {initialDossier.refusals && initialDossier.refusals.length > 0 && (
               <>
@@ -399,7 +400,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
               </>
             )}
             <p className="text-[12px] text-[#d9704f] mt-3 font-semibold">
-              Veuillez corriger les éléments indiqués ci-dessus puis cliquez sur « Soumettre pour validation ».
+              {t('dossierWizard.correctionHint')}
             </p>
           </div>
         )}
@@ -472,7 +473,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
               onClick={() => setStep((step - 1) as any)}
               className="h-[48px] px-[26px] rounded-[9px] border border-[#dcd7cb] text-[#13243c] font-semibold text-[14px] leading-[48px] hover:bg-gray-50 transition"
             >
-              Retour
+              {t('common.back')}
             </button>
           ) : null}
 
@@ -489,7 +490,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
             className="btn btn-secondary leading-[48px] disabled:opacity-50 gap-2"
           >
             {savingDraft && <Spinner />}
-            {initialDossier ? 'Enregistrer les modifications' : 'Enregistrer le brouillon'}
+            {initialDossier ? t('dossierWizard.saveChanges') : t('dossierWizard.saveDraft')}
           </button>
         </div>
 
@@ -500,7 +501,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
               onClick={handleNextClick}
               className="btn btn-primary leading-[48px]"
             >
-              Continuer
+              {t('common.continue')}
             </button>
           ) : (
             <button
@@ -510,7 +511,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
               className="btn btn-primary leading-[48px] disabled:opacity-50 gap-2"
             >
               {submitting && <Spinner />}
-              Soumettre pour validation
+              {t('dossierWizard.submit')}
             </button>
           )}
         </div>
@@ -520,7 +521,7 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
         open={deleteConfirmationOpen}
         title={t('vehicleDossier.deleteDraft')}
         message={attachedToSession
-          ? 'Ce véhicule est rattaché à une session. Si vous confirmez, il sera retiré de la session puis supprimé définitivement.'
+          ? t('dossierWizard.deleteInSession')
           : t('vehicleDossier.deleteConfirm')}
         confirmLabel={t('vehicleDossier.deleteDraft')}
         danger
@@ -530,9 +531,9 @@ export default function VehicleDossierWizard({ initialDossier }: VehicleDossierW
       />
       <ConfirmModal
         open={sessionConfirmationOpen}
-        title="Retirer le véhicule de la session ?"
-        message="Ce véhicule est rattaché à une session. Si vous confirmez la modification, il sera retiré de la session et son dossier repassera en attente de validation."
-        confirmLabel="Modifier et retirer"
+        title={t('dossierWizard.detachTitle')}
+        message={t('dossierWizard.detachMessage')}
+        confirmLabel={t('dossierWizard.detachConfirm')}
         loading={savingDraft || submitting}
         onCancel={() => { setSessionConfirmationOpen(false); setPendingSessionAction(null); }}
         onConfirm={() => {

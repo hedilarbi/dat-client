@@ -376,7 +376,7 @@ function VehicleCard({
               href={localizedPath(`/vendeur/dossiers/${row.id}`, language)}
               className="text-[12px] font-bold text-[#13243c] hover:underline"
             >
-              Modifier
+              {t('sellerVehicles.edit')}
             </Link>
           )}
           {!readOnly && (
@@ -385,7 +385,7 @@ function VehicleCard({
             onClick={() => setDeleteOpen(true)}
             className="text-[12px] font-bold text-[#b3261e] hover:underline"
           >
-            Supprimer
+            {t('sellerVehicles.delete')}
           </button>
           )}
         </div>
@@ -393,11 +393,11 @@ function VehicleCard({
       {deleteError && <Alert variant="error" className="mx-4 mb-4">{deleteError}</Alert>}
       <ConfirmModal
         open={deleteOpen}
-        title="Supprimer ce véhicule ?"
+        title={t('sellerVehicles.deleteTitle')}
         message={row.session
-          ? 'Ce véhicule est rattaché à une session. Si vous confirmez, il sera retiré de la session puis supprimé définitivement.'
-          : 'Ce dossier véhicule sera supprimé définitivement.'}
-        confirmLabel="Supprimer"
+          ? t('sellerVehicles.deleteInSession')
+          : t('sellerVehicles.deleteDossier')}
+        confirmLabel={t('sellerVehicles.delete')}
         danger
         loading={deleting}
         onCancel={() => setDeleteOpen(false)}

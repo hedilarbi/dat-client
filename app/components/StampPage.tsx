@@ -1,5 +1,6 @@
 'use client';
 
+import { getClientLanguage } from '../lib/clientLanguage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -110,7 +111,7 @@ export default function StampPage() {
 
     try {
       const croppedFile = await getCroppedImg(cropSrc, scaledCrop);
-      if (!croppedFile) throw new Error("Erreur lors du recadrage");
+      if (!croppedFile) throw new Error(t('stamp.cropError'));
 
       const compressed = await compressImageIfNeeded(croppedFile);
       if (compressed.size > MAX_UPLOAD_BYTES) {
@@ -125,7 +126,7 @@ export default function StampPage() {
       setIsCropping(false);
       setCropSrc(null);
     } catch (e: any) {
-      setError(e.message || "Erreur de recadrage");
+      setError(e.message || t('stamp.cropError'));
       setIsCropping(false);
       setCropSrc(null);
     }
@@ -148,6 +149,7 @@ export default function StampPage() {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: { 'X-Language': getClientLanguage() },
       });
 
       const responseText = await response.text();
@@ -313,7 +315,7 @@ export default function StampPage() {
                 <path d="M12 16v-4"/>
                 <path d="M12 8h.01"/>
               </svg>
-              Conseils importants
+              {t('stamp.tipsTitle')}
             </h3>
           </div>
           
@@ -321,21 +323,21 @@ export default function StampPage() {
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-[#e9f4ee] flex items-center justify-center text-[#2f6f4f] shrink-0 font-bold">1</div>
               <p className="text-[14px] leading-[22px] text-[#13243c] pt-1">
-                <strong className="text-[#2f6f4f]">Feuille blanche :</strong> Tamponnez sur une feuille entièrement blanche, sans lignes ni carreaux.
+                <strong className="text-[#2f6f4f]">{t('stamp.tipWhiteTitle')}</strong> {t('stamp.tipWhiteText')}
               </p>
             </div>
             
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-[#fdece4] flex items-center justify-center text-[#d9704f] shrink-0 font-bold">2</div>
               <p className="text-[14px] leading-[22px] text-[#13243c] pt-1">
-                <strong className="text-[#d9704f]">Bonne lumière :</strong> Prenez la photo dans un endroit bien éclairé pour éviter les ombres grisâtres.
+                <strong className="text-[#d9704f]">{t('stamp.tipLightTitle')}</strong> {t('stamp.tipLightText')}
               </p>
             </div>
             
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-[#e8effa] flex items-center justify-center text-[#2563eb] shrink-0 font-bold">3</div>
               <p className="text-[14px] leading-[22px] text-[#13243c] pt-1">
-                <strong className="text-[#2563eb]">Cadrage :</strong> Le système supprimera automatiquement le fond blanc. Utilisez l'outil de recadrage pour ajuster au plus près de votre tampon.
+                <strong className="text-[#2563eb]">{t('stamp.tipCropTitle')}</strong> {t('stamp.tipCropText')}
               </p>
             </div>
           </div>
@@ -346,7 +348,7 @@ export default function StampPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#13243c]/90 p-4 backdrop-blur-sm">
           <div className="w-full max-w-4xl bg-white rounded-[16px] overflow-hidden flex flex-col h-[90vh] shadow-2xl">
             <div className="px-6 py-4 border-b border-[#eceadf] flex justify-between items-center bg-[#fbfaf7]">
-              <h3 className="font-heading text-[20px] font-bold text-[#13243c] uppercase">Recadrer le tampon</h3>
+              <h3 className="font-heading text-[20px] font-bold text-[#13243c] uppercase">{t('stamp.cropModalTitle')}</h3>
               <button onClick={handleCropCancel} className="text-[#5a5e66] hover:text-[#13243c] font-bold text-xl leading-none">
                 &times;
               </button>
@@ -373,7 +375,7 @@ export default function StampPage() {
             
             <div className="px-6 py-5 border-t border-[#eceadf] bg-white flex flex-col sm:flex-row items-center justify-end gap-4">
               <button type="button" onClick={handleCropCancel} className="btn border border-[#eceadf] text-[#5a5e66] hover:bg-[#fbfaf7] flex-1 sm:flex-none justify-center">
-                Annuler
+                {t('common.cancel')}
               </button>
               <button type="button" onClick={handleCropConfirm} className="btn btn-primary flex-1 sm:flex-none justify-center px-8">
                 Valider

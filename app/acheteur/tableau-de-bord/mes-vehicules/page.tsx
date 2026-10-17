@@ -108,7 +108,7 @@ export default function WonSalesPage() {
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
       <Link href={localizedPath(paths.dashboard, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Retour au tableau de bord
+        {t('profil.backToDashboard')}
       </Link>
 
       <div className="mb-6 mt-4">
@@ -289,11 +289,11 @@ function SaleCard({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
               </span>
-              <span>Temps restant : <strong className="font-mono text-[13px]">{remaining}</strong></span>
+              <span>{t('sales.timeRemaining')} <strong className="font-mono text-[13px]">{remaining}</strong></span>
             </div>
           ) : (
             <div className="text-[11px] font-semibold text-[#8a8578] italic">
-              Échéance en cours
+              {t('sales.currentDeadline')}
             </div>
           )}
         </div>

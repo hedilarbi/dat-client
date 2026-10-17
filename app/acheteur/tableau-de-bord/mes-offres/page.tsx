@@ -114,7 +114,7 @@ export default function MyOffersPage() {
       <ProfileReviewBanner />
       <Link href={localizedPath(paths.dashboard, language)} className="text-[13px] font-bold text-[#13243c] hover:underline flex items-center gap-1">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Retour au tableau de bord
+        {t('profil.backToDashboard')}
       </Link>
 
       <div className="mb-6 mt-4">

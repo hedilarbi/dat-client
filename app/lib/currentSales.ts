@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../api';
+import { tr } from './clientLanguage';
 
 export interface CurrentSaleSession {
   id: string;
@@ -137,7 +138,7 @@ export function useCurrentSales({ filters, pageSize, enabled = true }: UseCurren
       })
       .catch((requestError) => {
         if (requestRef.current !== requestId) return;
-        setError(requestError instanceof Error ? requestError.message : 'Chargement impossible.');
+        setError(requestError instanceof Error ? requestError.message : tr('Chargement impossible.', 'Unable to load.'));
         setLoadedQuery(queryString);
       });
   }, [enabled, queryString]);
@@ -169,7 +170,7 @@ export function useCurrentSales({ filters, pageSize, enabled = true }: UseCurren
       })
       .catch((requestError) => {
         if (requestRef.current !== requestId) return;
-        setError(requestError instanceof Error ? requestError.message : 'Chargement impossible.');
+        setError(requestError instanceof Error ? requestError.message : tr('Chargement impossible.', 'Unable to load.'));
       })
       .finally(() => {
         if (requestRef.current === requestId) setLoadingMore(false);

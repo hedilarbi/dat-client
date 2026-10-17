@@ -1,4 +1,5 @@
 import { compressImageIfNeeded, MAX_UPLOAD_BYTES } from './imageCompression';
+import { getClientLanguage, tr } from './clientLanguage';
 
 /**
  * Compresse (si c'est une image) puis envoie un fichier vers le stockage serveur générique
@@ -13,7 +14,7 @@ export async function uploadFile(file: File, folder?: string): Promise<string> {
   const compressed = await compressImageIfNeeded(file);
   if (compressed.size > MAX_UPLOAD_BYTES) {
     throw new Error(
-      `Le fichier est trop volumineux (${(compressed.size / (1024 * 1024)).toFixed(1)} Mo, maximum ${MAX_UPLOAD_BYTES / (1024 * 1024)} Mo).`
+      tr(`Le fichier est trop volumineux (${(compressed.size / (1024 * 1024)).toFixed(1)} Mo, maximum ${MAX_UPLOAD_BYTES / (1024 * 1024)} Mo).`, `The file is too large (${(compressed.size / (1024 * 1024)).toFixed(1)} MB, maximum ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB).`)
     );
   }
 
@@ -25,6 +26,7 @@ export async function uploadFile(file: File, folder?: string): Promise<string> {
     method: 'POST',
     body: formData,
     credentials: 'include',
+    headers: { 'X-Language': getClientLanguage() },
   });
 
   const responseText = await res.text();
@@ -33,12 +35,12 @@ export async function uploadFile(file: File, folder?: string): Promise<string> {
     try {
       data = JSON.parse(responseText);
     } catch {
-      throw new Error(`Réponse serveur invalide (${res.status}).`);
+      throw new Error(`${tr('Réponse serveur invalide', 'Invalid server response')} (${res.status}).`);
     }
   }
 
   if (!res.ok || !data.url) {
-    throw new Error(data.message || "Échec de l'envoi du fichier.");
+    throw new Error(data.message || tr("Échec de l'envoi du fichier.", 'File upload failed.'));
   }
 
   return data.url as string;

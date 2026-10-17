@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import { useLanguage } from '../../i18n';
 
 interface ImageCropEditorProps {
   imageSrc: string;
@@ -9,6 +10,7 @@ interface ImageCropEditorProps {
 }
 
 export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: ImageCropEditorProps) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -191,10 +193,10 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#efece3]">
           <div>
             <h3 className="text-[18px] font-bold font-heading uppercase text-[#13243c]">
-              Recadrer la photo
+              {t('cropEditor.title')}
             </h3>
             <p className="text-[12px] text-[#4c5058] mt-0.5">
-              Déplacez et ajustez le cadre pour définir la zone d'affichage (format 4:3).
+              {t('cropEditor.hint')}
             </p>
           </div>
           <button
@@ -295,14 +297,14 @@ export default function ImageCropEditor({ imageSrc, onCropComplete, onClose }: I
             onClick={onClose}
             className="btn btn-secondary"
           >
-            Annuler
+            {t('common.cancel')}
           </button>
           <button
             type="button"
             onClick={handleConfirmCrop}
             className="btn btn-primary"
           >
-            Valider le recadrage
+            {t('cropEditor.confirm')}
           </button>
         </div>
       </div>

@@ -8,6 +8,8 @@ interface DropdownMenuProps {
   children: React.ReactNode | ((props: { close: () => void }) => React.ReactNode);
   align?: 'left' | 'right';
   panelClassName?: string;
+  /** Appelé à chaque ouverture du panneau (ex. recharger les données affichées) */
+  onOpen?: () => void;
 }
 
 /**
@@ -15,13 +17,16 @@ interface DropdownMenuProps {
  * trigger's bounding rect. Header bars use overflow-x-auto for horizontal scrolling on small
  * screens, which would otherwise clip any absolutely-positioned dropdown taller than the header.
  */
-export default function DropdownMenu({ trigger, children, align = 'right', panelClassName = '' }: DropdownMenuProps) {
+export default function DropdownMenu({ trigger, children, align = 'right', panelClassName = '', onOpen }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left?: number; right?: number } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const toggleOpen = () => setOpen(prev => !prev);
+  const toggleOpen = () => {
+    if (!open) onOpen?.();
+    setOpen(prev => !prev);
+  };
   const close = () => setOpen(false);
 
   useLayoutEffect(() => {
@@ -44,13 +49,19 @@ export default function DropdownMenu({ trigger, children, align = 'right', panel
       setOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
+    // Le défilement de la page ferme le panneau (il est ancré au bouton), mais pas celui du panneau
+    // lui-même : sinon sa liste ne pourrait jamais être parcourue.
+    const handleScroll = (e: Event) => {
+      if (panelRef.current && e.target instanceof Node && panelRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
     window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('scroll', handleScroll, true);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, [open]);
 

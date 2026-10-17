@@ -317,7 +317,7 @@ export default function WonSaleDetailPage() {
               <line x1="16" y1="17" x2="8" y2="17" />
             </svg>
             <span className="text-[13px] font-semibold text-[#13243c]">
-              Fiche technique & photos du véhicule
+              {t('saleDetail.vehicleSheet')}
             </span>
           </div>
           <Link
@@ -404,7 +404,7 @@ export default function WonSaleDetailPage() {
             {step === STEP.COMMISSION && (
               <>
                 <p className="mb-4 text-sm leading-6 text-[#5a5e66]">
-                  {historical ? "Vous avez réglé la commission d'achat." : t('saleDetail.step1Intro')}
+                  {historical ? t('saleDetail.commissionPaid') : t('saleDetail.step1Intro')}
                 </p>
 
                 {!historical && (
@@ -509,7 +509,7 @@ export default function WonSaleDetailPage() {
                             onClick={() => setCancelModalOpen(true)}
                             className="w-full text-sm font-bold text-red-600 hover:underline sm:w-auto"
                           >
-                            Annuler mon achat
+                            {t('saleDetail.cancelPurchase')}
                           </button>
                         </div>
                         <p className="mt-2.5 text-[12px] italic text-[#5a5e66]">{t('saleDetail.paymentSecure')}</p>
@@ -643,12 +643,11 @@ export default function WonSaleDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => !canceling && setCancelModalOpen(false)} />
           <div className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="mb-4 text-xl font-bold text-[#13243c]">Annuler la vente</h3>
+            <h3 className="mb-4 text-xl font-bold text-[#13243c]">{t('saleDetail.cancelTitle')}</h3>
             <p className="mb-6 text-sm text-[#5a5e66]">
-              Attention : l'annulation est définitive. Conformément aux conditions d'utilisation,
-              vous devrez tout de même vous acquitter de la commission d'annulation
+              {t('saleDetail.cancelWarning')}
               {cancellationFee != null ? <> (<strong>{formatEuros(cancellationFee, language)}</strong>)</> : null}.<br /><br />
-              <strong className="text-red-600">Votre compte sera immédiatement suspendu jusqu'au paiement de ce montant.</strong>
+              <strong className="text-red-600">{t('saleDetail.cancelSuspension')}</strong>
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
@@ -657,7 +656,7 @@ export default function WonSaleDetailPage() {
                 disabled={canceling}
                 className="btn btn-outline"
               >
-                Retour
+                {t('common.back')}
               </button>
               <button
                 type="button"
@@ -665,7 +664,7 @@ export default function WonSaleDetailPage() {
                 disabled={canceling}
                 className="btn bg-red-600 text-white hover:bg-red-700 border-red-600 disabled:opacity-50"
               >
-                {canceling ? 'Annulation...' : 'Confirmer l\'annulation'}
+                {canceling ? t('saleDetail.cancelling') : t('saleDetail.confirmCancel')}
               </button>
             </div>
           </div>

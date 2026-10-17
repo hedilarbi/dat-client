@@ -3,6 +3,7 @@ import { Barlow, Saira_Condensed, IBM_Plex_Mono } from "next/font/google";
 import "react-phone-number-input/style.css";
 import "./globals.css";
 import { LanguageProvider } from "./i18n";
+import { getServerLanguage } from "./lib/serverLanguage";
 import { UserProvider } from "./components/LayoutWrapper";
 import LayoutWrapper from "./components/LayoutWrapper";
 
@@ -24,36 +25,46 @@ const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://dat-client.vercel.app'),
-  title: "DealAutoPro",
-  description: "Plateforme B2B dédiée aux professionnels de l'automobile",
-  alternates: {
-    canonical: '/',
-    languages: {
-      'fr-FR': '/fr',
-      'en': '/en',
-      'x-default': '/fr',
-    },
-  },
-  openGraph: {
-    title: "DealAutoPro",
-    description: "Plateforme B2B dédiée aux professionnels de l'automobile",
-    url: '/',
-    siteName: "DealAutoPro",
-    locale: 'fr_FR',
-    type: 'website',
-  },
-};
+const DESCRIPTIONS = {
+  fr: "Plateforme B2B dédiée aux professionnels de l'automobile",
+  en: 'B2B platform dedicated to automotive professionals',
+} as const;
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const language = await getServerLanguage();
+  const description = DESCRIPTIONS[language];
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://dat-client.vercel.app'),
+    title: "DealAutoPro",
+    description,
+    alternates: {
+      canonical: '/',
+      languages: {
+        'fr-FR': '/fr',
+        'en': '/en',
+        'x-default': '/fr',
+      },
+    },
+    openGraph: {
+      title: "DealAutoPro",
+      description,
+      url: '/',
+      siteName: "DealAutoPro",
+      locale: language === 'en' ? 'en_GB' : 'fr_FR',
+      type: 'website',
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const language = await getServerLanguage();
   return (
     <html
-      lang="fr"
+      lang={language}
       className={`${barlow.variable} ${sairaCondensed.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-white">

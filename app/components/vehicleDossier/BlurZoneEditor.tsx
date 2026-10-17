@@ -238,8 +238,8 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
         <div className="shrink-0 p-4 sm:p-5 border-t border-[#efece3] bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-10">
           <div className="text-[12px] text-[#4c5058] font-medium hidden sm:block">
             {pageZoneEntries.length > 0
-              ? `${pageZoneEntries.length} zone(s) de flou configurée(s)`
-              : 'Tracé libre : cliquez et glissez sur l\'image pour créer une zone floue.'}
+              ? t('blurEditor.zones', { count: String(pageZoneEntries.length) })
+              : t('blurEditor.freeDraw')}
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -248,7 +248,7 @@ export default function BlurZoneEditor({ imageUrl, mimeType, zones, onZonesChang
               onClick={onClose}
               className="btn btn-secondary"
             >
-              {pageZoneEntries.length > 0 ? 'Annuler' : 'Passer (sans flou)'}
+              {pageZoneEntries.length > 0 ? t('common.cancel') : t('blurEditor.skip')}
             </button>
 
             <button

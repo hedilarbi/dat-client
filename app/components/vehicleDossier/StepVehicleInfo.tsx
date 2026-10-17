@@ -7,6 +7,7 @@ import type { FuelType, VehicleAddressDetails, VehicleDossierPayload } from '../
 import Alert from '../Alert';
 import Spinner from '../Spinner';
 import { parseRegistrationDate } from '../../lib/registrationDate';
+import { useLanguage } from '../../i18n';
 
 interface Props {
   values: VehicleDossierPayload;
@@ -40,20 +41,20 @@ const apiVehicleValues = (data: Record<string, unknown>) => ({
 });
 
 const textFields: Array<{ key: keyof VehicleDossierPayload; label: string; required?: boolean }> = [
-  { key: 'brand', label: 'Marque', required: true },
-  { key: 'model', label: 'Modèle', required: true },
-  { key: 'firstRegistrationDate', label: 'Date de première circulation', required: true },
-  { key: 'energyLabel', label: 'Énergie', required: true },
-  { key: 'vin', label: 'N° de série (VIN)', required: true },
-  { key: 'gearbox', label: 'Boîte de vitesse', required: true },
-  { key: 'registrationCountry', label: 'Pays' },
-  { key: 'co2', label: 'CO₂ (g/km)' },
-  { key: 'vehicleGenre', label: 'Genre' },
-  { key: 'fiscalPower', label: 'Puissance fiscale' },
-  { key: 'bodyType', label: 'Carrosserie' },
-  { key: 'passengerCount', label: 'Nombre de passagers' },
-  { key: 'doorCount', label: 'Nombre de portes' },
-  { key: 'color', label: 'Couleur' },
+  { key: 'brand', label: 'dossierForm.brand', required: true },
+  { key: 'model', label: 'dossierForm.model', required: true },
+  { key: 'firstRegistrationDate', label: 'dossierForm.firstRegistrationDate', required: true },
+  { key: 'energyLabel', label: 'dossierForm.energy', required: true },
+  { key: 'vin', label: 'dossierForm.vin', required: true },
+  { key: 'gearbox', label: 'dossierForm.gearbox', required: true },
+  { key: 'registrationCountry', label: 'dossierForm.country' },
+  { key: 'co2', label: 'dossierForm.co2' },
+  { key: 'vehicleGenre', label: 'dossierForm.genre' },
+  { key: 'fiscalPower', label: 'dossierForm.fiscalPower' },
+  { key: 'bodyType', label: 'dossierForm.bodyType' },
+  { key: 'passengerCount', label: 'dossierForm.passengerCount' },
+  { key: 'doorCount', label: 'dossierForm.doorCount' },
+  { key: 'color', label: 'dossierForm.color' },
 ];
 
 const fuelFromLabel = (value: string): FuelType => {
@@ -67,6 +68,7 @@ const fuelFromLabel = (value: string): FuelType => {
 };
 
 export default function StepVehicleInfo({ values, onChange, onNext, isEditing = false }: Props) {
+  const { language, t } = useLanguage();
   const [searching, setSearching] = useState(false);
   const [detailsVisible, setDetailsVisible] = useState(Boolean(values.brand || values.model || values.vin));
   const [lookupError, setLookupError] = useState('');
@@ -103,7 +105,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
 
   const lookupRegistration = async () => {
     if (!values.registrationNumber?.trim()) {
-      setLookupError("Saisissez une immatriculation avant de lancer la recherche.");
+      setLookupError(t('dossierForm.lookupMissing'));
       return;
     }
     setSearching(true);
@@ -114,7 +116,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
         body: JSON.stringify({ immatriculation: values.registrationNumber }),
       });
       if (!data || typeof data !== 'object') {
-        throw new Error("Aucune information véhicule n'a été retournée pour cette immatriculation.");
+        throw new Error(t('dossierForm.lookupNoData'));
       }
       const apiValues = apiVehicleValues(data as Record<string, unknown>);
       const registration = parseRegistrationDate(apiValues.firstRegistrationDate);
@@ -132,7 +134,7 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
       ));
       setDetailsVisible(true);
     } catch (error) {
-      setLookupError(error instanceof Error ? error.message : 'Recherche impossible. Vous pouvez remplir les champs manuellement.');
+      setLookupError(error instanceof Error ? error.message : t('dossierForm.lookupFailed'));
     } finally {
       setSearching(false);
     }
@@ -158,28 +160,31 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
   return (
     <form id="step-vehicle-info-form" onSubmit={(event) => { event.preventDefault(); onNext(); }} className="max-w-[900px] w-full space-y-7">
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Informations voiture</h2>
-        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Immatriculation</label>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.carInfo')}</h2>
+        <label className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{t('dossierForm.registration')}</label>
         <div className="flex flex-col sm:flex-row gap-3">
-          <input required aria-label="Immatriculation" readOnly={isEditing || checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
-          {!isEditing && <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? 'Recherche…' : 'Rechercher'}</button>}
+          <input required aria-label={t('dossierForm.registration')} readOnly={isEditing || checkingApiFields || lockedApiFields.has('registrationNumber')} value={values.registrationNumber || ''} onChange={(e) => { onChange({ registrationNumber: e.target.value.toUpperCase() }); setDetailsVisible(false); }} placeholder="AA-123-BC" className="flex-1 h-12 border border-[#dcd7cb] rounded-[9px] px-4 font-mono uppercase focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
+          {!isEditing && <button type="button" onClick={lookupRegistration} disabled={searching} className="btn btn-primary disabled:opacity-50 gap-2">{searching && <Spinner />}{searching ? t('dossierForm.searching') : t('dossierForm.search')}</button>}
         </div>
-        {isEditing && <p className="mt-2 text-[11px] text-[#5a5e66]">L’immatriculation ne peut pas être modifiée après la création du dossier.</p>}
+        {isEditing && <p className="mt-2 text-[11px] text-[#5a5e66]">{t('dossierForm.registrationLocked')}</p>}
         {lookupError && <Alert variant="error" className="mt-3">{lookupError}</Alert>}
 
       {detailsVisible && (
       <div className="border-t border-[#e5e1d7] pt-5 space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {textFields.map(({ key, label, required }) => (
+        {textFields.map(({ key, label: labelKey, required }) => {
+          const label = t(labelKey);
+          return (
           <label key={key} className="block">
             <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{label}{required && <span className="text-[#b42318]"> *</span>}</span>
             {key === 'gearbox' ? (
-              <select required aria-label={label} disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">Sélectionner</option><option value="M">M — Manuelle</option><option value="A">A — Automatique</option><option value="S">S — Semi-automatique</option></select>
+              <select required aria-label={label} disabled={checkingApiFields || lockedApiFields.has(key)} value={values.gearbox || ''} onChange={(e) => onChange({ gearbox: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white focus:outline-none focus:border-[#13243c] disabled:bg-[#f1efe8] disabled:text-[#5a5e66]"><option value="">{t('dossierForm.select')}</option><option value="M">{t('dossierForm.gearboxM')}</option><option value="A">{t('dossierForm.gearboxA')}</option><option value="S">{t('dossierForm.gearboxS')}</option></select>
             ) : (
               <input required={required} aria-label={label} readOnly={checkingApiFields || lockedApiFields.has(key)} value={String(values[key] ?? '')} onChange={(e) => onChange({ [key]: e.target.value } as Partial<VehicleDossierPayload>)} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c] read-only:bg-[#f1efe8] read-only:text-[#5a5e66]" />
             )}
           </label>
-        ))}
+          );
+        })}
         </div>
       </div>
       )}
@@ -187,66 +192,66 @@ export default function StepVehicleInfo({ values, onChange, onNext, isEditing = 
 
       {detailsVisible && <>
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Kilométrage</h2>
-        <label><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Kilométrage <span className="text-[#b42318]">*</span></span><input required aria-label="Kilométrage" type="number" min="0" value={values.mileage ?? ''} onChange={(e) => onChange({ mileage: e.target.value ? Number(e.target.value) : undefined })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" /></label>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.mileage')}</h2>
+        <label><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">{t('dossierForm.mileage')} <span className="text-[#b42318]">*</span></span><input required aria-label={t('dossierForm.mileage')} type="number" min="0" value={values.mileage ?? ''} onChange={(e) => onChange({ mileage: e.target.value ? Number(e.target.value) : undefined })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" /></label>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">VRADE</h2>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('vehicle.field.vrade')}</h2>
         <label>
-          <span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-1">VRADE</span>
-          <span className="block text-xs leading-5 text-[#5a5e66] mb-2">Montant estimé par un expert automobile pour racheter un véhicule équivalent avant qu’il ne soit détruit ou volé.</span>
+          <span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-1">{t('vehicle.field.vrade')}</span>
+          <span className="block text-xs leading-5 text-[#5a5e66] mb-2">{t('dossierForm.vradeHelp')}</span>
           <input value={values.vrade || ''} onChange={(e) => onChange({ vrade: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white" />
         </label>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Procédure</h2>
-        <label className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Procédure <span className="text-[#b42318]">*</span></label>
-        <select required aria-label="Procédure" value={values.procedure || ''} onChange={(e) => onChange({ procedure: e.target.value as VehicleDossierPayload['procedure'] })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white"><option value="">Sélectionner</option>{['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'].map((item) => <option key={item}>{item}</option>)}</select>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.procedure')}</h2>
+        <label className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">{t('dossierForm.procedure')} <span className="text-[#b42318]">*</span></label>
+        <select required aria-label={t('dossierForm.procedure')} value={values.procedure || ''} onChange={(e) => onChange({ procedure: e.target.value as VehicleDossierPayload['procedure'] })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 bg-white"><option value="">{t('dossierForm.select')}</option>{['VEI', 'VE', 'TNR', 'RIV / VE', 'RIV'].map((item) => <option key={item}>{item}</option>)}</select>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Où se trouve la voiture actuellement</h2>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.carLocation')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label className="sm:col-span-2">
-            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Adresse</span>
-            <input required value={values.vehicleAddressDetails?.street || ''} onChange={(e) => updateVehicleAddress({ street: e.target.value })} placeholder="Numéro et nom de voie" className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c]" />
+            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{t('dossierForm.address')}</span>
+            <input required value={values.vehicleAddressDetails?.street || ''} onChange={(e) => updateVehicleAddress({ street: e.target.value })} placeholder={t('dossierForm.addressPlaceholder')} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c]" />
           </label>
           <label>
-            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Code postal</span>
+            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{t('dossierForm.postalCode')}</span>
             <input required value={values.vehicleAddressDetails?.postalCode || ''} onChange={(e) => updateVehicleAddress({ postalCode: e.target.value })} placeholder="75001" className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c]" />
           </label>
           <label>
-            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Ville</span>
+            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{t('dossierForm.city')}</span>
             <input required value={values.vehicleAddressDetails?.city || ''} onChange={(e) => updateVehicleAddress({ city: e.target.value })} placeholder="Paris" className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm focus:outline-none focus:border-[#13243c]" />
           </label>
           <label className="sm:col-span-2">
-            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">Pays</span>
+            <span className="block font-semibold text-[11px] uppercase tracking-[0.05em] text-[#4c5058] mb-2">{t('dossierForm.country')}</span>
             <select required value={values.vehicleAddressDetails?.country || 'France'} onChange={(e) => updateVehicleAddress({ country: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4 text-sm bg-white focus:outline-none focus:border-[#13243c]">
-              {countries.map((country) => <option key={country.code} value={country.fr}>{country.fr}</option>)}
+              {countries.map((country) => <option key={country.code} value={country.fr}>{country[language]}</option>)}
             </select>
           </label>
         </div>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Description du choc</h2>
-        <div className="flex items-center justify-between mb-2"><label className="font-semibold text-[11px] uppercase text-[#4c5058]">Description du choc</label><button type="button" onClick={makeSelectionBold} className="btn btn-secondary">B</button></div>
-        <textarea required aria-label="Description du choc" ref={descriptionRef} rows={7} value={values.description || ''} onChange={(e) => onChange({ description: e.target.value })} placeholder={'Décrivez le choc…\nLes retours à la ligne seront conservés.'} className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm leading-6 resize-y whitespace-pre-wrap" />
-        <p className="text-xs text-[#5a5e66] mt-1">Sélectionnez du texte puis cliquez sur B pour le mettre en gras. Les retours à la ligne sont conservés.</p>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.damage')}</h2>
+        <div className="flex items-center justify-between mb-2"><label className="font-semibold text-[11px] uppercase text-[#4c5058]">{t('dossierForm.damage')}</label><button type="button" onClick={makeSelectionBold} className="btn btn-secondary">B</button></div>
+        <textarea required aria-label={t('dossierForm.damage')} ref={descriptionRef} rows={7} value={values.description || ''} onChange={(e) => onChange({ description: e.target.value })} placeholder={t('dossierForm.damagePlaceholder')} className="w-full border border-[#dcd7cb] rounded-[9px] p-4 text-sm leading-6 resize-y whitespace-pre-wrap" />
+        <p className="text-xs text-[#5a5e66] mt-1">{t('dossierForm.damageHelp')}</p>
       </section>
 
       <section className="rounded-xl border border-[#e5e1d7] bg-white p-5 space-y-4">
-        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">Carte grise disponible</h2>
-        <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Carte grise disponible</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ registrationCardAvailable: choice, registrationCardMissingReasons: choice ? [] : values.registrationCardMissingReasons })} className={`px-5 py-2 rounded-full border font-semibold ${values.registrationCardAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? 'Oui' : 'Non'}</button>)}</div></div>
+        <h2 className="font-bold text-[16px] uppercase tracking-wide text-[#13243c]">{t('dossierForm.registrationCard')}</h2>
+        <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">{t('dossierForm.registrationCard')}</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ registrationCardAvailable: choice, registrationCardMissingReasons: choice ? [] : values.registrationCardMissingReasons })} className={`px-5 py-2 rounded-full border font-semibold ${values.registrationCardAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? t('common.yes') : t('common.no')}</button>)}</div></div>
         {values.registrationCardAvailable === true && (
-          <label className="block max-w-md"><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Numéro du livre de police (optionnel)</span><input value={values.policeBookNumber || ''} onChange={(e) => onChange({ policeBookNumber: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4" /></label>
+          <label className="block max-w-md"><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">{t('dossierForm.policeBook')}</span><input value={values.policeBookNumber || ''} onChange={(e) => onChange({ policeBookNumber: e.target.value })} className="w-full h-12 border border-[#dcd7cb] rounded-[9px] px-4" /></label>
         )}
         {values.registrationCardAvailable === false && (
           <div className="space-y-4 rounded-lg bg-[#fbfaf7] p-4">
-            <div className="flex flex-wrap gap-4">{([['declaration_perte', 'Déclaration de perte'], ['declaration_vol', 'Déclaration de vol'], ['autre', 'Autre']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(values.registrationCardMissingReasons || []).includes(key)} onChange={() => toggleMissingReason(key)} />{label}</label>)}</div>
-            <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">Fiche d’identification disponible</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ identificationSheetAvailable: choice })} className={`px-5 py-2 rounded-full border font-semibold ${values.identificationSheetAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? 'Oui' : 'Non'}</button>)}</div></div>
+            <div className="flex flex-wrap gap-4">{(['declaration_perte', 'declaration_vol', 'autre'] as const).map((key) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(values.registrationCardMissingReasons || []).includes(key)} onChange={() => toggleMissingReason(key)} />{t(`dossierMissing.${key}`)}</label>)}</div>
+            <div><span className="block font-semibold text-[11px] uppercase text-[#4c5058] mb-2">{t('dossierForm.identificationSheet')}</span><div className="flex gap-2">{[true, false].map((choice) => <button key={String(choice)} type="button" onClick={() => onChange({ identificationSheetAvailable: choice })} className={`px-5 py-2 rounded-full border font-semibold ${values.identificationSheetAvailable === choice ? 'bg-[#13243c] text-white' : 'bg-white'}`}>{choice ? t('common.yes') : t('common.no')}</button>)}</div></div>
           </div>
         )}
       </section>
