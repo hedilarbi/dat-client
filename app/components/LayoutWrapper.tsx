@@ -469,14 +469,14 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const homePath = localizedPath('/', language);
   const isValidatedSeller = user?.role === 'vendeur' && hasSpaceAccess(user);
 
-  const isSellerSpacePage = currentPath.startsWith('/vendeur/') || currentPath === '/sessions';
 
   // Espace privé du rôle connecté. La validation du compte ne conditionne QUE ce périmètre :
   // les pages publiques atteintes par le header (accueil, ventes en cours, fiche véhicule,
   // vendre avec nous) restent ouvertes à un compte en attente de validation.
   const roleSpacePrefix = user?.role === 'vendeur' ? '/vendeur/' : '/acheteur/';
   const isOwnSpacePage = currentPath.startsWith(roleSpacePrefix);
-  const isBuyerDashboardPage = currentPath.startsWith('/acheteur/tableau-de-bord');
+  // Tableaux de bord (acheteur et vendeur) : même squelette, en-tête du site puis navigation latérale
+  const isBuyerDashboardPage = currentPath.startsWith('/acheteur/tableau-de-bord') || (user?.role === 'vendeur' && currentPath.startsWith('/vendeur/'));
   const buyerInSellerSpace = Boolean(user?.role === 'acheteur' && currentPath.startsWith('/vendeur/'));
 
   // Une session déjà connue prend la priorité sur les pages d'authentification. Cette garde
@@ -593,98 +593,6 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   // space. Must check isRegisterPage (covers /register/vendeur) rather than the canonical
   // '/register' path alone, otherwise this layout takes over mid-registration (right after OTP
   // verification sets user.role) and unmounts RegisterForm, resetting its step state to 1.
-  if (user && user.role === 'vendeur' && !isRegisterPage && isSellerSpacePage) {
-    return (
-      <div className="h-screen bg-white flex flex-col font-sans overflow-hidden">
-        {/* Top Blue Bar */}
-        <header className="h-[64px] bg-[#13243c] flex items-center px-4 sm:px-8 gap-4 shrink-0 select-none overflow-x-auto">
-          <Link href={localizedPath('/vendeur/tableau-de-bord', language)} className="lg:hidden w-[104px] h-[30px] shrink-0 border border-dashed border-[#47597a] rounded-[6px] flex items-center justify-center text-[9px] font-semibold tracking-widest uppercase text-[#8ea0bd]">
-            {t('login.logo')}
-          </Link>
-          <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="hidden lg:flex">
-              <LanguageSelector compact onLanguageChange={persistLanguage} />
-            </div>
-            <UserNotificationsBell role="vendeur" />
-            <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden lg:flex" />
-            <MobileMenu
-              breakpointClass="lg:hidden"
-              onLanguageChange={persistLanguage}
-              navLinks={[
-                { href: localizedPath('/vendeur/tableau-de-bord', language), label: t('nav.dashboard'), active: currentPath === '/vendeur/tableau-de-bord' },
-                ...(isValidatedSeller ? [
-                  { href: localizedPath('/vendeur/dossiers', language), label: t('nav.deposits'), active: currentPath === '/vendeur/dossiers' },
-                  { href: localizedPath('/vendeur/en-vente', language), label: t('nav.forSale'), active: currentPath === '/vendeur/en-vente' },
-                  { href: localizedPath('/vendeur/ventes', language), label: t('nav.sales'), active: currentPath === '/vendeur/ventes' },
-                  // Un compte suspendu ne peut plus déposer d'offres : ses achats en cours restent suivis
-                  ...(user?.status !== 'suspendu' ? [{ href: localizedPath('/vendeur/mes-offres', language), label: t('nav.myOffers'), active: currentPath === '/vendeur/mes-offres' }] : []),
-                  { href: localizedPath('/vendeur/mes-achats', language), label: t('nav.myPurchases'), active: currentPath.startsWith('/vendeur/mes-achats') },
-                ] : []),
-                { href: localizedPath('/vendeur/tableau-de-bord/profil', language), label: t('nav.profile'), active: currentPath === '/vendeur/tableau-de-bord/profil' },
-                { href: localizedPath('/vendeur/tableau-de-bord/support', language), label: t('nav.support'), active: currentPath === '/vendeur/tableau-de-bord/support' },
-              ]}
-            />
-          </div>
-        </header>
-
-        <div className="flex-1 flex min-h-0">
-          {/* Left Sidebar */}
-          <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#13243c] p-[28px_18px] flex-col select-none overflow-y-auto">
-            <div className="w-[110px] h-[32px] shrink-0 border border-dashed border-[#47597a] rounded-[6px] flex items-center justify-center text-[9px] font-semibold tracking-widest uppercase text-[#8ea0bd] mb-[36px]">
-              {t('login.logo')}
-            </div>
-            <nav className="flex flex-col gap-1">
-              <Link href={localizedPath('/vendeur/tableau-de-bord', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/tableau-de-bord' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                {t('nav.dashboard')}
-              </Link>
-              {isValidatedSeller && (
-                <>
-                  {/* « Mes véhicules » regroupe les deux phases d'avant-vente : le dépôt,
-                      où le vendeur agit, et le suivi, où il observe. */}
-                  <div className="mt-3 px-[14px] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#5b6f8f]">
-                    {t('nav.myVehicles')}
-                  </div>
-                  <Link href={localizedPath('/vendeur/dossiers', language)} className={`flex items-center justify-between pl-[24px] pr-[14px] py-[11px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/dossiers' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                    <span>{t('nav.deposits')}</span>
-                  </Link>
-                  <Link href={localizedPath('/vendeur/en-vente', language)} className={`flex items-center justify-between pl-[24px] pr-[14px] py-[11px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/en-vente' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                    <span>{t('nav.forSale')}</span>
-                  </Link>
-
-                  <Link href={localizedPath('/vendeur/ventes', language)} className={`mt-3 flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/ventes' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                    {t('nav.sales')}
-                  </Link>
-                  {user?.status !== 'suspendu' && (
-                  <Link href={localizedPath('/vendeur/mes-offres', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/mes-offres' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                    {t('nav.myOffers')}
-                  </Link>
-                  )}
-                  <Link href={localizedPath('/vendeur/mes-achats', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath.startsWith('/vendeur/mes-achats') ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                    {t('nav.myPurchases')}
-                  </Link>
-                </>
-              )}
-              <Link href={localizedPath('/vendeur/tableau-de-bord/profil', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/tableau-de-bord/profil' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                {t('nav.profile')}
-              </Link>
-              <Link href={localizedPath('/vendeur/tableau-de-bord/support', language)} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition ${currentPath === '/vendeur/tableau-de-bord/support' ? 'bg-[#1c3050] text-white font-semibold' : 'text-[#9fb0c9] hover:bg-[#1a2b44]'}`}>
-                {t('nav.support')}
-              </Link>
-              <Link href={homePath} className={`flex items-center px-[14px] py-[12px] rounded-[9px] font-[500] text-[14px] transition text-[#d9704f] hover:bg-[#1a2b44] mt-8`}>
-                ← {t('nav.home')}
-              </Link>
-            </nav>
-          </aside>
-
-          {/* Right Main Content */}
-          <main className="flex-1 flex flex-col min-w-0 bg-white overflow-y-auto">
-            {children}
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   // Utilisateur connecté : lien vers son espace (vendeur ou acheteur), affiché avant « Accueil »
   const spaceLink = user && (user.role === 'vendeur' || user.role === 'acheteur')
     ? { href: localizedPath(getRoleHomePath(user.role), language), label: t(user.role === 'vendeur' ? 'nav.sellerSpace' : 'nav.buyerSpace') }
@@ -715,7 +623,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <div className="hidden md:flex">
               <LanguageSelector compact onLanguageChange={persistLanguage} />
             </div>
-            {user?.role === 'acheteur' && <UserNotificationsBell role="acheteur" />}
+            {(user?.role === 'acheteur' || user?.role === 'vendeur') && <UserNotificationsBell role={user.role} />}
             {user ? (
               <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden md:flex" />
             ) : (
