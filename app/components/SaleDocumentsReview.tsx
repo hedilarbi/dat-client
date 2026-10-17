@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { apiRequest } from '../api';
 import { uploadFile } from '../lib/uploadFile';
 import { useLanguage } from '../i18n';
@@ -58,6 +59,11 @@ export default function SaleDocumentsReview<TSale>({
   const { review } = documents;
   const mine = review[side];
   const other = review[otherSide];
+  // Seule la partie visée par un signalement redépose ; si les deux ont signalé, chacune le peut
+  const canUpload = review.correctionOpen && other?.decision === 'erreur';
+  const waitingForOtherUpload = mine?.decision === 'erreur' && other?.decision !== 'erreur';
+  const bothReported = mine?.decision === 'erreur' && other?.decision === 'erreur';
+  const stampReportedAgainstMe = other?.decision === 'erreur' && (other.reason === 'tampon_manquant' || other.reason === 'mauvais_tampon');
 
   const [error, setError] = useState('');
   // Action en cours : 'valide', 'erreur' ou le document en cours de dépôt
@@ -282,7 +288,21 @@ export default function SaleDocumentsReview<TSale>({
             </div>
           )}
 
-          {review.correctionOpen && (
+          {waitingForOtherUpload && (
+            <p className="mt-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-[13px] leading-6 text-[#8a4b24]">{t(`saleDocs.reportedWaiting.${otherSide}`)}</p>
+          )}
+          {bothReported && (
+            <p className="mt-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-[13px] leading-6 text-[#8a4b24]">{t('saleDocs.bothReported')}</p>
+          )}
+
+          {stampReportedAgainstMe && (
+            <div className="mt-4 rounded-[10px] border-l-4 border-[#e2a175] bg-[#fdf3ec] p-3.5 text-[13px] leading-6 text-[#8a4b24]">
+              <p>{t('saleDocs.stampFixHint')}</p>
+              <Link href={stampHref} className="mt-1 inline-block font-bold text-[#d9704f] underline">{t('saleDocs.stampFixLink')}</Link>
+            </div>
+          )}
+
+          {canUpload && (
             <div className="mt-5 rounded-[10px] border border-dashed border-[#dcd7cb] bg-[#fbfaf7] p-4">
               <div className="mb-1 text-[12px] font-bold uppercase tracking-[0.06em] text-[#4c5058]">{t('saleDocs.uploadTitle')}</div>
               <p className="mb-4 text-[12px] leading-5 text-[#5a5e66]">{t('saleDocs.uploadHint')}</p>
