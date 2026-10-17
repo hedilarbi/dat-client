@@ -30,7 +30,8 @@ interface WonSale {
   session: { id: string; name: string; endDate: string } | null;
 }
 
-type SaleFilter = 'ongoing' | 'closed' | 'cancelled';
+type SaleFilter = 'ongoing' | 'commission' | 'action' | 'closed' | 'cancelled';
+const SALE_FILTERS: SaleFilter[] = ['ongoing', 'commission', 'action', 'closed', 'cancelled'];
 
 /** Compte à rebours lisible ; null une fois l'échéance dépassée. */
 function timeLeft(dueAt: string | null): string | null {
@@ -54,7 +55,12 @@ export default function WonSalesPage() {
   const [ongoing, setOngoing] = useState<WonSale[]>([]);
   const [closed, setClosed] = useState<WonSale[]>([]);
   const [cancelled, setCancelled] = useState<WonSale[]>([]);
-  const [filter, setFilter] = useState<SaleFilter>('ongoing');
+  // Les cartes du tableau de bord ouvrent la liste déjà filtrée (?filtre=commission, closed…)
+  const requestedFilter = searchParams.get('filtre');
+  const [filter, setFilter] = useState<SaleFilter>(SALE_FILTERS.includes(requestedFilter as SaleFilter) ? requestedFilter as SaleFilter : 'ongoing');
+  useEffect(() => {
+    if (SALE_FILTERS.includes(requestedFilter as SaleFilter)) setFilter(requestedFilter as SaleFilter);
+  }, [requestedFilter]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
 
@@ -91,7 +97,12 @@ export default function WonSalesPage() {
     return <UnderReviewNotice />;
   }
 
-  const sales = filter === 'ongoing' ? ongoing : filter === 'closed' ? closed : cancelled;
+  // Commission à payer : achats encore à la première étape ; action requise : l'acheteur doit agir
+  const sales = filter === 'ongoing' ? ongoing
+    : filter === 'commission' ? ongoing.filter((sale) => sale.currentStep === 1)
+    : filter === 'action' ? ongoing.filter((sale) => sale.pendingAction)
+    : filter === 'closed' ? closed
+    : cancelled;
 
   return (
     <div className="flex-1 w-full bg-white p-6 font-sans text-black sm:p-[32px_40px_44px] min-h-full">
@@ -109,6 +120,8 @@ export default function WonSalesPage() {
       <div className="flex items-center gap-2.5 mb-6 overflow-x-auto pb-1">
         {([
           { value: 'ongoing' as const, label: t('sales.filterOngoing'), count: ongoing.length },
+          { value: 'commission' as const, label: t('sales.filterCommission'), count: ongoing.filter((sale) => sale.currentStep === 1).length },
+          { value: 'action' as const, label: t('sales.filterAction'), count: ongoing.filter((sale) => sale.pendingAction).length },
           { value: 'closed' as const, label: t('sales.filterClosed'), count: closed.length },
           { value: 'cancelled' as const, label: t('sales.filterCancelled'), count: cancelled.length },
         ]).map((option) => {
@@ -134,7 +147,7 @@ export default function WonSalesPage() {
         <div className="flex justify-center py-10"><Spinner className="h-8 w-8 text-[#13243c]" /></div>
       ) : sales.length === 0 ? (
         <p className="rounded-[12px] bg-[#f8f7f2] p-8 text-center text-sm text-[#5a5e66]">
-          {filter === 'ongoing' ? t('sales.emptyOngoing') : filter === 'closed' ? t('sales.emptyClosed') : t('sales.emptyCancelled')}
+          {filter === 'ongoing' || filter === 'commission' || filter === 'action' ? t('sales.emptyOngoing') : filter === 'closed' ? t('sales.emptyClosed') : t('sales.emptyCancelled')}
         </p>
       ) : (
         <div className="space-y-4">

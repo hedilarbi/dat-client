@@ -106,9 +106,9 @@ export default function BuyerDashboardPage() {
         {user.status !== 'suspendu' && (
           <StatCard href={localizedPath(paths.offers, language)} label={t('profil.offersInProgress')} value={ongoingOffers.length} bg="#2563eb" labelColor="#bfdbfe" valueColor="#ffffff" />
         )}
-        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.offersWon')} value={ongoingSales.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
-        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.commissionDue')} value={ongoingSales.filter(s => s.currentStep === 1).length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
-        <StatCard href={localizedPath(paths.purchases, language)} label={t('profil.salesFinalized')} value={closedSalesCount} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
+        <StatCard href={`${localizedPath(paths.purchases, language)}?filtre=ongoing`} label={t('profil.offersWon')} value={ongoingSales.length} bg="#16a34a" labelColor="#bbf7d0" valueColor="#ffffff" />
+        <StatCard href={`${localizedPath(paths.purchases, language)}?filtre=commission`} label={t('profil.commissionDue')} value={ongoingSales.filter(s => s.currentStep === 1).length} bg="#ea580c" labelColor="#fed7aa" valueColor="#ffffff" />
+        <StatCard href={`${localizedPath(paths.purchases, language)}?filtre=closed`} label={t('profil.salesFinalized')} value={closedSalesCount} bg="#9333ea" labelColor="#e9d5ff" valueColor="#ffffff" />
       </div>
 
       {ongoingSales.length > 0 && (

@@ -70,7 +70,7 @@ export default function Home() {
   };
   // L'accueil ne montre que les 8 premiers lots : une seule page suffit. Les compteurs par marque
   // et le total viennent du serveur, qui les calcule sur l'ensemble des véhicules en session.
-  const { vehicles, sessions, brands, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
+  const { vehicles, sessions, total, loading: salesLoading, error: salesError } = useCurrentSales({ pageSize: 8, enabled: !userLoading && Boolean(user) });
   const currentSession = sessions[0];
   // Le tag de session du hero n'existe que pour un utilisateur connecté. On ne conclut à « aucune
   // session » qu'une fois la réponse reçue (sinon le tag l'affichait pendant le chargement).
@@ -236,20 +236,6 @@ export default function Home() {
       )}
 
       {!userLoading && !user ? <ShowcaseGallery language={language} /> : <>
-      {/* Brands */}
-      <div className="px-4 sm:px-[40px] pt-10 sm:pt-12 pb-6">
-        <div className="font-semibold text-[11px] tracking-[0.2em] uppercase text-[#a3987f] mb-2.5">{t('home.brandsEyebrow')}</div>
-        <div className="font-bold text-[26px] sm:text-[30px] uppercase text-[#13243c] mb-5 font-heading">{t('home.brandsTitle')}</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {brands.map(brand => (
-            <div key={brand.name} className="border border-[#eceadf] rounded-[14px] p-6 sm:p-[26px_16px] flex flex-col items-center gap-3">
-              <div className="font-bold text-xl text-[#13243c] font-heading">{brand.name}</div>
-              <div className="font-medium text-xs text-[#5a5e66]">{t('home.brandLots', { count: String(brand.count) })}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Session en cours : les premiers véhicules en vente ; sinon, la vitrine choisie par l'admin */}
       {salesLoading || currentSession ? (
         <>
