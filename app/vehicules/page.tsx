@@ -208,8 +208,6 @@ function CurrentSalesPage() {
         )}
       </section>
 
-      {!userLoading && user && <ShowcaseGallery language={language} compact hideWhenEmpty />}
-
       <SalesAccessModal
         open={accessModalOpen}
         reason={lockedReason}

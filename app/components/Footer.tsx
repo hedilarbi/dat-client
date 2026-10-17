@@ -25,7 +25,6 @@ export default function Footer() {
           </div>
           <div className="flex flex-col gap-2.5 text-[13px] font-medium text-[#5a5e66]">
             <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
-            <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">Acheter un véhicule</Link>
             <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>
           </div>
         </div>

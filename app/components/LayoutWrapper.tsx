@@ -223,6 +223,21 @@ function UserMenu({ displayName, initials, triggerClassName = 'hidden sm:flex' }
   );
 }
 
+/** Page à ouvrir depuis une notification, selon le rôle du destinataire et son côté sur la vente. */
+export function notificationDestination(notification: SellerNotification, role: 'acheteur' | 'vendeur') {
+  const { saleId, dossierId, ticketId, side } = notification.metadata || {};
+  if (role === 'acheteur') {
+    if (saleId) return `/acheteur/tableau-de-bord/mes-vehicules/${saleId}`;
+    if (ticketId) return '/acheteur/tableau-de-bord/support';
+    if (notification.type.startsWith('account_') || notification.type.startsWith('profile_')) return '/acheteur/tableau-de-bord/profil';
+    return '/acheteur/tableau-de-bord';
+  }
+  if (saleId) return side === 'buyer' ? `/vendeur/mes-achats/${saleId}` : `/vendeur/ventes/${saleId}`;
+  if (dossierId) return `/vendeur/dossiers/${dossierId}`;
+  if (ticketId) return '/vendeur/tableau-de-bord/support';
+  return '/vendeur/tableau-de-bord';
+}
+
 interface SellerNotification {
   _id: string;
   type: string;
@@ -230,10 +245,10 @@ interface SellerNotification {
   message: string;
   readAt: string | null;
   createdAt: string;
-  metadata?: { dossierId?: string; saleId?: string };
+  metadata?: { dossierId?: string; saleId?: string; ticketId?: string; side?: 'buyer' | 'seller' };
 }
 
-function SellerNotificationsBell() {
+function UserNotificationsBell({ role }: { role: 'acheteur' | 'vendeur' }) {
   const [notifications, setNotifications] = useState<SellerNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const router = useRouter();
@@ -251,11 +266,7 @@ function SellerNotificationsBell() {
 
   useEffect(() => { refresh(); }, []);
 
-  const destination = (notification: SellerNotification) => {
-    if (notification.metadata?.saleId) return `/vendeur/ventes/${notification.metadata.saleId}`;
-    if (notification.metadata?.dossierId) return `/vendeur/dossiers/${notification.metadata.dossierId}`;
-    return '/vendeur/tableau-de-bord';
-  };
+  const destination = (notification: SellerNotification) => notificationDestination(notification, role);
 
   return (
     <DropdownMenu
@@ -282,7 +293,7 @@ function SellerNotificationsBell() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => { close(); router.push(localizedPath('/vendeur/notifications', language)); }} className="w-full h-11 text-[12px] font-bold text-[#13243c] uppercase hover:bg-[#f8f7f2]">{t('notifications.viewAll')}</button>
+          <button type="button" onClick={() => { close(); router.push(localizedPath(role === 'vendeur' ? '/vendeur/notifications' : '/acheteur/tableau-de-bord/notifications', language)); }} className="w-full h-11 text-[12px] font-bold text-[#13243c] uppercase hover:bg-[#f8f7f2]">{t('notifications.viewAll')}</button>
         </>
       )}
     </DropdownMenu>
@@ -594,7 +605,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <div className="hidden lg:flex">
               <LanguageSelector compact onLanguageChange={persistLanguage} />
             </div>
-            <SellerNotificationsBell />
+            <UserNotificationsBell role="vendeur" />
             <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden lg:flex" />
             <MobileMenu
               breakpointClass="lg:hidden"
@@ -696,7 +707,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             )}
             <Link href={homePath} className="hover:text-[#d9704f] transition">{t('nav.home')}</Link>
             <Link href={localizedPath('/vehicules', language)} className="hover:text-[#d9704f] transition">{t('nav.vehicles')}</Link>
-            {user?.role !== 'acheteur' && <Link href={localizedPath('/acheter', language)} className="hover:text-[#d9704f] transition">{t('nav.buy')}</Link>}
+            <Link href={localizedPath('/comment-ca-marche', language)} className="hover:text-[#d9704f] transition">{t('nav.how')}</Link>
             {user?.role !== 'vendeur' && <Link href={localizedPath('/vendre', language)} className="hover:text-[#d9704f] transition">{t('nav.sellWithUs')}</Link>}
           </div>
 
@@ -704,6 +715,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
             <div className="hidden md:flex">
               <LanguageSelector compact onLanguageChange={persistLanguage} />
             </div>
+            {user?.role === 'acheteur' && <UserNotificationsBell role="acheteur" />}
             {user ? (
               <UserMenu displayName={getDisplayName()} initials={getInitials()} triggerClassName="hidden md:flex" />
             ) : (
@@ -722,7 +734,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
                 ...(spaceLink ? [{ href: spaceLink.href, label: spaceLink.label, highlight: true }] : []),
                 { href: homePath, label: t('nav.home'), active: currentPath === '/' },
                 { href: localizedPath('/vehicules', language), label: t('nav.vehicles'), active: currentPath === '/vehicules' },
-                ...(user?.role !== 'acheteur' ? [{ href: localizedPath('/acheter', language), label: t('nav.buy'), active: currentPath === '/acheter' }] : []),
+                { href: localizedPath('/comment-ca-marche', language), label: t('nav.how'), active: currentPath === '/comment-ca-marche' },
                 ...(user?.role !== 'vendeur' ? [{ href: localizedPath('/vendre', language), label: t('nav.sellWithUs'), active: currentPath === '/vendre' }] : []),
               ]}
             />

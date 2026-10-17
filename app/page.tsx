@@ -13,7 +13,7 @@ import { useUser } from "./components/LayoutWrapper";
 import JsonLd from "./components/JsonLd";
 import Spinner from "./components/Spinner";
 import ShowcaseGallery from './components/ShowcaseGallery';
-import ShowcaseLots, { LotCards } from './components/ShowcaseLots';
+import { LotCards } from './components/ShowcaseLots';
 import SalesFilterCard, { EMPTY_SALE_FILTERS, filtersToQueryString, type SaleFilters } from './components/SalesFilterCard';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1714229157462-8b61df49e878?q=80&w=1800&auto=format&fit=crop';
@@ -278,11 +278,10 @@ export default function Home() {
           </div>
         </>
       ) : (
-        <ShowcaseLots language={language} />
+        // Connecté sans session en cours : « Prochainement à la vente »
+        <ShowcaseGallery language={language} compact />
       )}
       </>}
-
-      {!userLoading && user && <ShowcaseGallery language={language} hideWhenEmpty />}
 
       {/* How it works */}
       <div id="a-propos" className="scroll-mt-[70px] bg-[#f8f7f2] px-4 sm:px-[40px] py-12 sm:py-16 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-8 sm:gap-[52px] items-center">

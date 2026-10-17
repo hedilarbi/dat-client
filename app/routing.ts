@@ -34,6 +34,7 @@ const ROUTE_SLUGS: Record<string, Record<Language, string>> = {
   '/vendeur/en-vente': { fr: 'vendeur/en-vente', en: 'seller/for-sale' },
   '/vendeur/mes-offres': { fr: 'vendeur/mes-offres', en: 'seller/my-bids' },
   '/vendeur/mes-achats': { fr: 'vendeur/mes-achats', en: 'seller/my-purchases' },
+  '/acheteur/tableau-de-bord/notifications': { fr: 'acheteur/tableau-de-bord/notifications', en: 'buyer/dashboard/notifications' },
   '/vendeur/notifications': { fr: 'vendeur/notifications', en: 'seller/notifications' },
   '/vehicule': { fr: 'vehicule', en: 'vehicle' },
   '/acheteur/tableau-de-bord': { fr: 'acheteur/tableau-de-bord', en: 'buyer/dashboard' },
